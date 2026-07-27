@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -22,6 +23,7 @@ from app.modules.maintenance.constants import (
     MaintenanceFindingSeverity,
     MaintenanceFindingStatus,
     MaintenanceFindingType,
+    MaintenancePartUsageType,
     MaintenancePlanTriggerType,
     MaintenanceRequestSourceType,
     MaintenanceRequestStatus,
@@ -45,6 +47,8 @@ from app.modules.maintenance.models import (
     MaintenanceChecklistTemplate,
     MaintenanceChecklistTemplateItem,
     MaintenanceFinding,
+    MaintenanceLaborLog,
+    MaintenancePartUsage,
     MaintenancePlan,
     MaintenancePlanAsset,
     MaintenancePriority,
@@ -62,6 +66,8 @@ from app.modules.maintenance.repository import (
     MaintenanceChecklistTemplateItemRepository,
     MaintenanceChecklistTemplateRepository,
     MaintenanceFindingRepository,
+    MaintenanceLaborLogRepository,
+    MaintenancePartUsageRepository,
     MaintenancePlanAssetRepository,
     MaintenancePlanRepository,
     MaintenancePriorityRepository,
@@ -81,6 +87,8 @@ from app.modules.maintenance.schemas import (
     MaintenanceChecklistTemplateCreate,
     MaintenanceConvertToWorkOrderPayload,
     MaintenanceFindingCreateRequestPayload,
+    MaintenanceLaborLogCreate,
+    MaintenancePartUsageCreate,
     MaintenancePlanAssetCreate,
     MaintenancePlanCreate,
     MaintenancePlanGeneratePayload,
@@ -115,6 +123,8 @@ class MaintenanceService:
         self.checklist_executions = MaintenanceChecklistExecutionRepository(session)
         self.checklist_results = MaintenanceChecklistResultRepository(session)
         self.findings = MaintenanceFindingRepository(session)
+        self.part_usages = MaintenancePartUsageRepository(session)
+        self.labor_logs = MaintenanceLaborLogRepository(session)
         self.requests = MaintenanceRequestRepository(session)
         self.work_orders = MaintenanceWorkOrderRepository(session)
         self.request_work_orders = MaintenanceRequestWorkOrderRepository(session)
@@ -874,6 +884,115 @@ class MaintenanceService:
             ) from exc
         return await self.get_request(request_item.id)
 
+    async def create_part_usage(
+        self,
+        work_order_id,
+        payload: MaintenancePartUsageCreate,
+    ) -> MaintenanceWorkOrder:
+        work_order = await self.get_work_order(work_order_id)
+        if work_order.status not in {
+            MaintenanceWorkOrderStatus.APPROVED.value,
+            MaintenanceWorkOrderStatus.ASSIGNED.value,
+            MaintenanceWorkOrderStatus.IN_PROGRESS.value,
+            MaintenanceWorkOrderStatus.COMPLETED.value,
+            MaintenanceWorkOrderStatus.VERIFICATION.value,
+        }:
+            raise AppError(
+                code="MAINTENANCE_PART_USAGE_INVALID_STATUS",
+                message="Work order belum berada pada status yang mengizinkan part usage.",
+                status_code=409,
+            )
+        part_usage = MaintenancePartUsage(
+            work_order_id=work_order.id,
+            part_item_id=payload.part_item_id,
+            asset_id=work_order.asset_id,
+            quantity=payload.quantity,
+            unit_cost=payload.unit_cost,
+            currency_code=payload.currency_code or work_order.currency_code,
+            usage_type=payload.usage_type.value,
+            used_at=payload.used_at,
+            used_by_employee_id=payload.used_by_employee_id,
+            sap_inventory_doc_entry=payload.sap_inventory_doc_entry,
+            sap_inventory_doc_num=payload.sap_inventory_doc_num,
+            removed_component_asset_id=payload.removed_component_asset_id,
+            installed_component_asset_id=payload.installed_component_asset_id,
+            serial_number=payload.serial_number,
+        )
+        try:
+            async with self.session.begin():
+                await self.part_usages.create(part_usage)
+                actual_part_cost = await self._calculate_actual_part_cost(work_order.id)
+                await self.work_orders.update(
+                    work_order,
+                    actual_part_cost=actual_part_cost,
+                    updated_by=payload.used_by_employee_id or work_order.updated_by,
+                )
+        except IntegrityError as exc:
+            raise AppError(
+                code="MAINTENANCE_PART_USAGE_CONFLICT",
+                message="Part usage menimbulkan konflik data.",
+                status_code=409,
+            ) from exc
+        return await self.get_work_order(work_order_id)
+
+    async def create_labor_log(
+        self,
+        work_order_id,
+        payload: MaintenanceLaborLogCreate,
+    ) -> MaintenanceWorkOrder:
+        work_order = await self.get_work_order(work_order_id)
+        if work_order.status not in {
+            MaintenanceWorkOrderStatus.APPROVED.value,
+            MaintenanceWorkOrderStatus.ASSIGNED.value,
+            MaintenanceWorkOrderStatus.IN_PROGRESS.value,
+            MaintenanceWorkOrderStatus.COMPLETED.value,
+            MaintenanceWorkOrderStatus.VERIFICATION.value,
+        }:
+            raise AppError(
+                code="MAINTENANCE_LABOR_LOG_INVALID_STATUS",
+                message="Work order belum berada pada status yang mengizinkan labor log.",
+                status_code=409,
+            )
+        if payload.ended_at is not None and payload.ended_at < payload.started_at:
+            raise AppError(
+                code="MAINTENANCE_LABOR_LOG_TIME_INVALID",
+                message="ended_at tidak boleh lebih kecil dari started_at.",
+                status_code=422,
+            )
+        duration_minutes = payload.duration_minutes
+        if duration_minutes is None and payload.ended_at is not None:
+            duration_minutes = int((payload.ended_at - payload.started_at).total_seconds() // 60)
+        labor_cost = payload.labor_cost
+        if labor_cost is None and payload.hourly_rate is not None and duration_minutes is not None:
+            labor_cost = (Decimal(duration_minutes) / Decimal("60")) * payload.hourly_rate
+        labor_log = MaintenanceLaborLog(
+            work_order_id=work_order.id,
+            employee_id=payload.employee_id,
+            started_at=payload.started_at,
+            ended_at=payload.ended_at,
+            duration_minutes=duration_minutes,
+            activity_type=payload.activity_type.value,
+            hourly_rate=payload.hourly_rate,
+            labor_cost=labor_cost,
+            notes=payload.notes,
+        )
+        try:
+            async with self.session.begin():
+                await self.labor_logs.create(labor_log)
+                actual_labor_cost = await self._calculate_actual_labor_cost(work_order.id)
+                await self.work_orders.update(
+                    work_order,
+                    actual_labor_cost=actual_labor_cost,
+                    updated_by=payload.employee_id,
+                )
+        except IntegrityError as exc:
+            raise AppError(
+                code="MAINTENANCE_LABOR_LOG_CONFLICT",
+                message="Labor log menimbulkan konflik data.",
+                status_code=409,
+            ) from exc
+        return await self.get_work_order(work_order_id)
+
     async def create_request(self, payload: MaintenanceRequestCreate) -> MaintenanceRequest:
         asset = await self._get_asset_or_raise(payload.asset_id)
         priority = await self._get_priority_or_raise(payload.priority_id)
@@ -1345,14 +1464,44 @@ class MaintenanceService:
                 message="Work order belum memiliki data penyelesaian yang wajib.",
                 status_code=422,
             )
+        checklist_executions = await self.checklist_executions.list_by_work_order(item.id)
+        incomplete_checklists = [
+            checklist
+            for checklist in checklist_executions
+            if checklist.status != ChecklistExecutionStatus.COMPLETED.value
+        ]
+        if incomplete_checklists:
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_CLOSE_REQUIREMENTS_INCOMPLETE",
+                message="Masih ada checklist work order yang belum selesai.",
+                status_code=422,
+            )
+        findings = await self.findings.list_by_work_order(item.id)
+        pending_follow_ups = [
+            finding
+            for finding in findings
+            if finding.requires_follow_up
+            and finding.status != MaintenanceFindingStatus.RESOLVED.value
+            and finding.generated_request_id is None
+        ]
+        if pending_follow_ups:
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_CLOSE_REQUIREMENTS_INCOMPLETE",
+                message="Masih ada finding yang membutuhkan follow-up request.",
+                status_code=422,
+            )
         asset = await self._get_asset_or_raise(item.asset_id)
         new_condition = item.asset_condition_after or asset.condition_status
+        actual_part_cost = await self._calculate_actual_part_cost(item.id)
+        actual_labor_cost = await self._calculate_actual_labor_cost(item.id)
         async with self.session.begin():
             await self.work_orders.update(
                 item,
                 status=MaintenanceWorkOrderStatus.CLOSED.value,
                 closed_by=payload.actor_id,
                 closed_at=payload.acted_at,
+                actual_part_cost=actual_part_cost,
+                actual_labor_cost=actual_labor_cost,
                 updated_by=payload.actor_id,
             )
             await self.asset_status_histories.create(
@@ -1486,6 +1635,26 @@ class MaintenanceService:
 
     def _generate_finding_number(self, execution_id: UUID, index: int) -> str:
         return f"FD-{str(execution_id).split('-')[0].upper()}-{index:03d}"
+
+    async def _calculate_actual_part_cost(self, work_order_id) -> Decimal:
+        total = Decimal("0")
+        for usage in await self.part_usages.list_by_work_order(work_order_id):
+            if usage.unit_cost is None:
+                continue
+            multiplier = (
+                Decimal("-1")
+                if usage.usage_type == MaintenancePartUsageType.RETURN.value
+                else Decimal("1")
+            )
+            total += usage.quantity * usage.unit_cost * multiplier
+        return total
+
+    async def _calculate_actual_labor_cost(self, work_order_id) -> Decimal:
+        total = Decimal("0")
+        for log in await self.labor_logs.list_by_work_order(work_order_id):
+            if log.labor_cost is not None:
+                total += log.labor_cost
+        return total
 
     async def _get_asset_or_raise(self, asset_id):
         asset = await self.assets.get(asset_id)

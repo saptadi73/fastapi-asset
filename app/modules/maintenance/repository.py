@@ -11,6 +11,8 @@ from app.modules.maintenance.models import (
     MaintenanceChecklistTemplate,
     MaintenanceChecklistTemplateItem,
     MaintenanceFinding,
+    MaintenanceLaborLog,
+    MaintenancePartUsage,
     MaintenancePlan,
     MaintenancePlanAsset,
     MaintenancePriority,
@@ -243,6 +245,19 @@ class MaintenanceChecklistExecutionRepository:
         )
         return item
 
+    async def list_by_work_order(
+        self,
+        work_order_id: UUID,
+    ) -> Sequence[MaintenanceChecklistExecution]:
+        stmt = (
+            select(MaintenanceChecklistExecution)
+            .options(selectinload(MaintenanceChecklistExecution.results))
+            .where(MaintenanceChecklistExecution.work_order_id == work_order_id)
+            .order_by(MaintenanceChecklistExecution.started_at.asc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
 
 class MaintenanceChecklistResultRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -293,6 +308,19 @@ class MaintenanceFindingRepository:
             attribute_names=["checklist_result", "work_order", "asset", "generated_request"],
         )
         return item
+
+    async def list_by_work_order(self, work_order_id: UUID) -> Sequence[MaintenanceFinding]:
+        stmt = (
+            select(MaintenanceFinding)
+            .options(
+                selectinload(MaintenanceFinding.checklist_result),
+                selectinload(MaintenanceFinding.generated_request),
+            )
+            .where(MaintenanceFinding.work_order_id == work_order_id)
+            .order_by(MaintenanceFinding.reported_at.asc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
 
 
 class MaintenanceRequestRepository:
@@ -370,7 +398,14 @@ class MaintenanceWorkOrderRepository:
         await self.session.flush()
         await self.session.refresh(
             item,
-            attribute_names=["asset", "priority", "requests", "assignments"],
+            attribute_names=[
+                "asset",
+                "priority",
+                "requests",
+                "assignments",
+                "part_usages",
+                "labor_logs",
+            ],
         )
         return item
 
@@ -385,6 +420,8 @@ class MaintenanceWorkOrderRepository:
                     MaintenanceRequestWorkOrder.request
                 ),
                 selectinload(MaintenanceWorkOrder.assignments),
+                selectinload(MaintenanceWorkOrder.part_usages),
+                selectinload(MaintenanceWorkOrder.labor_logs),
             )
             .where(MaintenanceWorkOrder.id == work_order_id)
         )
@@ -399,6 +436,8 @@ class MaintenanceWorkOrderRepository:
             selectinload(MaintenanceWorkOrder.priority),
             selectinload(MaintenanceWorkOrder.requests),
             selectinload(MaintenanceWorkOrder.assignments),
+            selectinload(MaintenanceWorkOrder.part_usages),
+            selectinload(MaintenanceWorkOrder.labor_logs),
         )
         count_stmt = select(func.count()).select_from(MaintenanceWorkOrder)
         if pagination.search:
@@ -427,6 +466,8 @@ class MaintenanceWorkOrderRepository:
                 selectinload(MaintenanceWorkOrder.priority),
                 selectinload(MaintenanceWorkOrder.requests),
                 selectinload(MaintenanceWorkOrder.assignments),
+                selectinload(MaintenanceWorkOrder.part_usages),
+                selectinload(MaintenanceWorkOrder.labor_logs),
             )
             .where(MaintenanceWorkOrder.asset_id == asset_id)
             .order_by(
@@ -447,9 +488,54 @@ class MaintenanceWorkOrderRepository:
         await self.session.flush()
         await self.session.refresh(
             item,
-            attribute_names=["asset", "priority", "requests", "assignments"],
+            attribute_names=[
+                "asset",
+                "priority",
+                "requests",
+                "assignments",
+                "part_usages",
+                "labor_logs",
+            ],
         )
         return item
+
+
+class MaintenancePartUsageRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenancePartUsage) -> MaintenancePartUsage:
+        self.session.add(item)
+        await self.session.flush()
+        return item
+
+    async def list_by_work_order(self, work_order_id: UUID) -> Sequence[MaintenancePartUsage]:
+        stmt = (
+            select(MaintenancePartUsage)
+            .where(MaintenancePartUsage.work_order_id == work_order_id)
+            .order_by(MaintenancePartUsage.used_at.asc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+
+class MaintenanceLaborLogRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenanceLaborLog) -> MaintenanceLaborLog:
+        self.session.add(item)
+        await self.session.flush()
+        return item
+
+    async def list_by_work_order(self, work_order_id: UUID) -> Sequence[MaintenanceLaborLog]:
+        stmt = (
+            select(MaintenanceLaborLog)
+            .where(MaintenanceLaborLog.work_order_id == work_order_id)
+            .order_by(MaintenanceLaborLog.started_at.asc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
 
 
 class MaintenanceRequestWorkOrderRepository:

@@ -198,3 +198,23 @@ class MaintenanceFindingStatus(StrEnum):
     FOLLOW_UP_CREATED = "FOLLOW_UP_CREATED"
     RESOLVED = "RESOLVED"
     CANCELLED = "CANCELLED"
+
+
+class MaintenancePartUsageType(StrEnum):
+    ISSUE = "ISSUE"
+    INSTALL = "INSTALL"
+    REPLACE = "REPLACE"
+    CONSUME = "CONSUME"
+    RETURN = "RETURN"
+    SCRAP = "SCRAP"
+
+
+class MaintenanceLaborActivityType(StrEnum):
+    INSPECTION = "INSPECTION"
+    REPAIR = "REPAIR"
+    REPLACEMENT = "REPLACEMENT"
+    TESTING = "TESTING"
+    CLEANUP = "CLEANUP"
+    TRAVEL = "TRAVEL"
+    WAITING = "WAITING"
+    OTHER = "OTHER"

@@ -17,6 +17,8 @@ from app.modules.maintenance.schemas import (
     MaintenanceConvertToWorkOrderPayload,
     MaintenanceFindingCreateRequestPayload,
     MaintenanceFindingRead,
+    MaintenanceLaborLogCreate,
+    MaintenancePartUsageCreate,
     MaintenancePlanAssetCreate,
     MaintenancePlanCreate,
     MaintenancePlanGeneratePayload,
@@ -684,6 +686,38 @@ async def start_maintenance_work_order_checklist(
         request=request,
         message="Checklist execution maintenance berhasil dimulai.",
         data=MaintenanceChecklistExecutionRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post("/work-orders/{work_order_id}/parts", status_code=status.HTTP_201_CREATED)
+async def create_maintenance_work_order_part_usage(
+    request: Request,
+    work_order_id: UUID,
+    payload: MaintenancePartUsageCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.create_part_usage(work_order_id, payload)
+    return success_response(
+        request=request,
+        message="Part usage maintenance work order berhasil dicatat.",
+        data=MaintenanceWorkOrderRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post("/work-orders/{work_order_id}/labor-logs", status_code=status.HTTP_201_CREATED)
+async def create_maintenance_work_order_labor_log(
+    request: Request,
+    work_order_id: UUID,
+    payload: MaintenanceLaborLogCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.create_labor_log(work_order_id, payload)
+    return success_response(
+        request=request,
+        message="Labor log maintenance work order berhasil dicatat.",
+        data=MaintenanceWorkOrderRead.model_validate(item).model_dump(mode="json"),
     )
 
 

@@ -168,6 +168,8 @@ class MaintenanceWorkOrder(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     assignments: Mapped[list[MaintenanceWorkOrderAssignment]] = relationship(
         back_populates="work_order"
     )
+    part_usages: Mapped[list[MaintenancePartUsage]] = relationship(back_populates="work_order")
+    labor_logs: Mapped[list[MaintenanceLaborLog]] = relationship(back_populates="work_order")
 
 
 class MaintenanceRequestWorkOrder(UUIDPrimaryKeyMixin, Base):
@@ -532,3 +534,50 @@ class MaintenanceFinding(UUIDPrimaryKeyMixin, Base):
     work_order: Mapped[MaintenanceWorkOrder | None] = relationship()
     asset = relationship("Asset")
     generated_request: Mapped[MaintenanceRequest | None] = relationship()
+
+
+class MaintenancePartUsage(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_part_usages"
+
+    work_order_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_work_orders.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    part_item_id: Mapped[UUID] = mapped_column(nullable=False)
+    asset_id: Mapped[UUID] = mapped_column(
+        ForeignKey("assets.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    quantity: Mapped[Decimal] = mapped_column(Numeric(20, 4), nullable=False)
+    unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+    currency_code: Mapped[str | None] = mapped_column(String(3))
+    usage_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_by_employee_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    sap_inventory_doc_entry: Mapped[int | None] = mapped_column(Integer)
+    sap_inventory_doc_num: Mapped[int | None] = mapped_column(Integer)
+    removed_component_asset_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    installed_component_asset_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    serial_number: Mapped[str | None] = mapped_column(String(100))
+
+    work_order: Mapped[MaintenanceWorkOrder] = relationship(back_populates="part_usages")
+    asset = relationship("Asset")
+
+
+class MaintenanceLaborLog(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_labor_logs"
+
+    work_order_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_work_orders.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    employee_id: Mapped[UUID] = mapped_column(nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    duration_minutes: Mapped[int | None] = mapped_column(Integer)
+    activity_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    hourly_rate: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+    labor_cost: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    work_order: Mapped[MaintenanceWorkOrder] = relationship(back_populates="labor_logs")

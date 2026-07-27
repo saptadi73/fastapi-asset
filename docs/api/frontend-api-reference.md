@@ -745,6 +745,13 @@ Status:
 Saat close, backend menutup request terkait ke status `CLOSED` dan
 mengembalikan status aset ke `IN_SERVICE`.
 
+Validasi tambahan yang sudah aktif:
+
+- checklist work order yang sudah dibuat harus berada pada status `COMPLETED`
+- finding yang `requires_follow_up = true` harus sudah memiliki follow-up
+  request atau sudah selesai
+- biaya aktual part dan labor akan dihitung ulang dari log operasional
+
 ### `POST /maintenance/work-orders/{work_order_id}/checklists`
 
 Memulai checklist execution untuk work order.
@@ -754,6 +761,29 @@ Aturan backend yang sudah aktif:
 - work order harus berada pada status yang masih mengizinkan checklist
 - `checklist_template_id` bisa dikirim eksplisit atau diambil dari maintenance
   plan yang terkait
+
+### `POST /maintenance/work-orders/{work_order_id}/parts`
+
+Mencatat penggunaan spare part pada work order.
+
+Perilaku backend:
+
+- `asset_id` part usage mengikuti asset pada work order
+- biaya aktual part pada work order dihitung ulang dari seluruh part usage yang
+  tersimpan
+
+### `POST /maintenance/work-orders/{work_order_id}/labor-logs`
+
+Mencatat jam kerja teknisi pada work order.
+
+Perilaku backend:
+
+- jika `duration_minutes` tidak dikirim tetapi `ended_at` ada, backend akan
+  menghitung durasi otomatis
+- jika `labor_cost` tidak dikirim tetapi `hourly_rate` dan durasi tersedia,
+  backend akan menghitung biaya otomatis
+- biaya aktual labor pada work order dihitung ulang dari labor log yang
+  tersimpan
 
 ### `GET /maintenance/checklists/{checklist_id}`
 
@@ -1033,6 +1063,11 @@ dengan asset tersebut.
 - `MAINTENANCE_CHECKLIST_RESULT_INVALID`
 - `MAINTENANCE_FINDING_NOT_FOUND`
 - `MAINTENANCE_FINDING_REQUEST_CONFLICT`
+- `MAINTENANCE_PART_USAGE_CONFLICT`
+- `MAINTENANCE_PART_USAGE_INVALID_STATUS`
+- `MAINTENANCE_LABOR_LOG_CONFLICT`
+- `MAINTENANCE_LABOR_LOG_INVALID_STATUS`
+- `MAINTENANCE_LABOR_LOG_TIME_INVALID`
 - `MAINTENANCE_WORK_ORDER_NOT_FOUND`
 - `MAINTENANCE_WORK_ORDER_CONFLICT`
 - `MAINTENANCE_WORK_ORDER_INVALID_STATUS`

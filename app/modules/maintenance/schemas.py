@@ -13,6 +13,8 @@ from app.modules.maintenance.constants import (
     ChecklistResultStatus,
     MaintenanceFindingSeverity,
     MaintenanceFindingType,
+    MaintenanceLaborActivityType,
+    MaintenancePartUsageType,
     MaintenancePlanTriggerType,
     MaintenanceRequestSourceType,
     MaintenanceRequestType,
@@ -204,6 +206,67 @@ class MaintenanceWorkOrderAssignmentRead(BaseModel):
     released_at: datetime | None
 
 
+class MaintenancePartUsageCreate(BaseModel):
+    part_item_id: UUID
+    quantity: Decimal = Field(gt=0)
+    unit_cost: Decimal | None = Field(default=None, ge=0)
+    currency_code: str | None = Field(default=None, min_length=3, max_length=3)
+    usage_type: MaintenancePartUsageType
+    used_at: datetime
+    used_by_employee_id: UUID | None = None
+    sap_inventory_doc_entry: int | None = None
+    sap_inventory_doc_num: int | None = None
+    removed_component_asset_id: UUID | None = None
+    installed_component_asset_id: UUID | None = None
+    serial_number: str | None = Field(default=None, max_length=100)
+
+
+class MaintenancePartUsageRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    work_order_id: UUID
+    part_item_id: UUID
+    asset_id: UUID
+    quantity: Decimal
+    unit_cost: Decimal | None
+    currency_code: str | None
+    usage_type: str
+    used_at: datetime
+    used_by_employee_id: UUID | None
+    sap_inventory_doc_entry: int | None
+    sap_inventory_doc_num: int | None
+    removed_component_asset_id: UUID | None
+    installed_component_asset_id: UUID | None
+    serial_number: str | None
+
+
+class MaintenanceLaborLogCreate(BaseModel):
+    employee_id: UUID
+    started_at: datetime
+    ended_at: datetime | None = None
+    duration_minutes: int | None = Field(default=None, ge=0)
+    activity_type: MaintenanceLaborActivityType
+    hourly_rate: Decimal | None = Field(default=None, ge=0)
+    labor_cost: Decimal | None = Field(default=None, ge=0)
+    notes: str | None = None
+
+
+class MaintenanceLaborLogRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    work_order_id: UUID
+    employee_id: UUID
+    started_at: datetime
+    ended_at: datetime | None
+    duration_minutes: int | None
+    activity_type: str
+    hourly_rate: Decimal | None
+    labor_cost: Decimal | None
+    notes: str | None
+
+
 class MaintenanceRequestRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -321,6 +384,8 @@ class MaintenanceWorkOrderRead(BaseModel):
     priority: MaintenancePriorityRead
     requests: list[MaintenanceRequestWorkOrderLinkRead] = []
     assignments: list[MaintenanceWorkOrderAssignmentRead] = []
+    part_usages: list[MaintenancePartUsageRead] = []
+    labor_logs: list[MaintenanceLaborLogRead] = []
 
 
 class MaintenanceWorkOrderListItemRead(BaseModel):
