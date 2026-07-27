@@ -57,6 +57,28 @@ Untuk endpoint list:
 Frontend dapat membaca `meta.pagination` untuk membangun table, infinite list,
 atau pagination control.
 
+## Auth Requirement
+
+Mulai batch auth saat ini, endpoint bisnis pada modul `assets`,
+`attachments`, `business-partners`, `maintenance`, `tracking`, `stocktakes`,
+dan `reports` sudah memakai bearer token.
+
+Gunakan header:
+
+```text
+Authorization: Bearer <access_token>
+```
+
+Bila token tidak ada atau tidak valid, backend mengembalikan `401`.
+Bila token valid tetapi permission tidak cukup, backend mengembalikan `403`.
+
+Catatan penting untuk frontend:
+
+- field audit seperti `created_by`, `updated_by`, `actor_id`, `scanned_by`,
+  `uploaded_by`, dan `deleted_by` pada endpoint bisnis utama tidak perlu lagi
+  dikirim manual bila aksinya dilakukan oleh user yang sedang login;
+- backend akan mengisi field tersebut dari bearer token aktif.
+
 ## Authentication
 
 ### `POST /auth/login`
@@ -218,6 +240,10 @@ Mengambil daftar definisi attribute untuk membangun form dinamis di frontend.
 
 Membuat dokumen transfer aset dalam status `DRAFT`.
 
+Catatan:
+
+- `requested_by` akan diisi otomatis dari user login.
+
 ### `GET /asset-transfers`
 
 Mengambil daftar transfer untuk inbox atau monitoring frontend.
@@ -241,6 +267,11 @@ Membuat metadata file dan attachment generik untuk `ASSET`,
 `ASSET_TRANSFER`, `MAINTENANCE_REQUEST`, `MAINTENANCE_WORK_ORDER`, atau
 `MAINTENANCE_FINDING`.
 
+Catatan:
+
+- `created_by` dan `file.uploaded_by` diisi otomatis dari user login;
+- `captured_by` akan diisi user login bila tidak dikirim eksplisit.
+
 ### `GET /attachments/{attachment_id}`
 
 Mengambil detail attachment beserta metadata file.
@@ -261,6 +292,10 @@ Mengambil seluruh attachment untuk asset tertentu.
 ### `POST /attachments/assets/{asset_id}`
 
 Membuat attachment langsung untuk asset tertentu.
+
+Catatan:
+
+- `created_by` dan `file.uploaded_by` diisi otomatis dari user login.
 
 ### `GET /maintenance/requests/{request_id}/attachments`
 
@@ -383,10 +418,13 @@ Contoh request:
   "scope_type": "LOCATION",
   "planned_start_at": "2026-07-28T01:00:00Z",
   "planned_end_at": "2026-07-28T05:00:00Z",
-  "created_by": "55555555-5555-5555-5555-555555555555",
   "notes": "Stocktake bulanan gudang IT"
 }
 ```
+
+Catatan:
+
+- `created_by` diisi otomatis dari user login.
 
 ### `GET /stocktakes`
 
@@ -414,6 +452,10 @@ Mengambil detail satu sesi stocktake, termasuk:
 
 Memulai sesi stocktake dan membuat snapshot expected assets dari lokasi target.
 
+Catatan:
+
+- `actor_id` diisi otomatis dari user login.
+
 Status:
 
 - `DRAFT` -> `IN_PROGRESS`
@@ -432,6 +474,10 @@ Hasil scan yang mungkin terbentuk:
 - `DUPLICATE_TAG`
 - `UNKNOWN_TAG`
 
+Catatan:
+
+- `scanned_by` diisi otomatis dari user login.
+
 ### `POST /stocktakes/{stocktake_session_id}/complete`
 
 Menyelesaikan sesi stocktake.
@@ -443,6 +489,10 @@ Status:
 Saat complete, backend otomatis membuat result `MISSING` untuk asset expected
 yang belum pernah dipindai selama sesi.
 
+Catatan:
+
+- `actor_id` diisi otomatis dari user login.
+
 ### `POST /stocktakes/{stocktake_session_id}/approve`
 
 Menyetujui hasil stocktake.
@@ -450,6 +500,10 @@ Menyetujui hasil stocktake.
 Status:
 
 - `COMPLETED` -> `APPROVED`
+
+Catatan:
+
+- `actor_id` diisi otomatis dari user login.
 
 ## Tracking Reports
 
@@ -1125,6 +1179,10 @@ Request:
 }
 ```
 
+Catatan:
+
+- `created_by` dan `updated_by` diisi otomatis dari user login.
+
 ### `GET /assets`
 
 List asset untuk halaman table frontend.
@@ -1160,15 +1218,22 @@ Contoh request:
 {
   "asset_name": "Laptop Direktur Operasional - Updated",
   "condition_status": "FAIR",
-  "current_location_id": "44444444-4444-4444-4444-444444444444",
-  "updated_by": "55555555-5555-5555-5555-555555555555"
+  "current_location_id": "44444444-4444-4444-4444-444444444444"
 }
 ```
+
+Catatan:
+
+- `updated_by` diisi otomatis dari user login.
 
 ### `POST /assets/{asset_id}/location-changes`
 
 Mencatat perpindahan lokasi operasional aset dan mengubah `current_location_id`
 secara transaksional.
+
+Catatan:
+
+- `recorded_by` diisi otomatis dari user login.
 
 ### `GET /assets/{asset_id}/location-history`
 
@@ -1205,6 +1270,10 @@ Mengambil histori ownership aset.
 
 Mencatat perubahan status dan kondisi aset sambil memperbarui current state
 di tabel `assets`.
+
+Catatan:
+
+- `changed_by` diisi otomatis dari user login.
 
 ### `GET /assets/{asset_id}/status-history`
 

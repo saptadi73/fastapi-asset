@@ -4,7 +4,13 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_session
+from app.api.dependencies import (
+    get_current_user,
+    get_session,
+    require_asset_read,
+    require_asset_write,
+    require_maintenance_read,
+)
 from app.modules.assets.schemas import (
     AssetAssignmentCreate,
     AssetAssignmentRead,
@@ -34,6 +40,7 @@ from app.modules.assets.schemas import (
     AssetUpdate,
 )
 from app.modules.assets.service import AssetRegistryService
+from app.modules.auth.models import AppUser
 from app.modules.maintenance.service import MaintenanceService
 from app.shared.pagination import PaginationMeta, PaginationParams
 from app.shared.responses import success_response
@@ -41,7 +48,11 @@ from app.shared.responses import success_response
 router = APIRouter()
 
 
-@router.post("/asset-categories", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/asset-categories",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_asset_write)],
+)
 async def create_asset_category(
     request: Request,
     payload: AssetCategoryCreate,
@@ -56,7 +67,7 @@ async def create_asset_category(
     )
 
 
-@router.get("/asset-categories")
+@router.get("/asset-categories", dependencies=[Depends(require_asset_read)])
 async def list_asset_categories(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -73,7 +84,11 @@ async def list_asset_categories(
     )
 
 
-@router.post("/asset-classes", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/asset-classes",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_asset_write)],
+)
 async def create_asset_class(
     request: Request,
     payload: AssetClassCreate,
@@ -88,7 +103,7 @@ async def create_asset_class(
     )
 
 
-@router.get("/asset-classes")
+@router.get("/asset-classes", dependencies=[Depends(require_asset_read)])
 async def list_asset_classes(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -105,7 +120,11 @@ async def list_asset_classes(
     )
 
 
-@router.post("/asset-locations", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/asset-locations",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_asset_write)],
+)
 async def create_asset_location(
     request: Request,
     payload: AssetLocationCreate,
@@ -120,7 +139,11 @@ async def create_asset_location(
     )
 
 
-@router.post("/asset-attribute-definitions", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/asset-attribute-definitions",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_asset_write)],
+)
 async def create_asset_attribute_definition(
     request: Request,
     payload: AssetAttributeDefinitionCreate,
@@ -135,7 +158,10 @@ async def create_asset_attribute_definition(
     )
 
 
-@router.get("/asset-categories/{asset_category_id}/attribute-definitions")
+@router.get(
+    "/asset-categories/{asset_category_id}/attribute-definitions",
+    dependencies=[Depends(require_asset_read)],
+)
 async def list_asset_attribute_definitions(
     request: Request,
     asset_category_id: UUID,
@@ -153,7 +179,7 @@ async def list_asset_attribute_definitions(
     )
 
 
-@router.get("/asset-locations")
+@router.get("/asset-locations", dependencies=[Depends(require_asset_read)])
 async def list_asset_locations(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -167,14 +193,26 @@ async def list_asset_locations(
     )
 
 
-@router.post("/assets", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/assets",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_asset_write)],
+)
 async def create_asset(
     request: Request,
     payload: AssetCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AssetRegistryService(session)
-    asset = await service.create_asset(payload)
+    asset = await service.create_asset(
+        payload.model_copy(
+            update={
+                "created_by": current_user.id,
+                "updated_by": current_user.id,
+            }
+        )
+    )
     return success_response(
         request=request,
         message="Asset berhasil dibuat.",
@@ -182,14 +220,21 @@ async def create_asset(
     )
 
 
-@router.post("/asset-transfers", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/asset-transfers",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_asset_write)],
+)
 async def create_asset_transfer(
     request: Request,
     payload: AssetTransferCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AssetRegistryService(session)
-    item = await service.create_transfer(payload)
+    item = await service.create_transfer(
+        payload.model_copy(update={"requested_by": current_user.id})
+    )
     return success_response(
         request=request,
         message="Asset transfer berhasil dibuat.",
@@ -197,7 +242,7 @@ async def create_asset_transfer(
     )
 
 
-@router.get("/asset-transfers")
+@router.get("/asset-transfers", dependencies=[Depends(require_asset_read)])
 async def list_asset_transfers(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -260,7 +305,7 @@ async def list_asset_transfers(
     )
 
 
-@router.get("/asset-transfers/{transfer_id}")
+@router.get("/asset-transfers/{transfer_id}", dependencies=[Depends(require_asset_read)])
 async def get_asset_transfer(
     request: Request,
     transfer_id: UUID,
@@ -275,15 +320,22 @@ async def get_asset_transfer(
     )
 
 
-@router.post("/asset-transfers/{transfer_id}/submit")
+@router.post(
+    "/asset-transfers/{transfer_id}/submit",
+    dependencies=[Depends(require_asset_write)],
+)
 async def submit_asset_transfer(
     request: Request,
     transfer_id: UUID,
     payload: AssetTransferActionPayload,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AssetRegistryService(session)
-    item = await service.submit_transfer(transfer_id, payload)
+    item = await service.submit_transfer(
+        transfer_id,
+        payload.model_copy(update={"actor_id": current_user.id}),
+    )
     return success_response(
         request=request,
         message="Asset transfer berhasil disubmit.",
@@ -291,15 +343,22 @@ async def submit_asset_transfer(
     )
 
 
-@router.post("/asset-transfers/{transfer_id}/approve")
+@router.post(
+    "/asset-transfers/{transfer_id}/approve",
+    dependencies=[Depends(require_asset_write)],
+)
 async def approve_asset_transfer(
     request: Request,
     transfer_id: UUID,
     payload: AssetTransferActionPayload,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AssetRegistryService(session)
-    item = await service.approve_transfer(transfer_id, payload)
+    item = await service.approve_transfer(
+        transfer_id,
+        payload.model_copy(update={"actor_id": current_user.id}),
+    )
     return success_response(
         request=request,
         message="Asset transfer berhasil diapprove.",
@@ -307,15 +366,22 @@ async def approve_asset_transfer(
     )
 
 
-@router.post("/asset-transfers/{transfer_id}/complete")
+@router.post(
+    "/asset-transfers/{transfer_id}/complete",
+    dependencies=[Depends(require_asset_write)],
+)
 async def complete_asset_transfer(
     request: Request,
     transfer_id: UUID,
     payload: AssetTransferActionPayload,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AssetRegistryService(session)
-    item = await service.complete_transfer(transfer_id, payload)
+    item = await service.complete_transfer(
+        transfer_id,
+        payload.model_copy(update={"actor_id": current_user.id}),
+    )
     return success_response(
         request=request,
         message="Asset transfer berhasil diselesaikan.",
@@ -323,7 +389,7 @@ async def complete_asset_transfer(
     )
 
 
-@router.get("/assets")
+@router.get("/assets", dependencies=[Depends(require_asset_read)])
 async def list_assets(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -353,7 +419,7 @@ async def list_assets(
     )
 
 
-@router.get("/assets/{asset_id}")
+@router.get("/assets/{asset_id}", dependencies=[Depends(require_asset_read)])
 async def get_asset(
     request: Request,
     asset_id: UUID,
@@ -368,15 +434,19 @@ async def get_asset(
     )
 
 
-@router.patch("/assets/{asset_id}")
+@router.patch("/assets/{asset_id}", dependencies=[Depends(require_asset_write)])
 async def update_asset(
     request: Request,
     asset_id: UUID,
     payload: AssetUpdate,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AssetRegistryService(session)
-    asset = await service.update_asset(asset_id, payload)
+    asset = await service.update_asset(
+        asset_id,
+        payload.model_copy(update={"updated_by": current_user.id}),
+    )
     return success_response(
         request=request,
         message="Asset berhasil diperbarui.",
@@ -384,15 +454,23 @@ async def update_asset(
     )
 
 
-@router.post("/assets/{asset_id}/location-changes", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/assets/{asset_id}/location-changes",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_asset_write)],
+)
 async def create_asset_location_change(
     request: Request,
     asset_id: UUID,
     payload: AssetLocationChangeCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AssetRegistryService(session)
-    item = await service.record_location_change(asset_id, payload)
+    item = await service.record_location_change(
+        asset_id,
+        payload.model_copy(update={"recorded_by": current_user.id}),
+    )
     return success_response(
         request=request,
         message="Perubahan lokasi asset berhasil dicatat.",
@@ -400,7 +478,7 @@ async def create_asset_location_change(
     )
 
 
-@router.get("/assets/{asset_id}/location-history")
+@router.get("/assets/{asset_id}/location-history", dependencies=[Depends(require_asset_read)])
 async def get_asset_location_history(
     request: Request,
     asset_id: UUID,
@@ -418,7 +496,11 @@ async def get_asset_location_history(
     )
 
 
-@router.post("/assets/{asset_id}/assignments", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/assets/{asset_id}/assignments",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_asset_write)],
+)
 async def create_asset_assignment(
     request: Request,
     asset_id: UUID,
@@ -434,7 +516,11 @@ async def create_asset_assignment(
     )
 
 
-@router.post("/assets/{asset_id}/attribute-values", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/assets/{asset_id}/attribute-values",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_asset_write)],
+)
 async def upsert_asset_attribute_value(
     request: Request,
     asset_id: UUID,
@@ -450,7 +536,7 @@ async def upsert_asset_attribute_value(
     )
 
 
-@router.get("/assets/{asset_id}/attribute-values")
+@router.get("/assets/{asset_id}/attribute-values", dependencies=[Depends(require_asset_read)])
 async def get_asset_attribute_values(
     request: Request,
     asset_id: UUID,
@@ -468,7 +554,11 @@ async def get_asset_attribute_values(
     )
 
 
-@router.post("/assets/{asset_id}/ownerships", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/assets/{asset_id}/ownerships",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_asset_write)],
+)
 async def create_asset_ownership(
     request: Request,
     asset_id: UUID,
@@ -484,7 +574,7 @@ async def create_asset_ownership(
     )
 
 
-@router.get("/assets/{asset_id}/ownerships")
+@router.get("/assets/{asset_id}/ownerships", dependencies=[Depends(require_asset_read)])
 async def get_asset_ownerships(
     request: Request,
     asset_id: UUID,
@@ -499,7 +589,7 @@ async def get_asset_ownerships(
     )
 
 
-@router.get("/assets/{asset_id}/assignment-history")
+@router.get("/assets/{asset_id}/assignment-history", dependencies=[Depends(require_asset_read)])
 async def get_asset_assignment_history(
     request: Request,
     asset_id: UUID,
@@ -514,15 +604,23 @@ async def get_asset_assignment_history(
     )
 
 
-@router.post("/assets/{asset_id}/status-changes", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/assets/{asset_id}/status-changes",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_asset_write)],
+)
 async def create_asset_status_change(
     request: Request,
     asset_id: UUID,
     payload: AssetStatusChangeCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AssetRegistryService(session)
-    item = await service.create_status_change(asset_id, payload)
+    item = await service.create_status_change(
+        asset_id,
+        payload.model_copy(update={"changed_by": current_user.id}),
+    )
     return success_response(
         request=request,
         message="Perubahan status asset berhasil dicatat.",
@@ -530,7 +628,7 @@ async def create_asset_status_change(
     )
 
 
-@router.get("/assets/{asset_id}/status-history")
+@router.get("/assets/{asset_id}/status-history", dependencies=[Depends(require_asset_read)])
 async def get_asset_status_history(
     request: Request,
     asset_id: UUID,
@@ -548,7 +646,7 @@ async def get_asset_status_history(
     )
 
 
-@router.get("/assets/{asset_id}/timeline")
+@router.get("/assets/{asset_id}/timeline", dependencies=[Depends(require_asset_read)])
 async def get_asset_timeline(
     request: Request,
     asset_id: UUID,
@@ -566,7 +664,10 @@ async def get_asset_timeline(
     )
 
 
-@router.get("/assets/{asset_id}/maintenance-history")
+@router.get(
+    "/assets/{asset_id}/maintenance-history",
+    dependencies=[Depends(require_maintenance_read)],
+)
 async def get_asset_maintenance_history(
     request: Request,
     asset_id: UUID,

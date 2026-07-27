@@ -5,24 +5,43 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_session
+from app.api.dependencies import (
+    get_current_user,
+    get_session,
+    require_attachment_read,
+    require_attachment_write,
+)
 from app.core.exceptions import AppError
 from app.modules.attachments.constants import AttachmentCategory, AttachmentEntityType
 from app.modules.attachments.schemas import AttachmentCreate, AttachmentRead, AttachmentUpdate
 from app.modules.attachments.service import AttachmentService
+from app.modules.auth.models import AppUser
 from app.shared.responses import success_response
 
 router = APIRouter(prefix="/attachments")
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_attachment_write)],
+)
 async def create_attachment(
     request: Request,
     payload: AttachmentCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AttachmentService(session)
-    item = await service.create_attachment(payload)
+    item = await service.create_attachment(
+        payload.model_copy(
+            update={
+                "created_by": current_user.id,
+                "captured_by": payload.captured_by or current_user.id,
+                "file": payload.file.model_copy(update={"uploaded_by": current_user.id}),
+            }
+        )
+    )
     return success_response(
         request=request,
         message="Attachment berhasil dibuat.",
@@ -30,7 +49,7 @@ async def create_attachment(
     )
 
 
-@router.get("/{attachment_id}")
+@router.get("/{attachment_id}", dependencies=[Depends(require_attachment_read)])
 async def get_attachment(
     request: Request,
     attachment_id: UUID,
@@ -45,7 +64,7 @@ async def get_attachment(
     )
 
 
-@router.patch("/{attachment_id}")
+@router.patch("/{attachment_id}", dependencies=[Depends(require_attachment_write)])
 async def update_attachment(
     request: Request,
     attachment_id: UUID,
@@ -61,16 +80,17 @@ async def update_attachment(
     )
 
 
-@router.delete("/{attachment_id}")
+@router.delete("/{attachment_id}", dependencies=[Depends(require_attachment_write)])
 async def delete_attachment(
     request: Request,
     attachment_id: UUID,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AttachmentService(session)
     item = await service.delete_attachment(
         attachment_id,
-        deleted_by=None,
+        deleted_by=current_user.id,
         deleted_at=datetime.now(UTC),
     )
     return success_response(
@@ -80,7 +100,7 @@ async def delete_attachment(
     )
 
 
-@router.get("/assets/{asset_id}")
+@router.get("/assets/{asset_id}", dependencies=[Depends(require_attachment_read)])
 async def list_asset_attachments(
     request: Request,
     asset_id: UUID,
@@ -101,18 +121,26 @@ async def list_asset_attachments(
     )
 
 
-@router.post("/assets/{asset_id}", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/assets/{asset_id}",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_attachment_write)],
+)
 async def create_asset_attachment(
     request: Request,
     asset_id: UUID,
     payload: AttachmentCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AttachmentService(session)
     enriched_payload = payload.model_copy(
         update={
             "entity_type": AttachmentEntityType.ASSET,
             "entity_id": asset_id,
+            "created_by": current_user.id,
+            "captured_by": payload.captured_by or current_user.id,
+            "file": payload.file.model_copy(update={"uploaded_by": current_user.id}),
         }
     )
     item = await service.create_attachment(enriched_payload)
@@ -123,7 +151,7 @@ async def create_asset_attachment(
     )
 
 
-@router.get("/assets/{asset_id}/photos")
+@router.get("/assets/{asset_id}/photos", dependencies=[Depends(require_attachment_read)])
 async def list_asset_photos(
     request: Request,
     asset_id: UUID,
@@ -152,7 +180,10 @@ async def list_asset_photos(
     )
 
 
-@router.post("/assets/{asset_id}/primary-photo/{attachment_id}")
+@router.post(
+    "/assets/{asset_id}/primary-photo/{attachment_id}",
+    dependencies=[Depends(require_attachment_write)],
+)
 async def set_asset_primary_photo(
     request: Request,
     asset_id: UUID,

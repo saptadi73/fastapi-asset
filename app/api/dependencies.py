@@ -84,3 +84,12 @@ require_maintenance_write = require_permissions(AppPermission.MAINTENANCE_WRITE.
 require_maintenance_report_read = require_permissions(
     AppPermission.MAINTENANCE_REPORT_READ.value
 )
+require_asset_read = require_permissions(AppPermission.ASSET_READ.value)
+require_asset_write = require_permissions(AppPermission.ASSET_WRITE.value)
+require_attachment_read = require_permissions(AppPermission.ATTACHMENT_READ.value)
+require_attachment_write = require_permissions(AppPermission.ATTACHMENT_WRITE.value)
+require_partner_read = require_permissions(AppPermission.PARTNER_READ.value)
+require_partner_write = require_permissions(AppPermission.PARTNER_WRITE.value)
+require_tracking_read = require_permissions(AppPermission.TRACKING_READ.value)
+require_tracking_write = require_permissions(AppPermission.TRACKING_WRITE.value)
+require_tracking_report_read = require_permissions(AppPermission.TRACKING_REPORT_READ.value)

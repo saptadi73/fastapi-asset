@@ -17,6 +17,15 @@ class AppRole(StrEnum):
 
 class AppPermission(StrEnum):
     AUTH_MANAGE = "auth:manage"
+    ASSET_READ = "asset:read"
+    ASSET_WRITE = "asset:write"
+    ATTACHMENT_READ = "attachment:read"
+    ATTACHMENT_WRITE = "attachment:write"
     MAINTENANCE_READ = "maintenance:read"
     MAINTENANCE_WRITE = "maintenance:write"
     MAINTENANCE_REPORT_READ = "maintenance:report:read"
+    PARTNER_READ = "partner:read"
+    PARTNER_WRITE = "partner:write"
+    TRACKING_READ = "tracking:read"
+    TRACKING_WRITE = "tracking:write"
+    TRACKING_REPORT_READ = "tracking:report:read"

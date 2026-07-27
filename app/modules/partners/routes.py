@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_session
+from app.api.dependencies import get_session, require_partner_read, require_partner_write
 from app.modules.partners.schemas import BusinessPartnerCreate, BusinessPartnerRead
 from app.modules.partners.service import BusinessPartnerService
 from app.shared.pagination import PaginationMeta, PaginationParams
@@ -13,7 +13,11 @@ from app.shared.responses import success_response
 router = APIRouter(prefix="/business-partners")
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_partner_write)],
+)
 async def create_business_partner(
     request: Request,
     payload: BusinessPartnerCreate,
@@ -28,7 +32,7 @@ async def create_business_partner(
     )
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(require_partner_read)])
 async def list_business_partners(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -58,7 +62,7 @@ async def list_business_partners(
     )
 
 
-@router.get("/{partner_id}")
+@router.get("/{partner_id}", dependencies=[Depends(require_partner_read)])
 async def get_business_partner(
     request: Request,
     partner_id: UUID,

@@ -4,7 +4,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_session
+from app.api.dependencies import (
+    get_current_user,
+    get_session,
+    require_tracking_read,
+    require_tracking_report_read,
+    require_tracking_write,
+)
+from app.modules.auth.models import AppUser
 from app.modules.tracking.schemas import (
     AssetScanEventCreate,
     AssetScanEventRead,
@@ -21,14 +28,21 @@ from app.shared.responses import success_response
 router = APIRouter()
 
 
-@router.post("/tracking/scan-events", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/tracking/scan-events",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_tracking_write)],
+)
 async def create_scan_event(
     request: Request,
     payload: AssetScanEventCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AssetTrackingService(session)
-    item = await service.create_scan_event(payload)
+    item = await service.create_scan_event(
+        payload.model_copy(update={"scanned_by": current_user.id})
+    )
     return success_response(
         request=request,
         message="Scan event berhasil dicatat.",
@@ -36,14 +50,21 @@ async def create_scan_event(
     )
 
 
-@router.post("/tracking/scan-events/batch", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/tracking/scan-events/batch",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_tracking_write)],
+)
 async def create_scan_event_batch(
     request: Request,
     payload: list[AssetScanEventCreate],
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AssetTrackingService(session)
-    items = await service.create_scan_event_batch(payload)
+    items = await service.create_scan_event_batch(
+        [item.model_copy(update={"scanned_by": current_user.id}) for item in payload]
+    )
     return success_response(
         request=request,
         message="Batch scan event berhasil diproses.",
@@ -54,7 +75,7 @@ async def create_scan_event_batch(
     )
 
 
-@router.get("/assets/{asset_id}/tracking")
+@router.get("/assets/{asset_id}/tracking", dependencies=[Depends(require_tracking_read)])
 async def get_asset_tracking(
     request: Request,
     asset_id: UUID,
@@ -69,14 +90,21 @@ async def get_asset_tracking(
     )
 
 
-@router.post("/stocktakes", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/stocktakes",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_tracking_write)],
+)
 async def create_stocktake_session(
     request: Request,
     payload: StocktakeSessionCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AssetTrackingService(session)
-    item = await service.create_stocktake_session(payload)
+    item = await service.create_stocktake_session(
+        payload.model_copy(update={"created_by": current_user.id})
+    )
     return success_response(
         request=request,
         message="Stocktake session berhasil dibuat.",
@@ -84,7 +112,7 @@ async def create_stocktake_session(
     )
 
 
-@router.get("/stocktakes")
+@router.get("/stocktakes", dependencies=[Depends(require_tracking_read)])
 async def list_stocktake_sessions(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -123,7 +151,10 @@ async def list_stocktake_sessions(
     )
 
 
-@router.get("/stocktakes/{stocktake_session_id}")
+@router.get(
+    "/stocktakes/{stocktake_session_id}",
+    dependencies=[Depends(require_tracking_read)],
+)
 async def get_stocktake_session(
     request: Request,
     stocktake_session_id: UUID,
@@ -138,15 +169,22 @@ async def get_stocktake_session(
     )
 
 
-@router.post("/stocktakes/{stocktake_session_id}/start")
+@router.post(
+    "/stocktakes/{stocktake_session_id}/start",
+    dependencies=[Depends(require_tracking_write)],
+)
 async def start_stocktake_session(
     request: Request,
     stocktake_session_id: UUID,
     payload: StocktakeActionPayload,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AssetTrackingService(session)
-    item = await service.start_stocktake(stocktake_session_id, payload)
+    item = await service.start_stocktake(
+        stocktake_session_id,
+        payload.model_copy(update={"actor_id": current_user.id}),
+    )
     return success_response(
         request=request,
         message="Stocktake session berhasil dimulai.",
@@ -154,15 +192,23 @@ async def start_stocktake_session(
     )
 
 
-@router.post("/stocktakes/{stocktake_session_id}/scan", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/stocktakes/{stocktake_session_id}/scan",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_tracking_write)],
+)
 async def scan_stocktake_session(
     request: Request,
     stocktake_session_id: UUID,
     payload: AssetScanEventCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AssetTrackingService(session)
-    item = await service.scan_stocktake(stocktake_session_id, payload)
+    item = await service.scan_stocktake(
+        stocktake_session_id,
+        payload.model_copy(update={"scanned_by": current_user.id}),
+    )
     return success_response(
         request=request,
         message="Scan stocktake berhasil dicatat.",
@@ -170,15 +216,22 @@ async def scan_stocktake_session(
     )
 
 
-@router.post("/stocktakes/{stocktake_session_id}/complete")
+@router.post(
+    "/stocktakes/{stocktake_session_id}/complete",
+    dependencies=[Depends(require_tracking_write)],
+)
 async def complete_stocktake_session(
     request: Request,
     stocktake_session_id: UUID,
     payload: StocktakeActionPayload,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AssetTrackingService(session)
-    item = await service.complete_stocktake(stocktake_session_id, payload)
+    item = await service.complete_stocktake(
+        stocktake_session_id,
+        payload.model_copy(update={"actor_id": current_user.id}),
+    )
     return success_response(
         request=request,
         message="Stocktake session berhasil diselesaikan.",
@@ -186,15 +239,22 @@ async def complete_stocktake_session(
     )
 
 
-@router.post("/stocktakes/{stocktake_session_id}/approve")
+@router.post(
+    "/stocktakes/{stocktake_session_id}/approve",
+    dependencies=[Depends(require_tracking_write)],
+)
 async def approve_stocktake_session(
     request: Request,
     stocktake_session_id: UUID,
     payload: StocktakeActionPayload,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AssetTrackingService(session)
-    item = await service.approve_stocktake(stocktake_session_id, payload)
+    item = await service.approve_stocktake(
+        stocktake_session_id,
+        payload.model_copy(update={"actor_id": current_user.id}),
+    )
     return success_response(
         request=request,
         message="Stocktake session berhasil diapprove.",
@@ -202,7 +262,10 @@ async def approve_stocktake_session(
     )
 
 
-@router.get("/reports/location-discrepancies")
+@router.get(
+    "/reports/location-discrepancies",
+    dependencies=[Depends(require_tracking_report_read)],
+)
 async def get_location_discrepancies_report(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -238,7 +301,10 @@ async def get_location_discrepancies_report(
     )
 
 
-@router.get("/reports/missing-assets")
+@router.get(
+    "/reports/missing-assets",
+    dependencies=[Depends(require_tracking_report_read)],
+)
 async def get_missing_assets_report(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -276,7 +342,10 @@ async def get_missing_assets_report(
     )
 
 
-@router.get("/reports/unverified-assets")
+@router.get(
+    "/reports/unverified-assets",
+    dependencies=[Depends(require_tracking_report_read)],
+)
 async def get_unverified_assets_report(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
