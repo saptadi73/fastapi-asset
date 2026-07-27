@@ -67,6 +67,37 @@ class FileRead(BaseModel):
     )
 
 
+class FileVersionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    file_id: UUID
+    version_no: int
+    storage_bucket: str
+    storage_object_key: str
+    mime_type: str
+    size_bytes: int
+    checksum_sha256: str
+    change_notes: str | None
+    uploaded_by: UUID | None
+    uploaded_at: datetime
+    is_current: bool
+
+
+class FileVersionCreate(BaseModel):
+    original_filename: str = Field(max_length=255)
+    display_name: str = Field(max_length=255)
+    mime_type: str = Field(max_length=150)
+    extension: str | None = Field(default=None, max_length=20)
+    size_bytes: int = Field(gt=0)
+    checksum_sha256: str = Field(min_length=64, max_length=64)
+    storage_bucket: str = Field(max_length=100)
+    storage_object_key: str = Field(max_length=500)
+    uploaded_at: datetime
+    change_notes: str | None = None
+    metadata_json: dict | None = Field(default=None, alias="metadata")
+
+
 class AttachmentCreate(BaseModel):
     file: FileCreate
     tenant_id: UUID | None = None
@@ -121,3 +152,19 @@ class AttachmentRead(BaseModel):
     deleted_by: UUID | None
     deleted_at: datetime | None
     file: FileRead
+
+
+class AttachmentDownloadRead(BaseModel):
+    attachment: AttachmentRead
+    current_version: FileVersionRead | None = None
+    download_url: str | None = None
+    download_mode: str = "STORAGE_REFERENCE"
+
+
+class AttachmentAuditEventRead(BaseModel):
+    event_type: str
+    occurred_at: datetime
+    actor_id: UUID | None = None
+    version_no: int | None = None
+    summary: str
+    details: dict | None = None

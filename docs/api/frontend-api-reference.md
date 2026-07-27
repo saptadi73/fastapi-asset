@@ -13,6 +13,13 @@ File yang bisa dijadikan rujukan:
 
 - `artifacts/seed_smoke_results.json`
 - `artifacts/frontend_endpoint_samples.json`
+- `artifacts/postman_seed_environment.json`
+- `artifacts/postman_seed_collection.json`
+- `docs/api/frontend-seed-scenarios.md`
+- `docs/api/frontend-page-endpoint-map.md`
+- `docs/api/frontend-functional-blueprint.md`
+- `docs/implementation-gap-checklist.md`
+- `docs/implementation-roadmap.md`
 
 Isi penting:
 
@@ -25,6 +32,13 @@ Rekomendasi pemakaian untuk frontend:
 
 - mulai dari dokumen ini untuk memahami kontrak endpoint
 - buka `frontend_endpoint_samples.json` untuk melihat response riil
+- gunakan `postman_seed_environment.json` bila frontend ingin uji cepat di Postman
+- gunakan `postman_seed_collection.json` untuk import request siap pakai
+- buka `frontend-seed-scenarios.md` untuk memahami alur pembentukan datanya
+- buka `frontend-page-endpoint-map.md` untuk mapping halaman ke endpoint
+- buka `frontend-functional-blueprint.md` untuk menu, halaman, dashboard, dan workflow
+- buka `implementation-gap-checklist.md` untuk backlog gap implementasi baseline
+- buka `implementation-roadmap.md` untuk urutan sprint implementasi backend
 - gunakan `seed_entities` saat perlu mengetes endpoint detail secara manual
 
 ## Response Envelope
@@ -299,6 +313,47 @@ Catatan:
 
 Mengambil detail attachment beserta metadata file.
 
+### `GET /attachments/{attachment_id}/download`
+
+Mengambil referensi download attachment dari file aktif saat ini.
+
+Respons `data` berisi:
+
+- `attachment`: metadata attachment lengkap
+- `current_version`: metadata versi file aktif
+- `download_url`: saat ini `null`, disiapkan untuk integrasi object storage atau presigned URL
+- `download_mode`: saat ini `STORAGE_REFERENCE`
+
+### `GET /attachments/{attachment_id}/versions`
+
+Mengambil seluruh versi file attachment, diurutkan dari versi terbaru ke
+terlama.
+
+Use case frontend:
+
+- tab version history dokumen
+- timeline revisi evidentiary file
+- penanda versi aktif vs versi lama
+
+### `POST /attachments/{attachment_id}/versions`
+
+Mengunggah versi file baru untuk attachment yang sama.
+
+Efek backend:
+
+- versi aktif sebelumnya akan ditandai `is_current = false`
+- metadata file utama akan diarahkan ke versi terbaru
+- `current_version_no` akan dinaikkan otomatis
+
+### `GET /attachments/{attachment_id}/audit-trail`
+
+Mengambil jejak lifecycle attachment, termasuk:
+
+- pembuatan attachment
+- upload versi awal
+- upload versi revisi
+- soft delete bila sudah terjadi
+
 ### `PATCH /attachments/{attachment_id}`
 
 Mengubah metadata attachment seperti `title`, `description`, `sequence_no`,
@@ -332,6 +387,14 @@ Kategori yang direkomendasikan:
 
 - `DAMAGE_PHOTO`
 - `OTHER`
+
+Untuk setiap item attachment pada frontend, sebaiknya sediakan action:
+
+- lihat metadata
+- lihat referensi download
+- lihat version history
+- upload versi revisi
+- lihat audit trail
 
 ### `GET /maintenance/work-orders/{work_order_id}/attachments`
 
@@ -882,11 +945,38 @@ Status:
 Saat work order dimulai, backend juga mencatat histori status aset dan
 mengubah status aset menjadi `UNDER_MAINTENANCE`.
 
+### `POST /maintenance/work-orders/{work_order_id}/hold`
+
+Status:
+
+- `IN_PROGRESS` -> `ON_HOLD`
+
+Dipakai saat eksekusi berhenti sementara, misalnya menunggu part, vendor, atau
+approval lanjutan.
+
+### `POST /maintenance/work-orders/{work_order_id}/resume`
+
+Status:
+
+- `ON_HOLD` -> `IN_PROGRESS`
+
+### `POST /maintenance/work-orders/{work_order_id}/cancel`
+
+Status yang saat ini diizinkan:
+
+- `DRAFT`
+- `WAITING_APPROVAL`
+- `APPROVED`
+- `PLANNED`
+- `ASSIGNED`
+- `ON_HOLD`
+
 ### `POST /maintenance/work-orders/{work_order_id}/complete`
 
 Status:
 
 - `IN_PROGRESS` -> `COMPLETED`
+- `ON_HOLD` -> `COMPLETED`
 
 ### `POST /maintenance/work-orders/{work_order_id}/verify`
 
@@ -1435,6 +1525,15 @@ Mengambil histori lokasi aset untuk tab history atau audit UI.
 Mencatat assignment aset, termasuk `PRIMARY_CUSTODIAN`, `USER`, atau
 `TECHNICAL_PIC`. Jika assignment baru adalah `PRIMARY_CUSTODIAN`, assignment
 aktif sebelumnya akan ditutup otomatis.
+
+### `POST /assignments/{assignment_id}/return`
+
+Menutup assignment aktif dengan `returned_at` dan mengubah
+`assignment_status` menjadi `RETURNED`.
+
+Untuk assignment `PRIMARY_CUSTODIAN`, backend juga mengosongkan
+`current_primary_custodian_id` bila assignment yang dikembalikan masih menjadi
+custodian aktif asset.
 
 ### `GET /assets/{asset_id}/assignment-history`
 

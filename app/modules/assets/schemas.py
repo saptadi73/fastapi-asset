@@ -465,6 +465,12 @@ class AssetAssignmentCreate(BaseModel):
     notes: str | None = None
 
 
+class AssetAssignmentReturnPayload(BaseModel):
+    returned_at: datetime
+    released_by_employee_at: datetime | None = None
+    notes: str | None = None
+
+
 class AssetAssignmentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

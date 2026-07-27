@@ -131,6 +131,171 @@ def build_endpoint_samples(results: list[StepResult]) -> list[dict[str, Any]]:
     ]
 
 
+def build_postman_environment(
+    *,
+    base_url: str,
+    login_email: str,
+    seed_entities: dict[str, Any],
+) -> dict[str, Any]:
+    values = [
+        {"key": "base_url", "value": base_url, "type": "default", "enabled": True},
+        {"key": "api_prefix", "value": API_PREFIX, "type": "default", "enabled": True},
+        {"key": "login_email", "value": login_email, "type": "default", "enabled": True},
+        {
+            "key": "access_token",
+            "value": "",
+            "type": "secret",
+            "enabled": True,
+        },
+        {
+            "key": "refresh_token",
+            "value": "",
+            "type": "secret",
+            "enabled": True,
+        },
+    ]
+    values.extend(
+        {
+            "key": key,
+            "value": str(value),
+            "type": "default",
+            "enabled": True,
+        }
+        for key, value in seed_entities.items()
+    )
+    return {
+        "name": f"FastAPI Asset Seed {RUN_DATE.isoformat()}",
+        "values": values,
+        "_postman_variable_scope": "environment",
+        "_postman_exported_at": iso(datetime.now(UTC)),
+        "_postman_exported_using": "Codex smoke seed exporter",
+    }
+
+
+def _build_postman_request_item(
+    *,
+    name: str,
+    method: str,
+    path: str,
+    query_params: dict[str, Any] | None,
+    request_json: dict[str, Any] | list[Any] | None,
+    include_auth: bool,
+) -> dict[str, Any]:
+    raw_url = f"{{{{base_url}}}}{path}"
+    query: list[dict[str, str]] = []
+    if query_params:
+        query = [{"key": key, "value": str(value)} for key, value in query_params.items()]
+        raw_url = (
+            f"{raw_url}?"
+            + "&".join(f"{item['key']}={item['value']}" for item in query)
+        )
+    headers = [{"key": "Content-Type", "value": "application/json"}]
+    if include_auth:
+        headers.append({"key": "Authorization", "value": "Bearer {{access_token}}"})
+    item: dict[str, Any] = {
+        "name": name,
+        "request": {
+            "method": method,
+            "header": headers,
+            "url": {
+                "raw": raw_url,
+                "host": ["{{base_url}}"],
+                "path": [segment for segment in path.lstrip("/").split("/") if segment],
+                "query": query,
+            },
+        },
+    }
+    if request_json is not None:
+        item["request"]["body"] = {
+            "mode": "raw",
+            "raw": json.dumps(request_json, indent=2),
+            "options": {"raw": {"language": "json"}},
+        }
+    return item
+
+
+def build_postman_collection(
+    *,
+    base_url: str,
+    login_email: str,
+    results: list[StepResult],
+) -> dict[str, Any]:
+    folders: dict[str, list[dict[str, Any]]] = {
+        "Authentication": [
+            _build_postman_request_item(
+                name="Login",
+                method="POST",
+                path=f"{API_PREFIX}/auth/login",
+                query_params=None,
+                request_json={
+                    "email": login_email,
+                    "password": "{{bootstrap_admin_password}}",
+                },
+                include_auth=False,
+            ),
+            _build_postman_request_item(
+                name="Auth Me",
+                method="GET",
+                path=f"{API_PREFIX}/auth/me",
+                query_params=None,
+                request_json=None,
+                include_auth=True,
+            ),
+        ]
+    }
+    for item in results:
+        if item.path.startswith(f"{API_PREFIX}/auth/"):
+            continue
+        if item.path.startswith(f"{API_PREFIX}/business-partners"):
+            folder = "Business Partners"
+        elif item.path.startswith(f"{API_PREFIX}/asset-transfers"):
+            folder = "Asset Transfers"
+        elif item.path.startswith(f"{API_PREFIX}/asset-"):
+            folder = "Asset Registry"
+        elif item.path.startswith(f"{API_PREFIX}/assets/") or item.path == f"{API_PREFIX}/assets":
+            folder = "Asset Registry"
+        elif item.path.startswith(f"{API_PREFIX}/tracking"):
+            folder = "Tracking"
+        elif item.path.startswith(f"{API_PREFIX}/stocktakes"):
+            folder = "Stocktake"
+        elif item.path.startswith(f"{API_PREFIX}/maintenance"):
+            folder = "Maintenance"
+        elif item.path.startswith(f"{API_PREFIX}/reports"):
+            folder = "Reports"
+        else:
+            folder = "Misc"
+        folders.setdefault(folder, []).append(
+            _build_postman_request_item(
+                name=item.label,
+                method=item.method,
+                path=item.path,
+                query_params=item.query_params,
+                request_json=item.request_json,
+                include_auth=True,
+            )
+        )
+    collection_items = [
+        {"name": folder_name, "item": requests}
+        for folder_name, requests in folders.items()
+    ]
+    return {
+        "info": {
+            "name": f"FastAPI Asset API Seed Collection {RUN_DATE.isoformat()}",
+            "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+            "description": (
+                "Collection otomatis dari live smoke seed run "
+                f"tanggal {RUN_DATE.isoformat()} untuk membantu frontend dan QA."
+            ),
+        },
+        "variable": [
+            {"key": "base_url", "value": base_url},
+            {"key": "bootstrap_admin_password", "value": ""},
+            {"key": "access_token", "value": ""},
+        ],
+        "item": collection_items,
+    }
+
+
 def build_attachment_payload(
     *,
     entity_type: str,
@@ -455,7 +620,7 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
             f"{API_PREFIX}/assets/{asset_id}/ownerships",
             label="list asset ownerships",
         )
-        await runner.call(
+        assignment = await runner.call(
             "POST",
             f"{API_PREFIX}/assets/{asset_id}/assignments",
             label="create asset assignment",
@@ -468,10 +633,26 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
                 "notes": "Custodian smoke test",
             },
         )
+        assignment_id = assignment["data"]["id"]
         await runner.call(
             "GET",
             f"{API_PREFIX}/assets/{asset_id}/assignment-history",
             label="get asset assignment history",
+        )
+        await runner.call(
+            "POST",
+            f"{API_PREFIX}/assignments/{assignment_id}/return",
+            label="return asset assignment",
+            json_body={
+                "returned_at": "2026-07-27T08:10:00Z",
+                "released_by_employee_at": "2026-07-27T08:10:00Z",
+                "notes": "Assignment dikembalikan pada smoke test",
+            },
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/assets/{asset_id}/assignment-history",
+            label="get asset assignment history after return",
         )
         await runner.call(
             "POST",
@@ -937,7 +1118,7 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
             f"{API_PREFIX}/maintenance/requests/{request_id}",
             label="get maintenance request",
         )
-        await runner.call(
+        request_attachment = await runner.call(
             "POST",
             f"{API_PREFIX}/maintenance/requests/{request_id}/attachments",
             label="create maintenance request attachment",
@@ -949,10 +1130,56 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
                 created_at=datetime(2026, 7, 27, 12, 31, tzinfo=UTC),
             ),
         )
+        request_attachment_id = request_attachment["data"]["id"]
         await runner.call(
             "GET",
             f"{API_PREFIX}/maintenance/requests/{request_id}/attachments",
             label="list maintenance request attachments",
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/attachments/{request_attachment_id}",
+            label="get maintenance request attachment",
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/attachments/{request_attachment_id}/download",
+            label="get maintenance request attachment download reference",
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/attachments/{request_attachment_id}/versions",
+            label="list maintenance request attachment versions before upload",
+        )
+        await runner.call(
+            "POST",
+            f"{API_PREFIX}/attachments/{request_attachment_id}/versions",
+            label="upload maintenance request attachment new version",
+            json_body={
+                "original_filename": "smoke-test-v2.txt",
+                "display_name": "Request Smoke Attachment v2",
+                "mime_type": "text/plain",
+                "extension": "txt",
+                "size_bytes": 31,
+                "checksum_sha256": hashlib.sha256(
+                    b"Request Smoke Attachment Version 2"
+                ).hexdigest(),
+                "storage_bucket": "smoke-tests",
+                "storage_object_key": f"smoke/maintenance_request/{request_id}-v2.txt",
+                "uploaded_at": "2026-07-27T12:32:00Z",
+                "change_notes": "Revisi evidensi request smoke test",
+                "metadata": {"source": "smoke-seed-api", "revision": 2},
+            },
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/attachments/{request_attachment_id}/versions",
+            label="list maintenance request attachment versions",
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/attachments/{request_attachment_id}/audit-trail",
+            label="get maintenance request attachment audit trail",
         )
         await runner.call(
             "POST",
@@ -1052,6 +1279,26 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
             f"{API_PREFIX}/maintenance/work-orders/{work_order_id}/start",
             label="start maintenance work order",
             json_body={"actor_id": user_id, "acted_at": "2026-07-27T13:10:00Z"},
+        )
+        await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/work-orders/{work_order_id}/hold",
+            label="hold maintenance work order",
+            json_body={
+                "actor_id": user_id,
+                "acted_at": "2026-07-27T13:12:00Z",
+                "notes": "Menunggu spare part konfirmasi smoke test",
+            },
+        )
+        await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/work-orders/{work_order_id}/resume",
+            label="resume maintenance work order",
+            json_body={
+                "actor_id": user_id,
+                "acted_at": "2026-07-27T13:14:00Z",
+                "notes": "Part tersedia, pekerjaan dilanjutkan",
+            },
         )
         await runner.call(
             "POST",
@@ -1334,6 +1581,44 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
             f"{API_PREFIX}/maintenance/work-orders/{work_order_id}",
             label="get maintenance work order final",
         )
+        cancellable_work_order = await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/work-orders",
+            label="create cancellable maintenance work order",
+            json_body={
+                "work_order_number": f"WOC-{suffix}",
+                "company_id": company_id,
+                "asset_id": asset_id,
+                "maintenance_type": "CORRECTIVE",
+                "priority_id": priority_id,
+                "title": "WO cancel smoke test",
+                "scope_of_work": "Pekerjaan dibatalkan untuk validasi endpoint cancel",
+                "execution_mode": "INTERNAL",
+                "planned_start_at": "2026-07-28T09:00:00Z",
+                "planned_end_at": "2026-07-28T11:00:00Z",
+                "requires_shutdown": False,
+                "requires_permit": False,
+                "requires_verification": False,
+                "created_by": user_id,
+                "updated_by": user_id,
+            },
+        )
+        cancellable_work_order_id = cancellable_work_order["data"]["id"]
+        await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/work-orders/{cancellable_work_order_id}/cancel",
+            label="cancel maintenance work order",
+            json_body={
+                "actor_id": user_id,
+                "acted_at": "2026-07-27T17:20:00Z",
+                "notes": "Work order dibatalkan pada smoke test",
+            },
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/maintenance/work-orders/{cancellable_work_order_id}",
+            label="get cancelled maintenance work order",
+        )
     finally:
         await runner.close()
 
@@ -1341,6 +1626,8 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
     artifacts_dir.mkdir(parents=True, exist_ok=True)
     report_path = artifacts_dir / "seed_smoke_results.json"
     frontend_samples_path = artifacts_dir / "frontend_endpoint_samples.json"
+    postman_environment_path = artifacts_dir / "postman_seed_environment.json"
+    postman_collection_path = artifacts_dir / "postman_seed_collection.json"
     seed_entities = {
         "run_date_reference": RUN_DATE.isoformat(),
         "auth_user_id": user_id,
@@ -1352,6 +1639,7 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
         "asset_attribute_definition_id": attribute_definition_id,
         "asset_id": asset_id,
         "asset_tag_number": tag_number,
+        "asset_assignment_id": assignment_id,
         "asset_transfer_id": transfer_id,
         "stocktake_id": stocktake_id,
         "maintenance_priority_id": priority_id,
@@ -1364,7 +1652,9 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
         "maintenance_plan_id": plan_id,
         "maintenance_schedule_id": schedule_id,
         "maintenance_request_id": request_id,
+        "maintenance_request_attachment_id": request_attachment_id,
         "maintenance_work_order_id": work_order_id,
+        "maintenance_cancelled_work_order_id": cancellable_work_order_id,
         "maintenance_failure_id": failure_id,
         "maintenance_checklist_execution_id": checklist_id,
         "maintenance_finding_id": finding_id,
@@ -1394,9 +1684,27 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
             "Gunakan seed_entities untuk mencoba endpoint detail secara manual bila diperlukan.",
         ],
     }
+    postman_environment_payload = build_postman_environment(
+        base_url=base_url,
+        login_email=login_payload["data"]["user"]["email"],
+        seed_entities=seed_entities,
+    )
+    postman_collection_payload = build_postman_collection(
+        base_url=base_url,
+        login_email=login_payload["data"]["user"]["email"],
+        results=runner.results,
+    )
     report_path.write_text(json.dumps(report_payload, indent=2), encoding="utf-8")
     frontend_samples_path.write_text(
         json.dumps(frontend_samples_payload, indent=2),
+        encoding="utf-8",
+    )
+    postman_environment_path.write_text(
+        json.dumps(postman_environment_payload, indent=2),
+        encoding="utf-8",
+    )
+    postman_collection_path.write_text(
+        json.dumps(postman_collection_payload, indent=2),
         encoding="utf-8",
     )
     return report_payload
@@ -1434,6 +1742,12 @@ async def async_main() -> int:
                 "report_path": str(REPO_ROOT / "artifacts" / "seed_smoke_results.json"),
                 "frontend_samples_path": str(
                     REPO_ROOT / "artifacts" / "frontend_endpoint_samples.json"
+                ),
+                "postman_environment_path": str(
+                    REPO_ROOT / "artifacts" / "postman_seed_environment.json"
+                ),
+                "postman_collection_path": str(
+                    REPO_ROOT / "artifacts" / "postman_seed_collection.json"
                 ),
             },
             indent=2,

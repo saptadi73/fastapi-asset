@@ -831,6 +831,63 @@ async def start_maintenance_work_order(
 
 
 @router.post(
+    "/work-orders/{work_order_id}/hold",
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def hold_maintenance_work_order(
+    request: Request,
+    work_order_id: UUID,
+    payload: MaintenanceRequestActionPayload,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.hold_work_order(work_order_id, payload)
+    return success_response(
+        request=request,
+        message="Maintenance work order berhasil di-hold.",
+        data=MaintenanceWorkOrderRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post(
+    "/work-orders/{work_order_id}/resume",
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def resume_maintenance_work_order(
+    request: Request,
+    work_order_id: UUID,
+    payload: MaintenanceRequestActionPayload,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.resume_work_order(work_order_id, payload)
+    return success_response(
+        request=request,
+        message="Maintenance work order berhasil dilanjutkan.",
+        data=MaintenanceWorkOrderRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post(
+    "/work-orders/{work_order_id}/cancel",
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def cancel_maintenance_work_order(
+    request: Request,
+    work_order_id: UUID,
+    payload: MaintenanceRequestActionPayload,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.cancel_work_order(work_order_id, payload)
+    return success_response(
+        request=request,
+        message="Maintenance work order berhasil dibatalkan.",
+        data=MaintenanceWorkOrderRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post(
     "/work-orders/{work_order_id}/complete",
     dependencies=[Depends(require_maintenance_write)],
 )

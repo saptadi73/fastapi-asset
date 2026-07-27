@@ -37,6 +37,15 @@ class FileVersionRepository:
         await self.session.flush()
         return version
 
+    async def list_by_file(self, file_id: UUID) -> Sequence[FileVersion]:
+        stmt = (
+            select(FileVersion)
+            .where(FileVersion.file_id == file_id)
+            .order_by(FileVersion.version_no.desc(), FileVersion.uploaded_at.desc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
 
 class AttachmentRepository:
     def __init__(self, session: AsyncSession) -> None:

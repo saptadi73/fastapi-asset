@@ -1,0 +1,493 @@
+# Frontend Seed Scenarios
+
+Dokumen ini menjelaskan bagaimana data seed live dibentuk pada **Monday, July 27, 2026**
+agar tim frontend bisa memahami:
+
+- endpoint mana yang menghasilkan data untuk endpoint berikutnya;
+- entity mana yang cocok dipakai untuk halaman detail;
+- urutan call API yang paling masuk akal untuk layar utama.
+
+Referensi artefak live:
+
+- `artifacts/seed_smoke_results.json`
+- `artifacts/frontend_endpoint_samples.json`
+
+## Seed Entities
+
+Entity utama hasil seed yang paling berguna untuk frontend:
+
+- `asset_id`
+- `asset_transfer_id`
+- `stocktake_id`
+- `maintenance_plan_id`
+- `maintenance_schedule_id`
+- `maintenance_request_id`
+- `maintenance_work_order_id`
+- `maintenance_failure_id`
+- `maintenance_checklist_execution_id`
+- `maintenance_finding_id`
+
+Seluruh nilai aktual UUID tersedia di `seed_entities` dalam file
+`artifacts/frontend_endpoint_samples.json`.
+
+## Scenario Matrix
+
+### 1. Authentication
+
+Tujuan:
+
+- mendapatkan bearer token;
+- memuat profil user aktif untuk header, avatar, role guard, dan audit info.
+
+Endpoint:
+
+- `POST /api/v1/auth/login`
+- `GET /api/v1/auth/me`
+
+Output penting:
+
+- `tokens.access_token`
+- `tokens.refresh_token`
+- `user.id`
+- `user.roles`
+- `user.permissions`
+
+### 2. Business Partner Master
+
+Tujuan:
+
+- menyediakan partner supplier/vendor yang nanti dipakai oleh asset ownership,
+  maintenance request, schedule vendor, dan work order vendor.
+
+Endpoint:
+
+- `POST /api/v1/business-partners`
+- `GET /api/v1/business-partners`
+- `GET /api/v1/business-partners/{partner_id}`
+
+Output penting:
+
+- `business_partner_id`
+
+### 3. Asset Registry Master
+
+Tujuan:
+
+- membentuk master category, class, dan location sebelum asset dibuat.
+
+Endpoint:
+
+- `POST /api/v1/asset-categories`
+- `GET /api/v1/asset-categories`
+- `POST /api/v1/asset-classes`
+- `GET /api/v1/asset-classes`
+- `POST /api/v1/asset-locations`
+- `GET /api/v1/asset-locations`
+- `POST /api/v1/asset-attribute-definitions`
+- `GET /api/v1/asset-categories/{asset_category_id}/attribute-definitions`
+
+Output penting:
+
+- `asset_category_id`
+- `asset_class_id`
+- `origin_location_id`
+- `destination_location_id`
+- `asset_attribute_definition_id`
+
+### 4. Asset Registry Transactional
+
+Tujuan:
+
+- membentuk satu asset lengkap berikut histori dan relasi turunannya.
+
+Endpoint:
+
+- `POST /api/v1/assets`
+- `GET /api/v1/assets`
+- `GET /api/v1/assets/{asset_id}`
+- `PATCH /api/v1/assets/{asset_id}`
+- `POST /api/v1/assets/{asset_id}/attribute-values`
+- `GET /api/v1/assets/{asset_id}/attribute-values`
+- `POST /api/v1/assets/{asset_id}/ownerships`
+- `GET /api/v1/assets/{asset_id}/ownerships`
+- `POST /api/v1/assets/{asset_id}/assignments`
+- `GET /api/v1/assets/{asset_id}/assignment-history`
+- `POST /api/v1/assets/{asset_id}/status-changes`
+- `GET /api/v1/assets/{asset_id}/status-history`
+- `POST /api/v1/assets/{asset_id}/location-changes`
+- `GET /api/v1/assets/{asset_id}/location-history`
+- `GET /api/v1/assets/{asset_id}/timeline`
+
+Output penting:
+
+- `asset_id`
+- `asset_tag_number`
+
+### 5. Asset Transfer
+
+Tujuan:
+
+- membentuk skenario perpindahan asset dari draft sampai complete.
+
+Endpoint:
+
+- `POST /api/v1/asset-transfers`
+- `GET /api/v1/asset-transfers`
+- `GET /api/v1/asset-transfers/{transfer_id}`
+- `POST /api/v1/asset-transfers/{transfer_id}/submit`
+- `POST /api/v1/asset-transfers/{transfer_id}/approve`
+- `POST /api/v1/asset-transfers/{transfer_id}/complete`
+
+Output penting:
+
+- `asset_transfer_id`
+
+### 6. Tracking dan Stocktake
+
+Tujuan:
+
+- membentuk histori scan dan sesi stocktake yang punya lifecycle lengkap.
+
+Endpoint:
+
+- `POST /api/v1/tracking/scan-events`
+- `POST /api/v1/tracking/scan-events/batch`
+- `GET /api/v1/assets/{asset_id}/tracking`
+- `POST /api/v1/stocktakes`
+- `GET /api/v1/stocktakes`
+- `GET /api/v1/stocktakes/{stocktake_id}`
+- `POST /api/v1/stocktakes/{stocktake_id}/start`
+- `POST /api/v1/stocktakes/{stocktake_id}/scan`
+- `POST /api/v1/stocktakes/{stocktake_id}/complete`
+- `POST /api/v1/stocktakes/{stocktake_id}/approve`
+
+Output penting:
+
+- `stocktake_id`
+
+### 7. Asset Reports
+
+Tujuan:
+
+- memberi dataset awal untuk dashboard discrepancy dan verification.
+
+Endpoint:
+
+- `GET /api/v1/reports/location-discrepancies`
+- `GET /api/v1/reports/missing-assets`
+- `GET /api/v1/reports/unverified-assets`
+
+### 8. Maintenance Master Data
+
+Tujuan:
+
+- membentuk seluruh master yang diperlukan sebelum request, schedule, atau work order.
+
+Endpoint:
+
+- `POST /api/v1/maintenance/priorities`
+- `GET /api/v1/maintenance/priorities`
+- `POST /api/v1/maintenance/symptom-codes`
+- `GET /api/v1/maintenance/symptom-codes`
+- `POST /api/v1/maintenance/failure-modes`
+- `GET /api/v1/maintenance/failure-modes`
+- `POST /api/v1/maintenance/root-cause-codes`
+- `GET /api/v1/maintenance/root-cause-codes`
+- `POST /api/v1/maintenance/checklist-templates`
+- `GET /api/v1/maintenance/checklist-templates/{template_id}`
+- `POST /api/v1/maintenance/teams`
+- `GET /api/v1/maintenance/teams`
+- `GET /api/v1/maintenance/teams/{team_id}`
+- `POST /api/v1/maintenance/teams/{team_id}/members`
+
+Output penting:
+
+- `maintenance_priority_id`
+- `maintenance_symptom_code_id`
+- `maintenance_failure_mode_id`
+- `maintenance_root_cause_code_id`
+- `maintenance_checklist_template_id`
+- `maintenance_team_id`
+
+### 9. Preventive Maintenance Planning
+
+Tujuan:
+
+- membentuk plan asset, generate schedule, lalu mengubah status schedule.
+
+Endpoint:
+
+- `POST /api/v1/maintenance/plans`
+- `GET /api/v1/maintenance/plans`
+- `GET /api/v1/maintenance/plans/{plan_id}`
+- `POST /api/v1/maintenance/plans/{plan_id}/assets`
+- `POST /api/v1/maintenance/plans/{plan_id}/generate`
+- `GET /api/v1/maintenance/schedules`
+- `GET /api/v1/maintenance/schedules/{schedule_id}`
+- `POST /api/v1/maintenance/schedules/{schedule_id}/confirm`
+- `POST /api/v1/maintenance/schedules/{schedule_id}/reschedule`
+
+Output penting:
+
+- `maintenance_plan_id`
+- `maintenance_schedule_id`
+
+### 10. Maintenance Request
+
+Tujuan:
+
+- membentuk request corrective/breakdown dengan attachment dan approval flow.
+
+Endpoint:
+
+- `POST /api/v1/maintenance/requests`
+- `GET /api/v1/maintenance/requests`
+- `GET /api/v1/maintenance/requests/{request_id}`
+- `POST /api/v1/maintenance/requests/{request_id}/attachments`
+- `GET /api/v1/maintenance/requests/{request_id}/attachments`
+- `POST /api/v1/maintenance/requests/{request_id}/submit`
+- `POST /api/v1/maintenance/requests/{request_id}/triage`
+- `POST /api/v1/maintenance/requests/{request_id}/approve`
+
+Output penting:
+
+- `maintenance_request_id`
+
+### 11. Work Order Lifecycle
+
+Tujuan:
+
+- mengubah request approved menjadi work order yang berjalan sampai selesai.
+
+Endpoint:
+
+- `POST /api/v1/maintenance/requests/{request_id}/convert-to-work-order`
+- `GET /api/v1/maintenance/work-orders`
+- `GET /api/v1/maintenance/work-orders/{work_order_id}`
+- `POST /api/v1/maintenance/work-orders/{work_order_id}/attachments`
+- `GET /api/v1/maintenance/work-orders/{work_order_id}/attachments`
+- `POST /api/v1/maintenance/work-orders/{work_order_id}/approve`
+- `POST /api/v1/maintenance/work-orders/{work_order_id}/assign`
+- `POST /api/v1/maintenance/work-orders/{work_order_id}/start`
+- `POST /api/v1/maintenance/work-orders/{work_order_id}/parts`
+- `POST /api/v1/maintenance/work-orders/{work_order_id}/labor-logs`
+- `POST /api/v1/maintenance/work-orders/{work_order_id}/downtimes`
+- `GET /api/v1/maintenance/work-orders/{work_order_id}/downtimes`
+- `GET /api/v1/maintenance/work-orders/{work_order_id}/events`
+- `POST /api/v1/maintenance/work-orders/{work_order_id}/complete`
+- `POST /api/v1/maintenance/work-orders/{work_order_id}/verify`
+- `POST /api/v1/maintenance/work-orders/{work_order_id}/close`
+- `GET /api/v1/maintenance/work-orders/{work_order_id}`
+
+Output penting:
+
+- `maintenance_work_order_id`
+
+### 12. Failures, Findings, Checklist, dan Follow-up
+
+Tujuan:
+
+- membentuk data failure, RCA, checklist execution, finding, lalu follow-up request.
+
+Endpoint:
+
+- `POST /api/v1/maintenance/work-orders/{work_order_id}/failures`
+- `GET /api/v1/maintenance/failures`
+- `GET /api/v1/maintenance/failures/{failure_id}`
+- `PATCH /api/v1/maintenance/failures/{failure_id}`
+- `POST /api/v1/maintenance/failures/{failure_id}/attachments`
+- `GET /api/v1/maintenance/failures/{failure_id}/attachments`
+- `POST /api/v1/maintenance/work-orders/{work_order_id}/checklists`
+- `GET /api/v1/maintenance/checklists/{checklist_id}`
+- `POST /api/v1/maintenance/checklists/{checklist_id}/results`
+- `GET /api/v1/maintenance/checklists/{checklist_id}`
+- `GET /api/v1/maintenance/findings/{finding_id}`
+- `POST /api/v1/maintenance/findings/{finding_id}/attachments`
+- `GET /api/v1/maintenance/findings/{finding_id}/attachments`
+- `POST /api/v1/maintenance/findings/{finding_id}/create-request`
+
+Output penting:
+
+- `maintenance_failure_id`
+- `maintenance_checklist_execution_id`
+- `maintenance_finding_id`
+
+### 13. Maintenance Reports dan History
+
+Tujuan:
+
+- memastikan dashboard dan tab history frontend punya data nyata.
+
+Endpoint:
+
+- `GET /api/v1/maintenance/reports/backlog`
+- `GET /api/v1/maintenance/reports/cost`
+- `GET /api/v1/maintenance/reports/sla`
+- `GET /api/v1/maintenance/reports/reliability`
+- `GET /api/v1/maintenance/reports/failure-analysis`
+- `GET /api/v1/assets/{asset_id}/maintenance-history`
+
+## Recommended Frontend Flows
+
+### Asset List Page
+
+Urutan call:
+
+1. `GET /api/v1/asset-categories`
+2. `GET /api/v1/asset-classes`
+3. `GET /api/v1/asset-locations`
+4. `GET /api/v1/assets?page=1&page_size=20`
+
+Catatan:
+
+- filter dropdown sebaiknya dimuat lebih dulu;
+- detail row asset sudah cukup kaya untuk table utama;
+- saat user membuka detail, lanjutkan ke flow Asset Detail.
+
+### Asset Detail Page
+
+Urutan call:
+
+1. `GET /api/v1/assets/{asset_id}`
+2. `GET /api/v1/assets/{asset_id}/attribute-values`
+3. `GET /api/v1/assets/{asset_id}/ownerships`
+4. `GET /api/v1/assets/{asset_id}/assignment-history`
+5. `GET /api/v1/assets/{asset_id}/status-history`
+6. `GET /api/v1/assets/{asset_id}/location-history`
+7. `GET /api/v1/assets/{asset_id}/timeline`
+8. `GET /api/v1/assets/{asset_id}/tracking`
+9. `GET /api/v1/assets/{asset_id}/maintenance-history`
+
+Gunakan ID:
+
+- `asset_id` dari `seed_entities`
+
+### Asset Transfer Monitoring Page
+
+Urutan call:
+
+1. `GET /api/v1/asset-transfers`
+2. `GET /api/v1/asset-transfers/{asset_transfer_id}`
+
+Bila frontend perlu menampilkan status chip lifecycle:
+
+- seed sudah menghasilkan state `DRAFT -> SUBMITTED -> APPROVED -> COMPLETED`
+
+### Stocktake Detail Page
+
+Urutan call:
+
+1. `GET /api/v1/stocktakes`
+2. `GET /api/v1/stocktakes/{stocktake_id}`
+
+Catatan:
+
+- seed sudah melewati state `DRAFT/PLANNED -> IN_PROGRESS -> COMPLETED -> APPROVED`
+
+### Maintenance Request List Page
+
+Urutan call:
+
+1. `GET /api/v1/maintenance/priorities`
+2. `GET /api/v1/maintenance/requests?page=1&page_size=20`
+
+Opsional filter master:
+
+- `GET /api/v1/business-partners`
+- `GET /api/v1/asset-locations`
+
+### Maintenance Request Detail Page
+
+Urutan call:
+
+1. `GET /api/v1/maintenance/requests/{request_id}`
+2. `GET /api/v1/maintenance/requests/{request_id}/attachments`
+
+Lifecycle yang sudah tersedia di seed:
+
+- create
+- submit
+- triage
+- approve
+- convert ke work order
+
+### Maintenance Schedule List and Detail
+
+Urutan call:
+
+1. `GET /api/v1/maintenance/schedules`
+2. `GET /api/v1/maintenance/schedules/{schedule_id}`
+
+Lifecycle yang sudah tersedia di seed:
+
+- generated from plan
+- confirmed
+- rescheduled
+
+### Maintenance Work Order Detail Page
+
+Urutan call:
+
+1. `GET /api/v1/maintenance/work-orders/{work_order_id}`
+2. `GET /api/v1/maintenance/work-orders/{work_order_id}/attachments`
+3. `GET /api/v1/maintenance/work-orders/{work_order_id}/downtimes`
+4. `GET /api/v1/maintenance/work-orders/{work_order_id}/events`
+5. `GET /api/v1/maintenance/failures?work_order_id={work_order_id}`
+
+Lifecycle yang sudah tersedia di seed:
+
+- waiting approval
+- approved
+- assigned
+- in progress
+- completed
+- verification
+- closed
+
+### Failure Detail Page
+
+Urutan call:
+
+1. `GET /api/v1/maintenance/failures?work_order_id={work_order_id}`
+2. `GET /api/v1/maintenance/failures/{failure_id}`
+3. `GET /api/v1/maintenance/failures/{failure_id}/attachments`
+
+Seed sudah menyediakan:
+
+- failure awal;
+- update RCA;
+- attachment failure.
+
+### Checklist and Finding Page
+
+Urutan call:
+
+1. `GET /api/v1/maintenance/checklists/{checklist_id}`
+2. `GET /api/v1/maintenance/findings/{finding_id}`
+3. `GET /api/v1/maintenance/findings/{finding_id}/attachments`
+
+Seed sudah menyediakan:
+
+- checklist execution;
+- checklist result dengan kondisi abnormal;
+- finding hasil checklist;
+- follow-up request dari finding.
+
+### Maintenance Dashboard
+
+Urutan call:
+
+1. `GET /api/v1/maintenance/reports/backlog`
+2. `GET /api/v1/maintenance/reports/cost`
+3. `GET /api/v1/maintenance/reports/sla`
+4. `GET /api/v1/maintenance/reports/reliability`
+5. `GET /api/v1/maintenance/reports/failure-analysis`
+
+## Practical Guidance
+
+- Untuk sample request dan response nyata, buka `frontend_endpoint_samples.json`.
+- Untuk mengetahui UUID entity yang valid saat uji manual, buka `seed_entities`.
+- Untuk memahami mengapa sebuah entity punya state tertentu, baca urutan skenario
+  pada dokumen ini.
+- Untuk kontrak field lengkap, tetap gunakan OpenAPI live dan
+  `docs/api/frontend-api-reference.md`.

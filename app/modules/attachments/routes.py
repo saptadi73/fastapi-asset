@@ -13,7 +13,15 @@ from app.api.dependencies import (
 )
 from app.core.exceptions import AppError
 from app.modules.attachments.constants import AttachmentCategory, AttachmentEntityType
-from app.modules.attachments.schemas import AttachmentCreate, AttachmentRead, AttachmentUpdate
+from app.modules.attachments.schemas import (
+    AttachmentAuditEventRead,
+    AttachmentCreate,
+    AttachmentDownloadRead,
+    AttachmentRead,
+    AttachmentUpdate,
+    FileVersionCreate,
+    FileVersionRead,
+)
 from app.modules.attachments.service import AttachmentService
 from app.modules.auth.models import AppUser
 from app.shared.responses import success_response
@@ -61,6 +69,78 @@ async def get_attachment(
         request=request,
         message="Detail attachment berhasil diambil.",
         data=AttachmentRead.model_validate(item).model_dump(mode="json", by_alias=True),
+    )
+
+
+@router.get("/{attachment_id}/download", dependencies=[Depends(require_attachment_read)])
+async def get_attachment_download(
+    request: Request,
+    attachment_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AttachmentService(session)
+    item = await service.get_attachment_download(attachment_id)
+    return success_response(
+        request=request,
+        message="Referensi download attachment berhasil diambil.",
+        data=AttachmentDownloadRead.model_validate(item).model_dump(mode="json", by_alias=True),
+    )
+
+
+@router.get("/{attachment_id}/versions", dependencies=[Depends(require_attachment_read)])
+async def list_attachment_versions(
+    request: Request,
+    attachment_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AttachmentService(session)
+    items = await service.list_attachment_versions(attachment_id)
+    return success_response(
+        request=request,
+        message="Daftar versi attachment berhasil diambil.",
+        data=[FileVersionRead.model_validate(item).model_dump(mode="json") for item in items],
+    )
+
+
+@router.post(
+    "/{attachment_id}/versions",
+    dependencies=[Depends(require_attachment_write)],
+)
+async def upload_attachment_version(
+    request: Request,
+    attachment_id: UUID,
+    payload: FileVersionCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
+) -> dict:
+    service = AttachmentService(session)
+    item = await service.upload_attachment_version(
+        attachment_id,
+        payload,
+        uploaded_by=current_user.id,
+    )
+    return success_response(
+        request=request,
+        message="Versi baru attachment berhasil diunggah.",
+        data=AttachmentRead.model_validate(item).model_dump(mode="json", by_alias=True),
+    )
+
+
+@router.get("/{attachment_id}/audit-trail", dependencies=[Depends(require_attachment_read)])
+async def get_attachment_audit_trail(
+    request: Request,
+    attachment_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AttachmentService(session)
+    items = await service.get_attachment_audit_trail(attachment_id)
+    return success_response(
+        request=request,
+        message="Audit trail attachment berhasil diambil.",
+        data=[
+            AttachmentAuditEventRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
     )
 
 

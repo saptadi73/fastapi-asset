@@ -13,7 +13,15 @@ from app.modules.attachments.repository import (
     FileRepository,
     FileVersionRepository,
 )
-from app.modules.attachments.schemas import AttachmentCreate, AttachmentUpdate
+from app.modules.attachments.schemas import (
+    AttachmentAuditEventRead,
+    AttachmentCreate,
+    AttachmentDownloadRead,
+    AttachmentRead,
+    AttachmentUpdate,
+    FileVersionCreate,
+    FileVersionRead,
+)
 from app.modules.maintenance.repository import (
     AssetFailureRepository,
     MaintenanceFindingRepository,
@@ -127,6 +135,167 @@ class AttachmentService:
         if attachment is None:
             raise AttachmentNotFoundError(str(attachment_id))
         return attachment
+
+    async def get_attachment_download(self, attachment_id: UUID) -> AttachmentDownloadRead:
+        attachment = await self.get_attachment(attachment_id)
+        file_record = await self.files.get(attachment.file_id)
+        if file_record is None:
+            raise AppError(
+                code="ATTACHMENT_FILE_NOT_FOUND",
+                message="File attachment tidak ditemukan.",
+                status_code=404,
+            )
+
+        current_version = next(
+            (version for version in file_record.versions if version.is_current),
+            None,
+        )
+        return AttachmentDownloadRead(
+            attachment=AttachmentRead.model_validate(attachment),
+            current_version=(
+                FileVersionRead.model_validate(current_version)
+                if current_version is not None
+                else None
+            ),
+            download_url=None,
+        )
+
+    async def list_attachment_versions(self, attachment_id: UUID) -> list[FileVersion]:
+        attachment = await self.get_attachment(attachment_id)
+        items = await self.file_versions.list_by_file(attachment.file_id)
+        return list(items)
+
+    async def upload_attachment_version(
+        self,
+        attachment_id: UUID,
+        payload: FileVersionCreate,
+        *,
+        uploaded_by: UUID | None,
+    ) -> Attachment:
+        attachment = await self.get_attachment(attachment_id)
+        file_record = await self.files.get(attachment.file_id)
+        if file_record is None:
+            raise AppError(
+                code="ATTACHMENT_FILE_NOT_FOUND",
+                message="File attachment tidak ditemukan.",
+                status_code=404,
+            )
+
+        current_versions = [version for version in file_record.versions if version.is_current]
+        next_version_no = file_record.current_version_no + 1
+
+        try:
+            for version in current_versions:
+                version.is_current = False
+
+            file_record.original_filename = payload.original_filename
+            file_record.display_name = payload.display_name
+            file_record.mime_type = payload.mime_type
+            file_record.extension = payload.extension
+            file_record.size_bytes = payload.size_bytes
+            file_record.checksum_sha256 = payload.checksum_sha256
+            file_record.storage_bucket = payload.storage_bucket
+            file_record.storage_object_key = payload.storage_object_key
+            file_record.current_version_no = next_version_no
+            file_record.uploaded_by = uploaded_by
+            file_record.uploaded_at = payload.uploaded_at
+            if payload.metadata_json is not None:
+                file_record.metadata_json = payload.metadata_json
+
+            await self.file_versions.create(
+                FileVersion(
+                    file_id=file_record.id,
+                    version_no=next_version_no,
+                    storage_bucket=payload.storage_bucket,
+                    storage_object_key=payload.storage_object_key,
+                    mime_type=payload.mime_type,
+                    size_bytes=payload.size_bytes,
+                    checksum_sha256=payload.checksum_sha256,
+                    change_notes=payload.change_notes,
+                    uploaded_by=uploaded_by,
+                    uploaded_at=payload.uploaded_at,
+                    is_current=True,
+                )
+            )
+            await self.session.flush()
+            await self.session.commit()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise AppError(
+                code="ATTACHMENT_VERSION_CONFLICT",
+                message="Versi file attachment menimbulkan konflik penyimpanan.",
+                status_code=409,
+            ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
+
+        return await self.get_attachment(attachment_id)
+
+    async def get_attachment_audit_trail(
+        self,
+        attachment_id: UUID,
+    ) -> list[AttachmentAuditEventRead]:
+        attachment = await self.get_attachment(attachment_id)
+        file_record = await self.files.get(attachment.file_id)
+        if file_record is None:
+            raise AppError(
+                code="ATTACHMENT_FILE_NOT_FOUND",
+                message="File attachment tidak ditemukan.",
+                status_code=404,
+            )
+
+        versions = list(await self.file_versions.list_by_file(file_record.id))
+        events: list[AttachmentAuditEventRead] = [
+            AttachmentAuditEventRead(
+                event_type="ATTACHMENT_CREATED",
+                occurred_at=attachment.created_at,
+                actor_id=attachment.created_by,
+                version_no=1,
+                summary="Attachment dibuat.",
+                details={
+                    "entity_type": attachment.entity_type,
+                    "entity_id": str(attachment.entity_id),
+                    "attachment_category": attachment.attachment_category,
+                },
+            )
+        ]
+        for version in sorted(versions, key=lambda item: (item.version_no, item.uploaded_at)):
+            events.append(
+                AttachmentAuditEventRead(
+                    event_type="FILE_VERSION_UPLOADED",
+                    occurred_at=version.uploaded_at,
+                    actor_id=version.uploaded_by,
+                    version_no=version.version_no,
+                    summary=(
+                        "Versi file awal diunggah."
+                        if version.version_no == 1
+                        else "Versi file baru diunggah."
+                    ),
+                    details={
+                        "storage_bucket": version.storage_bucket,
+                        "storage_object_key": version.storage_object_key,
+                        "mime_type": version.mime_type,
+                        "size_bytes": version.size_bytes,
+                        "change_notes": version.change_notes,
+                        "is_current": version.is_current,
+                    },
+                )
+            )
+        if attachment.deleted_at is not None:
+            events.append(
+                AttachmentAuditEventRead(
+                    event_type="ATTACHMENT_DELETED",
+                    occurred_at=attachment.deleted_at,
+                    actor_id=attachment.deleted_by,
+                    version_no=file_record.current_version_no,
+                    summary="Attachment dihapus secara soft delete.",
+                    details={"is_primary": attachment.is_primary},
+                )
+            )
+
+        events.sort(key=lambda item: item.occurred_at)
+        return events
 
     async def update_attachment(
         self,

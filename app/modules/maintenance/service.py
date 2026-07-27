@@ -1993,16 +1993,128 @@ class MaintenanceService:
             raise
         return await self.get_work_order(work_order_id)
 
+    async def hold_work_order(
+        self,
+        work_order_id,
+        payload: MaintenanceRequestActionPayload,
+    ) -> MaintenanceWorkOrder:
+        item = await self.get_work_order(work_order_id)
+        if item.status != MaintenanceWorkOrderStatus.IN_PROGRESS.value:
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_INVALID_STATUS",
+                message="Hanya work order IN_PROGRESS yang dapat di-hold.",
+                status_code=409,
+            )
+        try:
+            previous_status = item.status
+            await self.work_orders.update(
+                item,
+                status=MaintenanceWorkOrderStatus.ON_HOLD.value,
+                updated_by=payload.actor_id,
+            )
+            await self._record_work_order_event(
+                work_order_id=item.id,
+                event_type=MaintenanceWorkOrderEventType.ON_HOLD.value,
+                previous_status=previous_status,
+                new_status=MaintenanceWorkOrderStatus.ON_HOLD.value,
+                event_at=payload.acted_at,
+                performed_by=payload.actor_id,
+                reason=payload.notes,
+            )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
+        return await self.get_work_order(work_order_id)
+
+    async def resume_work_order(
+        self,
+        work_order_id,
+        payload: MaintenanceRequestActionPayload,
+    ) -> MaintenanceWorkOrder:
+        item = await self.get_work_order(work_order_id)
+        if item.status != MaintenanceWorkOrderStatus.ON_HOLD.value:
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_INVALID_STATUS",
+                message="Hanya work order ON_HOLD yang dapat dilanjutkan kembali.",
+                status_code=409,
+            )
+        try:
+            previous_status = item.status
+            await self.work_orders.update(
+                item,
+                status=MaintenanceWorkOrderStatus.IN_PROGRESS.value,
+                updated_by=payload.actor_id,
+            )
+            await self._record_work_order_event(
+                work_order_id=item.id,
+                event_type=MaintenanceWorkOrderEventType.RESUMED.value,
+                previous_status=previous_status,
+                new_status=MaintenanceWorkOrderStatus.IN_PROGRESS.value,
+                event_at=payload.acted_at,
+                performed_by=payload.actor_id,
+                reason=payload.notes,
+            )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
+        return await self.get_work_order(work_order_id)
+
+    async def cancel_work_order(
+        self,
+        work_order_id,
+        payload: MaintenanceRequestActionPayload,
+    ) -> MaintenanceWorkOrder:
+        item = await self.get_work_order(work_order_id)
+        if item.status not in {
+            MaintenanceWorkOrderStatus.DRAFT.value,
+            MaintenanceWorkOrderStatus.WAITING_APPROVAL.value,
+            MaintenanceWorkOrderStatus.APPROVED.value,
+            MaintenanceWorkOrderStatus.PLANNED.value,
+            MaintenanceWorkOrderStatus.ASSIGNED.value,
+            MaintenanceWorkOrderStatus.ON_HOLD.value,
+        }:
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_INVALID_STATUS",
+                message="Work order pada status saat ini tidak dapat dibatalkan.",
+                status_code=409,
+            )
+        try:
+            previous_status = item.status
+            await self.work_orders.update(
+                item,
+                status=MaintenanceWorkOrderStatus.CANCELLED.value,
+                updated_by=payload.actor_id,
+            )
+            await self._record_work_order_event(
+                work_order_id=item.id,
+                event_type=MaintenanceWorkOrderEventType.CANCELLED.value,
+                previous_status=previous_status,
+                new_status=MaintenanceWorkOrderStatus.CANCELLED.value,
+                event_at=payload.acted_at,
+                performed_by=payload.actor_id,
+                reason=payload.notes,
+            )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
+        return await self.get_work_order(work_order_id)
+
     async def complete_work_order(
         self,
         work_order_id,
         payload: MaintenanceWorkOrderCompletePayload,
     ) -> MaintenanceWorkOrder:
         item = await self.get_work_order(work_order_id)
-        if item.status != MaintenanceWorkOrderStatus.IN_PROGRESS.value:
+        if item.status not in {
+            MaintenanceWorkOrderStatus.IN_PROGRESS.value,
+            MaintenanceWorkOrderStatus.ON_HOLD.value,
+        }:
             raise AppError(
                 code="MAINTENANCE_WORK_ORDER_INVALID_STATUS",
-                message="Hanya work order IN_PROGRESS yang dapat diselesaikan.",
+                message="Hanya work order IN_PROGRESS atau ON_HOLD yang dapat diselesaikan.",
                 status_code=409,
             )
         if payload.acted_at < item.actual_start_at:

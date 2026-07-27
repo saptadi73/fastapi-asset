@@ -51,6 +51,7 @@ from app.modules.assets.repository import (
 )
 from app.modules.assets.schemas import (
     AssetAssignmentCreate,
+    AssetAssignmentReturnPayload,
     AssetAttributeDefinitionCreate,
     AssetAttributeValueCreate,
     AssetCategoryCreate,
@@ -691,6 +692,58 @@ class AssetRegistryService:
         await self.get_asset(asset_id)
         items = await self.assignments.list_by_asset(asset_id)
         return list(items)
+
+    async def return_assignment(
+        self,
+        assignment_id: UUID,
+        payload: AssetAssignmentReturnPayload,
+    ) -> AssetAssignment:
+        assignment = await self.assignments.get(assignment_id)
+        if assignment is None:
+            raise AppError(
+                code="ASSET_ASSIGNMENT_NOT_FOUND",
+                message="Assignment asset tidak ditemukan.",
+                status_code=404,
+            )
+        if assignment.returned_at is not None:
+            raise AppError(
+                code="ASSET_ASSIGNMENT_ALREADY_RETURNED",
+                message="Assignment asset sudah dikembalikan sebelumnya.",
+                status_code=409,
+            )
+        if payload.returned_at < assignment.assigned_at:
+            raise AppError(
+                code="ASSET_ASSIGNMENT_RETURN_TIME_INVALID",
+                message="returned_at tidak boleh lebih kecil dari assigned_at.",
+                status_code=422,
+            )
+
+        asset = await self.get_asset(assignment.asset_id)
+        try:
+            await self.assignments.close_assignment(
+                assignment,
+                returned_at=payload.returned_at,
+            )
+            assignment.released_by_employee_at = (
+                payload.released_by_employee_at or payload.returned_at
+            )
+            if payload.notes:
+                assignment.notes = payload.notes
+            await self.session.flush()
+
+            if (
+                assignment.assignment_type == AssignmentType.PRIMARY_CUSTODIAN.value
+                and asset.current_primary_custodian_id == assignment.employee_id
+            ):
+                await self.assets.update(asset, current_primary_custodian_id=None)
+
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
+
+        items = await self.assignments.list_by_asset(assignment.asset_id)
+        return items[0]
 
     async def create_status_change(
         self,

@@ -14,6 +14,7 @@ from app.api.dependencies import (
 from app.modules.assets.schemas import (
     AssetAssignmentCreate,
     AssetAssignmentRead,
+    AssetAssignmentReturnPayload,
     AssetAttributeDefinitionCreate,
     AssetAttributeDefinitionRead,
     AssetAttributeValueCreate,
@@ -512,6 +513,25 @@ async def create_asset_assignment(
     return success_response(
         request=request,
         message="Assignment asset berhasil dibuat.",
+        data=AssetAssignmentRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post(
+    "/assignments/{assignment_id}/return",
+    dependencies=[Depends(require_asset_write)],
+)
+async def return_asset_assignment(
+    request: Request,
+    assignment_id: UUID,
+    payload: AssetAssignmentReturnPayload,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AssetRegistryService(session)
+    item = await service.return_assignment(assignment_id, payload)
+    return success_response(
+        request=request,
+        message="Assignment asset berhasil dikembalikan.",
         data=AssetAssignmentRead.model_validate(item).model_dump(mode="json"),
     )
 

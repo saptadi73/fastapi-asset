@@ -448,6 +448,10 @@ class AssetAssignmentRepository:
         await self.session.flush()
         return assignment
 
+    async def get(self, assignment_id: UUID) -> AssetAssignment | None:
+        stmt = select(AssetAssignment).where(AssetAssignment.id == assignment_id)
+        return await self.session.scalar(stmt)
+
     async def get_active_primary_custodian(self, asset_id: UUID) -> AssetAssignment | None:
         stmt = (
             select(AssetAssignment)
