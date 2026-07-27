@@ -45,180 +45,180 @@
     },
     {
       "key": "business_partner_id",
-      "value": "19bc0e21-2911-4e36-be29-986021b39521",
+      "value": "43ce9475-6cd3-46c4-b036-51b713a9d310",
       "type": "default",
       "enabled": true
     },
     {
       "key": "asset_category_id",
-      "value": "7f5300a3-71ae-4bb5-9504-bfdee1a00848",
+      "value": "f01e079e-713b-4e9a-9c1f-ba1acf149746",
       "type": "default",
       "enabled": true
     },
     {
       "key": "asset_class_id",
-      "value": "b39a1d87-fc5a-4ddc-ac8f-fde73c728960",
+      "value": "1b4f5a01-73e8-4ab0-8886-1d73bbd327f0",
       "type": "default",
       "enabled": true
     },
     {
       "key": "origin_location_id",
-      "value": "8128f270-754e-4aca-8214-1be91b7748a2",
+      "value": "3ef35a10-96f0-4e76-ba1c-7de278667db9",
       "type": "default",
       "enabled": true
     },
     {
       "key": "destination_location_id",
-      "value": "1cad4d4b-6da5-4976-a58f-6c58f35def0f",
+      "value": "e21b9fe5-1fe0-4310-be98-e18f54aa2edf",
       "type": "default",
       "enabled": true
     },
     {
       "key": "asset_attribute_definition_id",
-      "value": "745ae65b-67e6-4131-9bb5-33868b3d2a21",
+      "value": "ceb4a846-0cb3-46ff-ba8c-cda03b2bf8f3",
       "type": "default",
       "enabled": true
     },
     {
       "key": "asset_id",
-      "value": "4660c45e-977b-4e7d-8f70-e76575960731",
+      "value": "52c6e820-3270-4972-b698-0e3bb81d001e",
       "type": "default",
       "enabled": true
     },
     {
       "key": "asset_tag_number",
-      "value": "TAG-20260727223012-ED7B80",
+      "value": "TAG-20260727223545-3D6BDA",
       "type": "default",
       "enabled": true
     },
     {
       "key": "asset_assignment_id",
-      "value": "ea4f9aca-e2e4-4022-a11f-c8823eb7eb6d",
+      "value": "0526e9b9-831c-4f06-9ae4-dcab0509dc5a",
       "type": "default",
       "enabled": true
     },
     {
       "key": "asset_transfer_id",
-      "value": "956d5a2c-ea1e-4957-9d2c-df4588b5df02",
+      "value": "b74dc942-8e1a-4b43-8584-e84c13da26bf",
       "type": "default",
       "enabled": true
     },
     {
       "key": "stocktake_id",
-      "value": "0eff1bbe-326a-41ac-b530-7ad70e480f12",
+      "value": "2a3fe3bc-fbea-46f5-9e7d-eddac2d591ae",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_priority_id",
-      "value": "ceddd89b-6b92-431d-b05d-cae7b1074ea9",
+      "value": "2c7f9f2b-5df7-4277-b7fe-66b0fcb50fd2",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_contract_id",
-      "value": "f6047c70-f975-4b61-a65d-2bf889f1988a",
+      "value": "ef412f90-9221-42ef-a04f-523ad670f278",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_symptom_code_id",
-      "value": "87d05273-403c-48b0-aaf3-bee9de4710f3",
+      "value": "0e9d68a9-d59b-48b4-b303-caa6a1eb5198",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_failure_mode_id",
-      "value": "08c43d47-0619-48e1-9c1f-1486a98e2f5a",
+      "value": "5ec3b9d0-1608-4563-9017-d158dcd62319",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_root_cause_code_id",
-      "value": "c48b5b0e-5855-4a34-94a1-3c897bf85849",
+      "value": "0df52a08-be90-4911-a771-a1d6de94f48d",
       "type": "default",
       "enabled": true
     },
     {
       "key": "asset_warranty_id",
-      "value": "5ac1d447-9355-4085-8939-f296c5360990",
+      "value": "fbfbbfff-47b1-4b17-9fb7-948e2a1f61b5",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_checklist_template_id",
-      "value": "5cbedb94-e8ba-4beb-8684-8fcfaa0d68a3",
+      "value": "9680344c-4ad9-4d22-b20b-7564560f3deb",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_checklist_template_item_id",
-      "value": "5ba5f824-a0f5-42ec-8727-3cc7daa9fcd9",
+      "value": "1e98bf4b-af55-4633-8803-b34169144d1f",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_team_id",
-      "value": "ba7bdead-2e45-4fae-a303-b6a3b6cd7064",
+      "value": "a1b88fce-4ba8-4721-bff6-d5b9044c2ee6",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_plan_id",
-      "value": "06b4c723-6d38-4b1a-9a97-95e86d31a678",
+      "value": "b23e0448-1f2b-4c76-bbe7-f3a450492c2b",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_schedule_id",
-      "value": "50d76f61-4aea-4bb5-af63-1aeb5c637ca0",
+      "value": "9b2d87bc-d66d-411f-882d-5007be2dd4eb",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_request_id",
-      "value": "928239e2-389b-4289-b811-e4e0bfd7ae84",
+      "value": "ffdb3861-76a7-4e41-8ca6-e416aa890e94",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_request_attachment_id",
-      "value": "56a36358-48b0-4734-bcbd-a68aced3ceb8",
+      "value": "fa695627-bded-43ac-b095-b35cc159654c",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_work_order_id",
-      "value": "d57b0dc8-64e6-4f08-b6a9-836dc5d84198",
+      "value": "a8288a34-426e-4707-8632-c03f204f194f",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_cancelled_work_order_id",
-      "value": "9485f196-271a-4835-89ea-70a66a86fa59",
+      "value": "705a999a-56e9-4f50-bfa0-d31525d9404e",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_failure_id",
-      "value": "8f611bb8-f403-4586-9297-e3ba33ff4628",
+      "value": "a0ac25ab-b517-4ec8-a602-919054552323",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_checklist_execution_id",
-      "value": "7c6affd8-3954-4550-ab3d-ff7d05bc4ac0",
+      "value": "f2570dbb-8c0e-439d-8742-f6618871b1ed",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_finding_id",
-      "value": "38902a1c-180d-4cb4-8b96-c25d54bd55c3",
+      "value": "09e783b2-4314-40a4-bfef-30dcb40d7674",
       "type": "default",
       "enabled": true
     }
   ],
   "_postman_variable_scope": "environment",
-  "_postman_exported_at": "2026-07-27T22:30:17.091459Z",
+  "_postman_exported_at": "2026-07-27T22:35:49.949937Z",
   "_postman_exported_using": "Codex smoke seed exporter"
 }

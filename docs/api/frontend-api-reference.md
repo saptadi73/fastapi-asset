@@ -926,6 +926,17 @@ Kemampuan backend yang sekarang aktif:
 - default SLA target dari contract atau priority bila frontend tidak mengirim
   target manual
 
+### `GET /maintenance/requests/{request_id}/sla-snapshots`
+
+Mengambil histori snapshot SLA untuk satu maintenance request.
+
+Use case frontend:
+
+- panel SLA pada request detail
+- audit target historis walaupun master priority atau contract berubah
+- indikator escalation dasar berdasarkan `snapshot_payload.escalation_due_at`
+  dan `snapshot_payload.escalation_triggered`
+
 ### `POST /maintenance/requests/{request_id}/approve`
 
 Status:

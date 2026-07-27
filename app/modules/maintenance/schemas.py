@@ -646,6 +646,25 @@ class MaintenanceSlaReportRead(BaseModel):
     resolution_sla_compliance_pct: Decimal
 
 
+class MaintenanceSlaSnapshotRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    maintenance_request_id: UUID
+    maintenance_contract_id: UUID | None
+    priority_id: UUID
+    response_target_minutes: int | None
+    resolution_target_minutes: int | None
+    response_due_at: datetime | None
+    resolution_due_at: datetime | None
+    responded_at: datetime | None
+    resolved_at: datetime | None
+    response_breached: bool
+    resolution_breached: bool
+    snapshot_payload: dict
+    created_at: datetime
+
+
 class MaintenanceReliabilityReportRead(BaseModel):
     generated_at: datetime
     completed_repair_count: int

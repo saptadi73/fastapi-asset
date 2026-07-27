@@ -185,6 +185,9 @@ class MaintenanceRequest(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     asset_location = relationship("AssetLocation")
     requested_vendor_partner = relationship("BusinessPartner")
     work_orders: Mapped[list[MaintenanceRequestWorkOrder]] = relationship(back_populates="request")
+    sla_snapshots: Mapped[list[MaintenanceSlaSnapshot]] = relationship(
+        back_populates="maintenance_request"
+    )
 
 
 class MaintenanceWorkOrder(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -267,6 +270,32 @@ class MaintenanceWorkOrder(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     labor_logs: Mapped[list[MaintenanceLaborLog]] = relationship(back_populates="work_order")
     downtimes: Mapped[list[MaintenanceDowntime]] = relationship(back_populates="work_order")
     events: Mapped[list[MaintenanceWorkOrderEvent]] = relationship(back_populates="work_order")
+
+
+class MaintenanceSlaSnapshot(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "maintenance_sla_snapshots"
+
+    maintenance_request_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_requests.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    maintenance_contract_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    priority_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_priorities.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    response_target_minutes: Mapped[int | None] = mapped_column(Integer)
+    resolution_target_minutes: Mapped[int | None] = mapped_column(Integer)
+    response_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolution_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    response_breached: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    resolution_breached: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    snapshot_payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+
+    maintenance_request: Mapped[MaintenanceRequest] = relationship(back_populates="sla_snapshots")
+    priority: Mapped[MaintenancePriority] = relationship()
 
 
 class MaintenanceRequestWorkOrder(UUIDPrimaryKeyMixin, Base):

@@ -29,6 +29,7 @@ from app.modules.maintenance.models import (
     MaintenanceRequestWorkOrder,
     MaintenanceRootCauseCode,
     MaintenanceSchedule,
+    MaintenanceSlaSnapshot,
     MaintenanceSymptomCode,
     MaintenanceTeam,
     MaintenanceTeamMember,
@@ -89,7 +90,9 @@ class MaintenanceContractRepository:
             select(MaintenanceContract)
             .options(
                 selectinload(MaintenanceContract.vendor_partner),
-                selectinload(MaintenanceContract.coverages),
+                selectinload(MaintenanceContract.coverages).selectinload(
+                    MaintenanceContractAsset.asset
+                ),
             )
             .order_by(MaintenanceContract.contract_number.asc())
         )
@@ -702,7 +705,13 @@ class MaintenanceRequestRepository:
         await self.session.flush()
         await self.session.refresh(
             item,
-            attribute_names=["asset", "priority", "asset_location", "work_orders"],
+            attribute_names=[
+                "asset",
+                "priority",
+                "asset_location",
+                "work_orders",
+                "sla_snapshots",
+            ],
         )
         return item
 
@@ -716,6 +725,7 @@ class MaintenanceRequestRepository:
                 selectinload(MaintenanceRequest.work_orders).selectinload(
                     MaintenanceRequestWorkOrder.work_order
                 ),
+                selectinload(MaintenanceRequest.sla_snapshots),
             )
             .where(MaintenanceRequest.id == request_id)
         )
@@ -727,6 +737,7 @@ class MaintenanceRequestRepository:
             selectinload(MaintenanceRequest.priority),
             selectinload(MaintenanceRequest.asset_location),
             selectinload(MaintenanceRequest.work_orders),
+            selectinload(MaintenanceRequest.sla_snapshots),
         )
         count_stmt = select(func.count()).select_from(MaintenanceRequest)
         if pagination.search:
@@ -754,9 +765,38 @@ class MaintenanceRequestRepository:
         await self.session.flush()
         await self.session.refresh(
             item,
-            attribute_names=["asset", "priority", "asset_location", "work_orders"],
+            attribute_names=[
+                "asset",
+                "priority",
+                "asset_location",
+                "work_orders",
+                "sla_snapshots",
+            ],
         )
         return item
+
+
+class MaintenanceSlaSnapshotRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenanceSlaSnapshot) -> MaintenanceSlaSnapshot:
+        self.session.add(item)
+        await self.session.flush()
+        return item
+
+    async def list_by_request(self, request_id: UUID) -> Sequence[MaintenanceSlaSnapshot]:
+        stmt = (
+            select(MaintenanceSlaSnapshot)
+            .options(selectinload(MaintenanceSlaSnapshot.priority))
+            .where(MaintenanceSlaSnapshot.maintenance_request_id == request_id)
+            .order_by(
+                MaintenanceSlaSnapshot.created_at.desc(),
+                MaintenanceSlaSnapshot.response_due_at.desc(),
+            )
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
 
 
 class MaintenanceWorkOrderRepository:

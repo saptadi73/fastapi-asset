@@ -397,6 +397,8 @@ Panel tambahan yang direkomendasikan pada request detail:
 - vendor hasil coverage
 - target SLA response
 - target SLA resolution
+- histori SLA snapshot
+- indikator escalation response
 
 ### 6.3 Maintenance Work Orders
 

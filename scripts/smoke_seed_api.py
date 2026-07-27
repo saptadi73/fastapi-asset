@@ -1283,6 +1283,11 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
             },
         )
         await runner.call(
+            "GET",
+            f"{API_PREFIX}/maintenance/requests/{request_id}/sla-snapshots",
+            label="list maintenance request sla snapshots",
+        )
+        await runner.call(
             "POST",
             f"{API_PREFIX}/maintenance/requests/{request_id}/approve",
             label="approve maintenance request",

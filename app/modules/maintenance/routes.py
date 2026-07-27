@@ -62,6 +62,7 @@ from app.modules.maintenance.schemas import (
     MaintenanceScheduleRead,
     MaintenanceScheduleReschedulePayload,
     MaintenanceSlaReportRead,
+    MaintenanceSlaSnapshotRead,
     MaintenanceTeamCreate,
     MaintenanceTeamListItemRead,
     MaintenanceTeamMemberCreate,
@@ -690,6 +691,27 @@ async def approve_maintenance_request(
         request=request,
         message="Maintenance request berhasil diapprove.",
         data=MaintenanceRequestRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get(
+    "/requests/{request_id}/sla-snapshots",
+    dependencies=[Depends(require_maintenance_read)],
+)
+async def list_maintenance_request_sla_snapshots(
+    request: Request,
+    request_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.list_request_sla_snapshots(request_id)
+    return success_response(
+        request=request,
+        message="Daftar SLA snapshot maintenance request berhasil diambil.",
+        data=[
+            MaintenanceSlaSnapshotRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
     )
 
 

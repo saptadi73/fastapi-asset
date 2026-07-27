@@ -125,8 +125,8 @@ Status:
 - [x] validasi coverage maintenance contract saat triage request
 - [x] validasi coverage warranty saat triage request
 - [x] validasi coverage saat convert request ke work order
-- [ ] snapshot SLA per request
-- [ ] aturan escalation SLA
+- [x] snapshot SLA per request
+- [x] aturan escalation SLA
 
 Alasan prioritas:
 

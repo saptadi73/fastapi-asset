@@ -67,6 +67,7 @@ from app.modules.maintenance.models import (
     MaintenanceRequestWorkOrder,
     MaintenanceRootCauseCode,
     MaintenanceSchedule,
+    MaintenanceSlaSnapshot,
     MaintenanceSymptomCode,
     MaintenanceTeam,
     MaintenanceTeamMember,
@@ -96,6 +97,7 @@ from app.modules.maintenance.repository import (
     MaintenanceRequestWorkOrderRepository,
     MaintenanceRootCauseCodeRepository,
     MaintenanceScheduleRepository,
+    MaintenanceSlaSnapshotRepository,
     MaintenanceSymptomCodeRepository,
     MaintenanceTeamMemberRepository,
     MaintenanceTeamRepository,
@@ -174,6 +176,7 @@ class MaintenanceService:
         self.events = MaintenanceWorkOrderEventRepository(session)
         self.reports = MaintenanceReportRepository(session)
         self.requests = MaintenanceRequestRepository(session)
+        self.sla_snapshots = MaintenanceSlaSnapshotRepository(session)
         self.work_orders = MaintenanceWorkOrderRepository(session)
         self.request_work_orders = MaintenanceRequestWorkOrderRepository(session)
         self.assignments = MaintenanceWorkOrderAssignmentRepository(session)
@@ -1725,6 +1728,13 @@ class MaintenanceService:
             raise MaintenanceRequestNotFoundError(str(request_id))
         return item
 
+    async def list_request_sla_snapshots(
+        self,
+        request_id: UUID,
+    ) -> list[MaintenanceSlaSnapshot]:
+        await self.get_request(request_id)
+        return list(await self.sla_snapshots.list_by_request(request_id))
+
     async def submit_request(
         self,
         request_id,
@@ -1804,7 +1814,7 @@ class MaintenanceService:
         changes["requested_vendor_partner_id"] = requested_vendor_partner_id
 
         response_at, resolution_at = self._derive_sla_targets(
-            acted_at=payload.acted_at,
+            base_at=item.reported_at,
             priority=priority,
             contract=contract_coverage.contract if contract_coverage else None,
             requested_response_at=payload.required_response_at,
@@ -1814,6 +1824,16 @@ class MaintenanceService:
         changes["required_resolution_at"] = resolution_at
         try:
             await self.requests.update(item, **changes)
+            await self.sla_snapshots.create(
+                self._build_sla_snapshot(
+                    request=item,
+                    priority=priority,
+                    contract=contract_coverage.contract if contract_coverage else None,
+                    response_due_at=response_at,
+                    resolution_due_at=resolution_at,
+                    responded_at=payload.acted_at,
+                )
+            )
             await self.session.commit()
         except Exception:
             await self.session.rollback()
@@ -2087,7 +2107,7 @@ class MaintenanceService:
     def _derive_sla_targets(
         self,
         *,
-        acted_at: datetime,
+        base_at: datetime,
         priority: MaintenancePriority,
         contract: MaintenanceContract | None,
         requested_response_at: datetime | None,
@@ -2097,15 +2117,79 @@ class MaintenanceService:
         resolution_at = requested_resolution_at
         if response_at is None:
             if contract is not None and contract.response_time_hours is not None:
-                response_at = acted_at + timedelta(hours=float(contract.response_time_hours))
+                response_at = base_at + timedelta(hours=float(contract.response_time_hours))
             elif priority.default_response_minutes is not None:
-                response_at = acted_at + timedelta(minutes=priority.default_response_minutes)
+                response_at = base_at + timedelta(minutes=priority.default_response_minutes)
         if resolution_at is None:
             if contract is not None and contract.resolution_time_hours is not None:
-                resolution_at = acted_at + timedelta(hours=float(contract.resolution_time_hours))
+                resolution_at = base_at + timedelta(hours=float(contract.resolution_time_hours))
             elif priority.default_resolution_minutes is not None:
-                resolution_at = acted_at + timedelta(minutes=priority.default_resolution_minutes)
+                resolution_at = base_at + timedelta(minutes=priority.default_resolution_minutes)
         return response_at, resolution_at
+
+    def _build_sla_snapshot(
+        self,
+        *,
+        request: MaintenanceRequest,
+        priority: MaintenancePriority,
+        contract: MaintenanceContract | None,
+        response_due_at: datetime | None,
+        resolution_due_at: datetime | None,
+        responded_at: datetime | None,
+    ) -> MaintenanceSlaSnapshot:
+        response_target_minutes: int | None = None
+        resolution_target_minutes: int | None = None
+        if contract is not None and contract.response_time_hours is not None:
+            response_target_minutes = int(contract.response_time_hours * 60)
+        elif priority.default_response_minutes is not None:
+            response_target_minutes = priority.default_response_minutes
+
+        if contract is not None and contract.resolution_time_hours is not None:
+            resolution_target_minutes = int(contract.resolution_time_hours * 60)
+        elif priority.default_resolution_minutes is not None:
+            resolution_target_minutes = priority.default_resolution_minutes
+
+        escalation_due_at = None
+        escalation_triggered = False
+        if response_due_at is not None and priority.escalation_after_minutes is not None:
+            escalation_due_at = response_due_at + timedelta(
+                minutes=priority.escalation_after_minutes
+            )
+            if responded_at is not None:
+                escalation_triggered = responded_at > escalation_due_at
+
+        response_breached = (
+            responded_at is not None
+            and response_due_at is not None
+            and responded_at > response_due_at
+        )
+
+        snapshot_payload = {
+            "snapshot_source": "TRIAGE",
+            "request_number": request.request_number,
+            "reported_at": request.reported_at.isoformat(),
+            "priority_code": priority.code,
+            "priority_name": priority.name,
+            "priority_escalation_after_minutes": priority.escalation_after_minutes,
+            "contract_number": contract.contract_number if contract is not None else None,
+            "contract_type": contract.contract_type if contract is not None else None,
+            "escalation_due_at": escalation_due_at.isoformat() if escalation_due_at else None,
+            "escalation_triggered": escalation_triggered,
+        }
+        return MaintenanceSlaSnapshot(
+            maintenance_request_id=request.id,
+            maintenance_contract_id=contract.id if contract is not None else None,
+            priority_id=priority.id,
+            response_target_minutes=response_target_minutes,
+            resolution_target_minutes=resolution_target_minutes,
+            response_due_at=response_due_at,
+            resolution_due_at=resolution_due_at,
+            responded_at=responded_at,
+            resolved_at=None,
+            response_breached=response_breached,
+            resolution_breached=False,
+            snapshot_payload=snapshot_payload,
+        )
 
     def _contract_covers_request_type(
         self,
