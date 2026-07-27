@@ -122,9 +122,9 @@ fondasi saat ini stabil, karena efeknya langsung ke workflow operasional.
 
 Status:
 
-- [ ] validasi coverage maintenance contract saat triage request
-- [ ] validasi coverage warranty saat triage request
-- [ ] validasi coverage saat convert request ke work order
+- [x] validasi coverage maintenance contract saat triage request
+- [x] validasi coverage warranty saat triage request
+- [x] validasi coverage saat convert request ke work order
 - [ ] snapshot SLA per request
 - [ ] aturan escalation SLA
 
@@ -188,7 +188,7 @@ Tahap ini cocok setelah backlog prioritas MVP+ mulai tertutup.
 
 Status:
 
-- [ ] asset warranties
+- [x] asset warranties
 - [ ] warranty claims
 - [ ] expiry monitoring
 
@@ -201,8 +201,8 @@ Manfaat:
 
 Status:
 
-- [ ] maintenance contracts
-- [ ] maintenance contract assets
+- [x] maintenance contracts
+- [x] maintenance contract assets
 - [ ] coverage start/end
 - [ ] preventive/corrective inclusion flags
 

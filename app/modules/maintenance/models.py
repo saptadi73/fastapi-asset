@@ -35,6 +35,100 @@ class MaintenancePriority(UUIDPrimaryKeyMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
 
+class MaintenanceContract(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "maintenance_contracts"
+
+    contract_number: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    contract_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    vendor_partner_id: Mapped[UUID] = mapped_column(
+        ForeignKey("business_partners.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    contract_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    start_date: Mapped[date] = mapped_column(nullable=False)
+    end_date: Mapped[date] = mapped_column(nullable=False)
+    response_time_hours: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    resolution_time_hours: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    preventive_maintenance_included: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+    corrective_maintenance_included: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        nullable=False,
+    )
+    spare_parts_included: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    labor_included: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    onsite_support_included: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    remote_support_included: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    contract_value: Mapped[Decimal] = mapped_column(Numeric(20, 4), default=0, nullable=False)
+    currency_code: Mapped[str | None] = mapped_column(String(3))
+    billing_frequency: Mapped[str | None] = mapped_column(String(20))
+    auto_renewal: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    notice_period_days: Mapped[int | None] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    sap_purchase_contract_reference: Mapped[str | None] = mapped_column(String(100))
+
+    vendor_partner = relationship("BusinessPartner")
+    coverages: Mapped[list[MaintenanceContractAsset]] = relationship(
+        back_populates="contract"
+    )
+
+
+class MaintenanceContractAsset(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_contract_assets"
+    __table_args__ = (
+        UniqueConstraint(
+            "maintenance_contract_id",
+            "asset_id",
+            "coverage_start_date",
+            name="uq_maintenance_contract_assets_contract_asset_start",
+        ),
+    )
+
+    maintenance_contract_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_contracts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    asset_id: Mapped[UUID] = mapped_column(
+        ForeignKey("assets.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    coverage_start_date: Mapped[date] = mapped_column(nullable=False)
+    coverage_end_date: Mapped[date] = mapped_column(nullable=False)
+    coverage_level: Mapped[str] = mapped_column(String(30), nullable=False)
+    annual_allocation_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+    specific_exclusions: Mapped[str | None] = mapped_column(Text)
+
+    contract: Mapped[MaintenanceContract] = relationship(back_populates="coverages")
+    asset = relationship("Asset")
+
+
+class AssetWarranty(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "asset_warranties"
+
+    asset_id: Mapped[UUID] = mapped_column(
+        ForeignKey("assets.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    warranty_provider_partner_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("business_partners.id", ondelete="SET NULL")
+    )
+    warranty_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    warranty_number: Mapped[str | None] = mapped_column(String(100))
+    coverage_start_date: Mapped[date] = mapped_column(nullable=False)
+    coverage_end_date: Mapped[date] = mapped_column(nullable=False)
+    claim_deadline_date: Mapped[date | None] = mapped_column(nullable=True)
+    coverage_scope: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    asset = relationship("Asset")
+    warranty_provider_partner = relationship("BusinessPartner")
+
+
 class MaintenanceRequest(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "maintenance_requests"
 

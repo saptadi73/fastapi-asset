@@ -58,6 +58,115 @@ class MaintenancePriorityRead(BaseModel):
     is_active: bool
 
 
+class MaintenanceContractCreate(BaseModel):
+    contract_number: str = Field(max_length=100)
+    contract_name: str = Field(max_length=200)
+    vendor_partner_id: UUID
+    contract_type: str = Field(max_length=30)
+    start_date: date
+    end_date: date
+    response_time_hours: Decimal | None = None
+    resolution_time_hours: Decimal | None = None
+    preventive_maintenance_included: bool = False
+    corrective_maintenance_included: bool = True
+    spare_parts_included: bool = False
+    labor_included: bool = False
+    onsite_support_included: bool = False
+    remote_support_included: bool = False
+    contract_value: Decimal = Decimal("0")
+    currency_code: str | None = Field(default=None, min_length=3, max_length=3)
+    billing_frequency: str | None = Field(default=None, max_length=20)
+    auto_renewal: bool = False
+    notice_period_days: int | None = Field(default=None, ge=0)
+    status: str = Field(max_length=20)
+    sap_purchase_contract_reference: str | None = Field(default=None, max_length=100)
+
+
+class MaintenanceContractAssetCreate(BaseModel):
+    asset_id: UUID
+    coverage_start_date: date
+    coverage_end_date: date
+    coverage_level: str = Field(max_length=30)
+    annual_allocation_amount: Decimal | None = None
+    specific_exclusions: str | None = None
+
+
+class MaintenanceContractAssetRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    maintenance_contract_id: UUID
+    asset_id: UUID
+    coverage_start_date: date
+    coverage_end_date: date
+    coverage_level: str
+    annual_allocation_amount: Decimal | None
+    specific_exclusions: str | None
+    asset: MaintenanceAssetReferenceRead
+
+
+class MaintenanceContractRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    contract_number: str
+    contract_name: str
+    vendor_partner_id: UUID
+    contract_type: str
+    start_date: date
+    end_date: date
+    response_time_hours: Decimal | None
+    resolution_time_hours: Decimal | None
+    preventive_maintenance_included: bool
+    corrective_maintenance_included: bool
+    spare_parts_included: bool
+    labor_included: bool
+    onsite_support_included: bool
+    remote_support_included: bool
+    contract_value: Decimal
+    currency_code: str | None
+    billing_frequency: str | None
+    auto_renewal: bool
+    notice_period_days: int | None
+    status: str
+    sap_purchase_contract_reference: str | None
+    created_at: datetime
+    updated_at: datetime
+    coverages: list[MaintenanceContractAssetRead] = []
+
+
+class AssetWarrantyCreate(BaseModel):
+    asset_id: UUID
+    warranty_provider_partner_id: UUID | None = None
+    warranty_type: str = Field(max_length=30)
+    warranty_number: str | None = Field(default=None, max_length=100)
+    coverage_start_date: date
+    coverage_end_date: date
+    claim_deadline_date: date | None = None
+    coverage_scope: str | None = None
+    status: str = Field(max_length=20)
+    notes: str | None = None
+
+
+class AssetWarrantyRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    asset_id: UUID
+    warranty_provider_partner_id: UUID | None
+    warranty_type: str
+    warranty_number: str | None
+    coverage_start_date: date
+    coverage_end_date: date
+    claim_deadline_date: date | None
+    coverage_scope: str | None
+    status: str
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime
+    asset: MaintenanceAssetReferenceRead
+
+
 class MaintenanceMasterCodeCreate(BaseModel):
     code: str = Field(max_length=50)
     name: str = Field(max_length=150)
@@ -121,6 +230,8 @@ class MaintenanceRequestTriagePayload(BaseModel):
     priority_id: UUID | None = None
     asset_location_id: UUID | None = None
     operating_condition: str | None = None
+    maintenance_contract_id: UUID | None = None
+    warranty_id: UUID | None = None
     requested_vendor_partner_id: UUID | None = None
     required_response_at: datetime | None = None
     required_resolution_at: datetime | None = None

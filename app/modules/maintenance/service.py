@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -48,10 +48,13 @@ from app.modules.maintenance.exceptions import (
 )
 from app.modules.maintenance.models import (
     AssetFailure,
+    AssetWarranty,
     MaintenanceChecklistExecution,
     MaintenanceChecklistResult,
     MaintenanceChecklistTemplate,
     MaintenanceChecklistTemplateItem,
+    MaintenanceContract,
+    MaintenanceContractAsset,
     MaintenanceDowntime,
     MaintenanceFailureMode,
     MaintenanceFinding,
@@ -73,10 +76,13 @@ from app.modules.maintenance.models import (
 )
 from app.modules.maintenance.repository import (
     AssetFailureRepository,
+    AssetWarrantyRepository,
     MaintenanceChecklistExecutionRepository,
     MaintenanceChecklistResultRepository,
     MaintenanceChecklistTemplateItemRepository,
     MaintenanceChecklistTemplateRepository,
+    MaintenanceContractAssetRepository,
+    MaintenanceContractRepository,
     MaintenanceDowntimeRepository,
     MaintenanceFailureModeRepository,
     MaintenanceFindingRepository,
@@ -101,11 +107,14 @@ from app.modules.maintenance.schemas import (
     AssetFailureCreate,
     AssetFailureUpdate,
     AssetMaintenanceHistoryItemRead,
+    AssetWarrantyCreate,
     MaintenanceBacklogReportRead,
     MaintenanceChecklistExecutionStartPayload,
     MaintenanceChecklistResultEntryCreate,
     MaintenanceChecklistResultSubmitPayload,
     MaintenanceChecklistTemplateCreate,
+    MaintenanceContractAssetCreate,
+    MaintenanceContractCreate,
     MaintenanceConvertToWorkOrderPayload,
     MaintenanceCostReportItemRead,
     MaintenanceDowntimeCreate,
@@ -145,6 +154,9 @@ class MaintenanceService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.priorities = MaintenancePriorityRepository(session)
+        self.contracts = MaintenanceContractRepository(session)
+        self.contract_assets = MaintenanceContractAssetRepository(session)
+        self.warranties = AssetWarrantyRepository(session)
         self.plans = MaintenancePlanRepository(session)
         self.plan_assets = MaintenancePlanAssetRepository(session)
         self.checklist_templates = MaintenanceChecklistTemplateRepository(session)
@@ -172,6 +184,140 @@ class MaintenanceService:
         self.asset_locations = AssetLocationRepository(session)
         self.asset_status_histories = AssetStatusHistoryRepository(session)
         self.partners = BusinessPartnerRepository(session)
+
+    async def create_contract(self, payload: MaintenanceContractCreate) -> MaintenanceContract:
+        if payload.end_date < payload.start_date:
+            raise AppError(
+                code="MAINTENANCE_CONTRACT_DATE_INVALID",
+                message="end_date contract tidak boleh lebih kecil dari start_date.",
+                status_code=422,
+            )
+        await self._get_partner_or_raise(payload.vendor_partner_id)
+        item = MaintenanceContract(**payload.model_dump())
+        try:
+            await self.contracts.create(item)
+            await self.session.commit()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise AppError(
+                code="MAINTENANCE_CONTRACT_CONFLICT",
+                message="Contract number maintenance sudah digunakan.",
+                status_code=409,
+            ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
+        return await self.get_contract(item.id)
+
+    async def list_contracts(self) -> list[MaintenanceContract]:
+        return list(await self.contracts.list())
+
+    async def get_contract(self, contract_id: UUID) -> MaintenanceContract:
+        item = await self.contracts.get(contract_id)
+        if item is None:
+            raise AppError(
+                code="MAINTENANCE_CONTRACT_NOT_FOUND",
+                message="Maintenance contract tidak ditemukan.",
+                status_code=404,
+            )
+        return item
+
+    async def add_contract_asset_coverage(
+        self,
+        contract_id: UUID,
+        payload: MaintenanceContractAssetCreate,
+    ) -> MaintenanceContractAsset:
+        contract = await self.get_contract(contract_id)
+        await self._get_asset_or_raise(payload.asset_id)
+        if payload.coverage_end_date < payload.coverage_start_date:
+            raise AppError(
+                code="MAINTENANCE_CONTRACT_COVERAGE_DATE_INVALID",
+                message="coverage_end_date tidak boleh lebih kecil dari coverage_start_date.",
+                status_code=422,
+            )
+        if (
+            payload.coverage_start_date < contract.start_date
+            or payload.coverage_end_date > contract.end_date
+        ):
+            raise AppError(
+                code="MAINTENANCE_CONTRACT_COVERAGE_OUTSIDE_CONTRACT",
+                message="Periode coverage asset harus berada di dalam periode contract.",
+                status_code=422,
+            )
+        item = MaintenanceContractAsset(
+            maintenance_contract_id=contract.id,
+            **payload.model_dump(),
+        )
+        try:
+            await self.contract_assets.create(item)
+            await self.session.commit()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise AppError(
+                code="MAINTENANCE_CONTRACT_COVERAGE_CONFLICT",
+                message="Coverage asset untuk contract menimbulkan konflik.",
+                status_code=409,
+            ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
+        created = await self.contract_assets.get_active_contract_coverage(
+            contract.id,
+            payload.asset_id,
+            as_of=payload.coverage_start_date,
+        )
+        if created is None:
+            raise AppError(
+                code="MAINTENANCE_CONTRACT_COVERAGE_NOT_FOUND",
+                message="Coverage asset contract tidak ditemukan setelah dibuat.",
+                status_code=500,
+            )
+        return created
+
+    async def create_warranty(self, payload: AssetWarrantyCreate) -> AssetWarranty:
+        await self._get_asset_or_raise(payload.asset_id)
+        if payload.warranty_provider_partner_id is not None:
+            await self._get_partner_or_raise(payload.warranty_provider_partner_id)
+        if payload.coverage_end_date < payload.coverage_start_date:
+            raise AppError(
+                code="ASSET_WARRANTY_DATE_INVALID",
+                message=(
+                    "coverage_end_date warranty tidak boleh lebih kecil dari "
+                    "coverage_start_date."
+                ),
+                status_code=422,
+            )
+        if (
+            payload.claim_deadline_date is not None
+            and payload.claim_deadline_date < payload.coverage_start_date
+        ):
+            raise AppError(
+                code="ASSET_WARRANTY_CLAIM_DEADLINE_INVALID",
+                message="claim_deadline_date warranty tidak valid.",
+                status_code=422,
+            )
+        item = AssetWarranty(**payload.model_dump())
+        try:
+            await self.warranties.create(item)
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
+        return await self.get_warranty(item.id)
+
+    async def list_asset_warranties(self, asset_id: UUID) -> list[AssetWarranty]:
+        await self._get_asset_or_raise(asset_id)
+        return list(await self.warranties.list_by_asset(asset_id))
+
+    async def get_warranty(self, warranty_id: UUID) -> AssetWarranty:
+        item = await self.warranties.get(warranty_id)
+        if item is None:
+            raise AppError(
+                code="ASSET_WARRANTY_NOT_FOUND",
+                message="Asset warranty tidak ditemukan.",
+                status_code=404,
+            )
+        return item
 
     async def create_symptom_code(
         self,
@@ -1627,18 +1773,45 @@ class MaintenanceService:
         if payload.priority_id is not None:
             priority = await self._get_priority_or_raise(payload.priority_id)
             changes["priority_id"] = priority.id
+        else:
+            priority = await self._get_priority_or_raise(item.priority_id)
         if payload.asset_location_id is not None:
             await self._get_location_or_raise(payload.asset_location_id)
             changes["asset_location_id"] = payload.asset_location_id
-        if payload.requested_vendor_partner_id is not None:
-            await self._get_partner_or_raise(payload.requested_vendor_partner_id)
-            changes["requested_vendor_partner_id"] = payload.requested_vendor_partner_id
         if payload.operating_condition is not None:
             changes["operating_condition"] = payload.operating_condition
-        if payload.required_response_at is not None:
-            changes["required_response_at"] = payload.required_response_at
-        if payload.required_resolution_at is not None:
-            changes["required_resolution_at"] = payload.required_resolution_at
+        contract_coverage = await self._resolve_contract_coverage(
+            item.asset_id,
+            contract_id=payload.maintenance_contract_id,
+            as_of=payload.acted_at.date(),
+            request_type=item.request_type,
+        )
+        warranty = await self._resolve_warranty_coverage(
+            item.asset_id,
+            warranty_id=payload.warranty_id,
+            as_of=payload.acted_at.date(),
+        )
+        changes["maintenance_contract_id"] = (
+            contract_coverage.contract.id if contract_coverage else None
+        )
+        changes["warranty_id"] = warranty.id if warranty else None
+
+        requested_vendor_partner_id = payload.requested_vendor_partner_id
+        if requested_vendor_partner_id is not None:
+            await self._get_partner_or_raise(requested_vendor_partner_id)
+        elif contract_coverage is not None:
+            requested_vendor_partner_id = contract_coverage.contract.vendor_partner_id
+        changes["requested_vendor_partner_id"] = requested_vendor_partner_id
+
+        response_at, resolution_at = self._derive_sla_targets(
+            acted_at=payload.acted_at,
+            priority=priority,
+            contract=contract_coverage.contract if contract_coverage else None,
+            requested_response_at=payload.required_response_at,
+            requested_resolution_at=payload.required_resolution_at,
+        )
+        changes["required_response_at"] = response_at
+        changes["required_resolution_at"] = resolution_at
         try:
             await self.requests.update(item, **changes)
             await self.session.commit()
@@ -1715,6 +1888,22 @@ class MaintenanceService:
         priority = await self._get_priority_or_raise(request.priority_id)
         if payload.vendor_partner_id is not None:
             await self._get_partner_or_raise(payload.vendor_partner_id)
+        entitlement_date = (
+            payload.planned_start_at.date()
+            if payload.planned_start_at
+            else request.reported_at.date()
+        )
+        contract_coverage = await self._resolve_contract_coverage(
+            request.asset_id,
+            contract_id=request.maintenance_contract_id,
+            as_of=entitlement_date,
+            request_type=request.request_type,
+        )
+        warranty = await self._resolve_warranty_coverage(
+            request.asset_id,
+            warranty_id=request.warranty_id,
+            as_of=entitlement_date,
+        )
         work_order = MaintenanceWorkOrder(
             work_order_number=payload.work_order_number,
             company_id=request.company_id,
@@ -1724,7 +1913,9 @@ class MaintenanceService:
             title=request.title,
             scope_of_work=payload.scope_of_work,
             execution_mode=payload.execution_mode.value,
-            vendor_partner_id=payload.vendor_partner_id,
+            vendor_partner_id=payload.vendor_partner_id or request.requested_vendor_partner_id,
+            maintenance_contract_id=contract_coverage.contract.id if contract_coverage else None,
+            warranty_id=warranty.id if warranty else None,
             planned_start_at=payload.planned_start_at,
             planned_end_at=payload.planned_end_at,
             asset_condition_before=asset.condition_status,
@@ -1824,6 +2015,109 @@ class MaintenanceService:
             await self.session.rollback()
             raise
         return await self.get_work_order(item.id)
+
+    async def _resolve_contract_coverage(
+        self,
+        asset_id: UUID,
+        *,
+        contract_id: UUID | None,
+        as_of: date,
+        request_type: str,
+    ) -> MaintenanceContractAsset | None:
+        if contract_id is not None:
+            coverage = await self.contract_assets.get_active_contract_coverage(
+                contract_id,
+                asset_id,
+                as_of=as_of,
+            )
+            if coverage is None or coverage.contract.status != "ACTIVE":
+                raise AppError(
+                    code="MAINTENANCE_CONTRACT_COVERAGE_NOT_ACTIVE",
+                    message=(
+                        "Maintenance contract tidak aktif atau tidak mencakup "
+                        "asset pada tanggal tersebut."
+                    ),
+                    status_code=422,
+                )
+            if not self._contract_covers_request_type(coverage.contract, request_type):
+                raise AppError(
+                    code="MAINTENANCE_CONTRACT_NOT_ELIGIBLE",
+                    message="Maintenance contract tidak mencakup tipe request ini.",
+                    status_code=422,
+                )
+            return coverage
+
+        coverages = await self.contract_assets.list_active_by_asset(asset_id, as_of=as_of)
+        for coverage in coverages:
+            if coverage.contract.status == "ACTIVE" and self._contract_covers_request_type(
+                coverage.contract,
+                request_type,
+            ):
+                return coverage
+        return None
+
+    async def _resolve_warranty_coverage(
+        self,
+        asset_id: UUID,
+        *,
+        warranty_id: UUID | None,
+        as_of: date,
+    ) -> AssetWarranty | None:
+        if warranty_id is not None:
+            warranty = await self.get_warranty(warranty_id)
+            if (
+                warranty.asset_id != asset_id
+                or warranty.status != "ACTIVE"
+                or warranty.coverage_start_date > as_of
+                or warranty.coverage_end_date < as_of
+            ):
+                raise AppError(
+                    code="ASSET_WARRANTY_NOT_ACTIVE",
+                    message="Warranty tidak aktif atau tidak mencakup asset pada tanggal tersebut.",
+                    status_code=422,
+                )
+            return warranty
+
+        active_warranties = await self.warranties.get_active_by_asset(asset_id, as_of=as_of)
+        for warranty in active_warranties:
+            if warranty.status == "ACTIVE":
+                return warranty
+        return None
+
+    def _derive_sla_targets(
+        self,
+        *,
+        acted_at: datetime,
+        priority: MaintenancePriority,
+        contract: MaintenanceContract | None,
+        requested_response_at: datetime | None,
+        requested_resolution_at: datetime | None,
+    ) -> tuple[datetime | None, datetime | None]:
+        response_at = requested_response_at
+        resolution_at = requested_resolution_at
+        if response_at is None:
+            if contract is not None and contract.response_time_hours is not None:
+                response_at = acted_at + timedelta(hours=float(contract.response_time_hours))
+            elif priority.default_response_minutes is not None:
+                response_at = acted_at + timedelta(minutes=priority.default_response_minutes)
+        if resolution_at is None:
+            if contract is not None and contract.resolution_time_hours is not None:
+                resolution_at = acted_at + timedelta(hours=float(contract.resolution_time_hours))
+            elif priority.default_resolution_minutes is not None:
+                resolution_at = acted_at + timedelta(minutes=priority.default_resolution_minutes)
+        return response_at, resolution_at
+
+    def _contract_covers_request_type(
+        self,
+        contract: MaintenanceContract,
+        request_type: str,
+    ) -> bool:
+        preventive_request_types = {
+            MaintenanceRequestType.CALIBRATION.value,
+        }
+        if request_type in preventive_request_types:
+            return contract.preventive_maintenance_included
+        return contract.corrective_maintenance_included
 
     async def list_work_orders(
         self,

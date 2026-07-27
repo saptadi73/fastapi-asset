@@ -668,6 +668,40 @@ Contoh request:
 
 Mengambil daftar priority untuk dropdown triage dan work order.
 
+### `POST /maintenance/contracts`
+
+Membuat master maintenance contract vendor.
+
+### `GET /maintenance/contracts`
+
+Mengambil daftar maintenance contract beserta coverage asset yang sudah
+terhubung.
+
+### `GET /maintenance/contracts/{contract_id}`
+
+Mengambil detail satu maintenance contract.
+
+### `POST /maintenance/contracts/{contract_id}/assets`
+
+Menambahkan coverage asset ke maintenance contract.
+
+Aturan backend yang sudah aktif:
+
+- periode coverage harus berada di dalam periode contract
+- kombinasi `contract`, `asset`, dan `coverage_start_date` harus unik
+
+### `POST /maintenance/warranties`
+
+Membuat master warranty untuk asset.
+
+### `GET /maintenance/assets/{asset_id}/warranties`
+
+Mengambil seluruh warranty milik asset tertentu.
+
+### `GET /maintenance/warranties/{warranty_id}`
+
+Mengambil detail satu warranty.
+
 ### `POST /maintenance/symptom-codes`
 
 Membuat master symptom code untuk klasifikasi gejala awal kerusakan.
@@ -834,6 +868,11 @@ Field penting untuk frontend:
 - `title`
 - `problem_description`
 
+Catatan entitlement:
+
+- request tetap dapat dibuat tanpa contract atau warranty
+- penentuan coverage aktif diproses pada tahap triage
+
 ### `GET /maintenance/requests`
 
 List maintenance request.
@@ -869,9 +908,23 @@ Endpoint ini dipakai supervisor/planner untuk memperbarui hasil triage seperti:
 - `priority_id`
 - `asset_location_id`
 - `operating_condition`
+- `maintenance_contract_id`
+- `warranty_id`
 - `requested_vendor_partner_id`
 - `required_response_at`
 - `required_resolution_at`
+
+Kemampuan backend yang sekarang aktif:
+
+- validasi contract aktif terhadap asset dan tanggal triage
+- validasi warranty aktif terhadap asset dan tanggal triage
+- auto-resolve contract aktif bila payload tidak mengirim contract tetapi asset
+  punya coverage yang cocok
+- auto-resolve warranty aktif bila payload tidak mengirim warranty tetapi asset
+  punya warranty aktif
+- default vendor dari contract bila frontend tidak mengirim vendor
+- default SLA target dari contract atau priority bila frontend tidak mengirim
+  target manual
 
 ### `POST /maintenance/requests/{request_id}/approve`
 
@@ -897,6 +950,14 @@ Status:
 
 - request `APPROVED` -> `CONVERTED_TO_WORK_ORDER`
 - work order baru dibuat dalam status `WAITING_APPROVAL`
+
+Validasi tambahan:
+
+- contract dan warranty yang sudah dipilih pada request akan dicek ulang saat
+  konversi
+- `maintenance_contract_id` dan `warranty_id` diwariskan ke work order
+- `vendor_partner_id` akan default ke vendor hasil triage bila frontend tidak
+  mengirim vendor eksplisit
 
 ### `POST /maintenance/work-orders`
 

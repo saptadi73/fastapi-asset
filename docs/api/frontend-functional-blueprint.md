@@ -329,8 +329,9 @@ Submenu yang direkomendasikan:
 5. Plans
 6. Failures & Findings
 7. Teams
-8. Checklist Templates
-9. Master Codes
+8. Contract & Warranty
+9. Checklist Templates
+10. Master Codes
 
 ### 6.2 Maintenance Requests
 
@@ -388,6 +389,14 @@ Frontend sebaiknya:
 - menonjolkan target SLA response dan resolution;
 - menampilkan hubungan request ke asset dan work order;
 - pada tab attachment, tampilkan versi aktif, histori versi, dan audit trail file.
+
+Panel tambahan yang direkomendasikan pada request detail:
+
+- contract aktif
+- warranty aktif
+- vendor hasil coverage
+- target SLA response
+- target SLA resolution
 
 ### 6.3 Maintenance Work Orders
 
@@ -471,6 +480,9 @@ Frontend sebaiknya:
 - memisahkan data transaksi per tab;
 - menyediakan panel cost summary dan event timeline;
 - pada tab attachment, sediakan version history, upload revisi file, dan audit trail.
+
+Jika work order berasal dari request yang sudah ditriage, frontend sebaiknya
+menampilkan badge entitlement untuk contract atau warranty yang sedang melekat.
 
 ### 6.4 Maintenance Schedules
 

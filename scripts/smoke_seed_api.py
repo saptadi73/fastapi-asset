@@ -427,7 +427,7 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
     token, login_payload = await login(base_url, admin_email, admin_password)
     runner = ApiSmokeRunner(base_url, token)
 
-    suffix = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+    suffix = f"{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}-{uuid4().hex[:6].upper()}"
     company_id = str(uuid4())
     branch_id = str(uuid4())
     department_id = str(uuid4())
@@ -997,6 +997,85 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
                 "is_primary": True,
             },
         )
+        contract = await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/contracts",
+            label="create maintenance contract",
+            json_body={
+                "contract_number": f"AMC-{suffix}",
+                "contract_name": f"AMC Smoke {suffix}",
+                "vendor_partner_id": partner_id,
+                "contract_type": "AMC",
+                "start_date": "2026-07-01",
+                "end_date": "2026-12-31",
+                "response_time_hours": "2",
+                "resolution_time_hours": "8",
+                "preventive_maintenance_included": True,
+                "corrective_maintenance_included": True,
+                "spare_parts_included": True,
+                "labor_included": True,
+                "onsite_support_included": True,
+                "remote_support_included": True,
+                "contract_value": "15000000",
+                "currency_code": "IDR",
+                "billing_frequency": "MONTHLY",
+                "auto_renewal": False,
+                "notice_period_days": 30,
+                "status": "ACTIVE",
+            },
+        )
+        contract_id = contract["data"]["id"]
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/maintenance/contracts",
+            label="list maintenance contracts",
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/maintenance/contracts/{contract_id}",
+            label="get maintenance contract",
+        )
+        await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/contracts/{contract_id}/assets",
+            label="create maintenance contract asset coverage",
+            json_body={
+                "asset_id": asset_id,
+                "coverage_start_date": "2026-07-01",
+                "coverage_end_date": "2026-12-31",
+                "coverage_level": "FULL",
+                "annual_allocation_amount": "5000000",
+                "specific_exclusions": "Tidak termasuk modifikasi design.",
+            },
+        )
+        warranty = await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/warranties",
+            label="create asset warranty",
+            json_body={
+                "asset_id": asset_id,
+                "warranty_provider_partner_id": partner_id,
+                "warranty_type": "MANUFACTURER",
+                "warranty_number": f"WAR-{suffix}",
+                "coverage_start_date": "2026-07-01",
+                "coverage_end_date": "2026-09-30",
+                "claim_deadline_date": "2026-10-15",
+                "coverage_scope": "Bearing dan motor assembly",
+                "status": "ACTIVE",
+                "notes": "Warranty smoke test",
+            },
+        )
+        warranty_id = warranty["data"]["id"]
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/maintenance/assets/{asset_id}/warranties",
+            label="list asset warranties",
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/maintenance/warranties/{warranty_id}",
+            label="get asset warranty",
+        )
 
         plan = await runner.call(
             "POST",
@@ -1197,7 +1276,8 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
                 "priority_id": priority_id,
                 "asset_location_id": origin_location_id,
                 "operating_condition": "RUNNING_WITH_VIBRATION",
-                "requested_vendor_partner_id": partner_id,
+                "maintenance_contract_id": contract_id,
+                "warranty_id": warranty_id,
                 "required_response_at": "2026-07-27T13:30:00Z",
                 "required_resolution_at": "2026-07-27T18:00:00Z",
             },
@@ -1643,9 +1723,11 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
         "asset_transfer_id": transfer_id,
         "stocktake_id": stocktake_id,
         "maintenance_priority_id": priority_id,
+        "maintenance_contract_id": contract_id,
         "maintenance_symptom_code_id": symptom_id,
         "maintenance_failure_mode_id": failure_mode_id,
         "maintenance_root_cause_code_id": root_cause_id,
+        "asset_warranty_id": warranty_id,
         "maintenance_checklist_template_id": checklist_template_id,
         "maintenance_checklist_template_item_id": checklist_template_item_id,
         "maintenance_team_id": team_id,

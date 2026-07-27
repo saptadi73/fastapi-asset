@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -10,10 +10,13 @@ from sqlalchemy.orm import selectinload
 from app.modules.assets.models import Asset
 from app.modules.maintenance.models import (
     AssetFailure,
+    AssetWarranty,
     MaintenanceChecklistExecution,
     MaintenanceChecklistResult,
     MaintenanceChecklistTemplate,
     MaintenanceChecklistTemplateItem,
+    MaintenanceContract,
+    MaintenanceContractAsset,
     MaintenanceDowntime,
     MaintenanceFailureMode,
     MaintenanceFinding,
@@ -55,6 +58,160 @@ class MaintenancePriorityRepository:
                 MaintenancePriority.code.asc(),
             )
         )
+        return result.all()
+
+
+class MaintenanceContractRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenanceContract) -> MaintenanceContract:
+        self.session.add(item)
+        await self.session.flush()
+        await self.session.refresh(item, attribute_names=["vendor_partner", "coverages"])
+        return item
+
+    async def get(self, contract_id: UUID) -> MaintenanceContract | None:
+        stmt = (
+            select(MaintenanceContract)
+            .options(
+                selectinload(MaintenanceContract.vendor_partner),
+                selectinload(MaintenanceContract.coverages).selectinload(
+                    MaintenanceContractAsset.asset
+                ),
+            )
+            .where(MaintenanceContract.id == contract_id)
+        )
+        return await self.session.scalar(stmt)
+
+    async def list(self) -> Sequence[MaintenanceContract]:
+        result = await self.session.scalars(
+            select(MaintenanceContract)
+            .options(
+                selectinload(MaintenanceContract.vendor_partner),
+                selectinload(MaintenanceContract.coverages),
+            )
+            .order_by(MaintenanceContract.contract_number.asc())
+        )
+        return result.all()
+
+
+class MaintenanceContractAssetRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenanceContractAsset) -> MaintenanceContractAsset:
+        self.session.add(item)
+        await self.session.flush()
+        await self.session.refresh(item, attribute_names=["contract", "asset"])
+        return item
+
+    async def list_active_by_asset(
+        self,
+        asset_id: UUID,
+        *,
+        as_of: date,
+    ) -> Sequence[MaintenanceContractAsset]:
+        stmt = (
+            select(MaintenanceContractAsset)
+            .options(
+                selectinload(MaintenanceContractAsset.contract).selectinload(
+                    MaintenanceContract.vendor_partner
+                ),
+                selectinload(MaintenanceContractAsset.asset),
+            )
+            .where(
+                MaintenanceContractAsset.asset_id == asset_id,
+                MaintenanceContractAsset.coverage_start_date <= as_of,
+                MaintenanceContractAsset.coverage_end_date >= as_of,
+            )
+            .order_by(MaintenanceContractAsset.coverage_start_date.desc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+    async def get_active_contract_coverage(
+        self,
+        maintenance_contract_id: UUID,
+        asset_id: UUID,
+        *,
+        as_of: date,
+    ) -> MaintenanceContractAsset | None:
+        stmt = (
+            select(MaintenanceContractAsset)
+            .options(
+                selectinload(MaintenanceContractAsset.contract).selectinload(
+                    MaintenanceContract.vendor_partner
+                ),
+                selectinload(MaintenanceContractAsset.asset),
+            )
+            .where(
+                MaintenanceContractAsset.maintenance_contract_id == maintenance_contract_id,
+                MaintenanceContractAsset.asset_id == asset_id,
+                MaintenanceContractAsset.coverage_start_date <= as_of,
+                MaintenanceContractAsset.coverage_end_date >= as_of,
+            )
+        )
+        return await self.session.scalar(stmt)
+
+
+class AssetWarrantyRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: AssetWarranty) -> AssetWarranty:
+        self.session.add(item)
+        await self.session.flush()
+        await self.session.refresh(
+            item,
+            attribute_names=["asset", "warranty_provider_partner"],
+        )
+        return item
+
+    async def get(self, warranty_id: UUID) -> AssetWarranty | None:
+        stmt = (
+            select(AssetWarranty)
+            .options(
+                selectinload(AssetWarranty.asset),
+                selectinload(AssetWarranty.warranty_provider_partner),
+            )
+            .where(AssetWarranty.id == warranty_id)
+        )
+        return await self.session.scalar(stmt)
+
+    async def list_by_asset(self, asset_id: UUID) -> Sequence[AssetWarranty]:
+        stmt = (
+            select(AssetWarranty)
+            .options(
+                selectinload(AssetWarranty.asset),
+                selectinload(AssetWarranty.warranty_provider_partner),
+            )
+            .where(AssetWarranty.asset_id == asset_id)
+            .order_by(AssetWarranty.coverage_end_date.desc(), AssetWarranty.created_at.desc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+    async def get_active_by_asset(
+        self,
+        asset_id: UUID,
+        *,
+        as_of: date,
+    ) -> Sequence[AssetWarranty]:
+        stmt = (
+            select(AssetWarranty)
+            .options(
+                selectinload(AssetWarranty.asset),
+                selectinload(AssetWarranty.warranty_provider_partner),
+            )
+            .where(
+                AssetWarranty.asset_id == asset_id,
+                AssetWarranty.coverage_start_date <= as_of,
+                AssetWarranty.coverage_end_date >= as_of,
+            )
+            .order_by(AssetWarranty.coverage_start_date.desc())
+        )
+        result = await self.session.scalars(stmt)
         return result.all()
 
 

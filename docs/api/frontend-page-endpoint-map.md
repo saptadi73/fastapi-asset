@@ -201,6 +201,10 @@ Tujuan data:
 Endpoint:
 
 - `GET /api/v1/maintenance/priorities`
+- `GET /api/v1/maintenance/contracts`
+- `GET /api/v1/maintenance/contracts/{maintenance_contract_id}`
+- `GET /api/v1/maintenance/assets/{asset_id}/warranties`
+- `GET /api/v1/maintenance/warranties/{asset_warranty_id}`
 - `GET /api/v1/maintenance/symptom-codes`
 - `GET /api/v1/maintenance/failure-modes`
 - `GET /api/v1/maintenance/root-cause-codes`
@@ -211,9 +215,11 @@ Endpoint:
 Seed entity:
 
 - `maintenance_priority_id`
+- `maintenance_contract_id`
 - `maintenance_symptom_code_id`
 - `maintenance_failure_mode_id`
 - `maintenance_root_cause_code_id`
+- `asset_warranty_id`
 - `maintenance_team_id`
 - `maintenance_checklist_template_id`
 
@@ -277,12 +283,16 @@ Endpoint utama:
 Endpoint pendukung:
 
 - `GET /api/v1/maintenance/priorities`
+- `GET /api/v1/maintenance/contracts`
+- `GET /api/v1/maintenance/assets/{asset_id}/warranties`
 - `GET /api/v1/business-partners`
 - `GET /api/v1/asset-locations`
 
 Seed entity:
 
 - `maintenance_request_id`
+- `maintenance_contract_id`
+- `asset_warranty_id`
 
 ## Maintenance Request Detail
 

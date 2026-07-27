@@ -21,11 +21,17 @@ from app.modules.maintenance.schemas import (
     AssetFailureListItemRead,
     AssetFailureRead,
     AssetFailureUpdate,
+    AssetWarrantyCreate,
+    AssetWarrantyRead,
     MaintenanceChecklistExecutionRead,
     MaintenanceChecklistExecutionStartPayload,
     MaintenanceChecklistResultSubmitPayload,
     MaintenanceChecklistTemplateCreate,
     MaintenanceChecklistTemplateRead,
+    MaintenanceContractAssetCreate,
+    MaintenanceContractAssetRead,
+    MaintenanceContractCreate,
+    MaintenanceContractRead,
     MaintenanceConvertToWorkOrderPayload,
     MaintenanceDowntimeCreate,
     MaintenanceDowntimeRead,
@@ -108,6 +114,126 @@ async def list_maintenance_priorities(
             MaintenancePriorityRead.model_validate(item).model_dump(mode="json")
             for item in items
         ],
+    )
+
+
+@router.post(
+    "/contracts",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def create_maintenance_contract(
+    request: Request,
+    payload: MaintenanceContractCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.create_contract(payload)
+    return success_response(
+        request=request,
+        message="Maintenance contract berhasil dibuat.",
+        data=MaintenanceContractRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get("/contracts", dependencies=[Depends(require_maintenance_read)])
+async def list_maintenance_contracts(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.list_contracts()
+    return success_response(
+        request=request,
+        message="Daftar maintenance contract berhasil diambil.",
+        data=[
+            MaintenanceContractRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
+    )
+
+
+@router.get("/contracts/{contract_id}", dependencies=[Depends(require_maintenance_read)])
+async def get_maintenance_contract(
+    request: Request,
+    contract_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.get_contract(contract_id)
+    return success_response(
+        request=request,
+        message="Detail maintenance contract berhasil diambil.",
+        data=MaintenanceContractRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post(
+    "/contracts/{contract_id}/assets",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def create_maintenance_contract_asset(
+    request: Request,
+    contract_id: UUID,
+    payload: MaintenanceContractAssetCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.add_contract_asset_coverage(contract_id, payload)
+    return success_response(
+        request=request,
+        message="Coverage asset maintenance contract berhasil dibuat.",
+        data=MaintenanceContractAssetRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post(
+    "/warranties",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def create_asset_warranty(
+    request: Request,
+    payload: AssetWarrantyCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.create_warranty(payload)
+    return success_response(
+        request=request,
+        message="Asset warranty berhasil dibuat.",
+        data=AssetWarrantyRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get("/assets/{asset_id}/warranties", dependencies=[Depends(require_maintenance_read)])
+async def list_asset_warranties(
+    request: Request,
+    asset_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.list_asset_warranties(asset_id)
+    return success_response(
+        request=request,
+        message="Daftar asset warranty berhasil diambil.",
+        data=[AssetWarrantyRead.model_validate(item).model_dump(mode="json") for item in items],
+    )
+
+
+@router.get("/warranties/{warranty_id}", dependencies=[Depends(require_maintenance_read)])
+async def get_asset_warranty(
+    request: Request,
+    warranty_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.get_warranty(warranty_id)
+    return success_response(
+        request=request,
+        message="Detail asset warranty berhasil diambil.",
+        data=AssetWarrantyRead.model_validate(item).model_dump(mode="json"),
     )
 
 
