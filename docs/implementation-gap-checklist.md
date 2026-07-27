@@ -215,7 +215,7 @@ Manfaat:
 
 Status:
 
-- [ ] maintenance vendor personnel
+- [x] maintenance vendor personnel
 
 Manfaat:
 
@@ -226,8 +226,8 @@ Manfaat:
 
 Status:
 
-- [ ] maintenance part requirements
-- [ ] part planning before actual usage
+- [x] maintenance part requirements
+- [x] part planning before actual usage
 
 Manfaat:
 
@@ -238,9 +238,9 @@ Manfaat:
 
 Status:
 
-- [ ] maintenance skills
-- [ ] employee maintenance skills
-- [ ] validasi skill terhadap assignment
+- [x] maintenance skills
+- [x] employee maintenance skills
+- [x] validasi skill terhadap assignment
 
 Manfaat:
 
@@ -254,10 +254,10 @@ Tahap ini mulai masuk ke domain yang lebih luas dari asset management baseline.
 
 Status:
 
-- [ ] lease contracts
-- [ ] lease contract assets/items
-- [ ] lease payments
-- [ ] active lease overlap rules
+- [x] lease contracts
+- [x] lease contract assets/items
+- [x] lease payments
+- [x] active lease overlap rules
 
 ### D2. Software License Domain
 

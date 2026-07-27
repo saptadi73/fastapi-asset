@@ -11,6 +11,7 @@ from app.modules.assets.models import Asset
 from app.modules.maintenance.models import (
     AssetFailure,
     AssetWarranty,
+    EmployeeMaintenanceSkill,
     MaintenanceChecklistExecution,
     MaintenanceChecklistResult,
     MaintenanceChecklistTemplate,
@@ -21,6 +22,7 @@ from app.modules.maintenance.models import (
     MaintenanceFailureMode,
     MaintenanceFinding,
     MaintenanceLaborLog,
+    MaintenancePartRequirement,
     MaintenancePartUsage,
     MaintenancePlan,
     MaintenancePlanAsset,
@@ -29,13 +31,16 @@ from app.modules.maintenance.models import (
     MaintenanceRequestWorkOrder,
     MaintenanceRootCauseCode,
     MaintenanceSchedule,
+    MaintenanceSkill,
     MaintenanceSlaSnapshot,
     MaintenanceSymptomCode,
     MaintenanceTeam,
     MaintenanceTeamMember,
+    MaintenanceVendorPersonnel,
     MaintenanceWorkOrder,
     MaintenanceWorkOrderAssignment,
     MaintenanceWorkOrderEvent,
+    MaintenanceWorkOrderRequiredSkill,
 )
 from app.shared.pagination import PaginationParams
 
@@ -813,6 +818,9 @@ class MaintenanceWorkOrderRepository:
                 "priority",
                 "requests",
                 "assignments",
+                "required_skills",
+                "part_requirements",
+                "vendor_personnel",
                 "failures",
                 "part_usages",
                 "labor_logs",
@@ -834,6 +842,13 @@ class MaintenanceWorkOrderRepository:
                     MaintenanceRequestWorkOrder.request
                 ),
                 selectinload(MaintenanceWorkOrder.assignments),
+                selectinload(MaintenanceWorkOrder.required_skills).selectinload(
+                    MaintenanceWorkOrderRequiredSkill.maintenance_skill
+                ),
+                selectinload(MaintenanceWorkOrder.part_requirements),
+                selectinload(MaintenanceWorkOrder.vendor_personnel).selectinload(
+                    MaintenanceVendorPersonnel.vendor_partner
+                ),
                 selectinload(MaintenanceWorkOrder.failures).selectinload(AssetFailure.failure_mode),
                 selectinload(MaintenanceWorkOrder.failures).selectinload(AssetFailure.symptom_code),
                 selectinload(MaintenanceWorkOrder.failures).selectinload(
@@ -857,6 +872,13 @@ class MaintenanceWorkOrderRepository:
             selectinload(MaintenanceWorkOrder.priority),
             selectinload(MaintenanceWorkOrder.requests),
             selectinload(MaintenanceWorkOrder.assignments),
+            selectinload(MaintenanceWorkOrder.required_skills).selectinload(
+                MaintenanceWorkOrderRequiredSkill.maintenance_skill
+            ),
+            selectinload(MaintenanceWorkOrder.part_requirements),
+            selectinload(MaintenanceWorkOrder.vendor_personnel).selectinload(
+                MaintenanceVendorPersonnel.vendor_partner
+            ),
             selectinload(MaintenanceWorkOrder.failures),
             selectinload(MaintenanceWorkOrder.part_usages),
             selectinload(MaintenanceWorkOrder.labor_logs),
@@ -890,6 +912,13 @@ class MaintenanceWorkOrderRepository:
                 selectinload(MaintenanceWorkOrder.priority),
                 selectinload(MaintenanceWorkOrder.requests),
                 selectinload(MaintenanceWorkOrder.assignments),
+                selectinload(MaintenanceWorkOrder.required_skills).selectinload(
+                    MaintenanceWorkOrderRequiredSkill.maintenance_skill
+                ),
+                selectinload(MaintenanceWorkOrder.part_requirements),
+                selectinload(MaintenanceWorkOrder.vendor_personnel).selectinload(
+                    MaintenanceVendorPersonnel.vendor_partner
+                ),
                 selectinload(MaintenanceWorkOrder.failures),
                 selectinload(MaintenanceWorkOrder.part_usages),
                 selectinload(MaintenanceWorkOrder.labor_logs),
@@ -920,6 +949,9 @@ class MaintenanceWorkOrderRepository:
                 "priority",
                 "requests",
                 "assignments",
+                "required_skills",
+                "part_requirements",
+                "vendor_personnel",
                 "failures",
                 "part_usages",
                 "labor_logs",
@@ -944,6 +976,97 @@ class MaintenancePartUsageRepository:
             select(MaintenancePartUsage)
             .where(MaintenancePartUsage.work_order_id == work_order_id)
             .order_by(MaintenancePartUsage.used_at.asc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+    async def list_by_work_order_and_part_item(
+        self,
+        work_order_id: UUID,
+        part_item_id: UUID,
+    ) -> Sequence[MaintenancePartUsage]:
+        stmt = (
+            select(MaintenancePartUsage)
+            .where(
+                MaintenancePartUsage.work_order_id == work_order_id,
+                MaintenancePartUsage.part_item_id == part_item_id,
+            )
+            .order_by(MaintenancePartUsage.used_at.asc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+
+class MaintenancePartRequirementRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenancePartRequirement) -> MaintenancePartRequirement:
+        self.session.add(item)
+        await self.session.flush()
+        return item
+
+    async def list_by_work_order(self, work_order_id: UUID) -> Sequence[MaintenancePartRequirement]:
+        stmt = (
+            select(MaintenancePartRequirement)
+            .where(MaintenancePartRequirement.work_order_id == work_order_id)
+            .order_by(
+                MaintenancePartRequirement.is_critical.desc(),
+                MaintenancePartRequirement.id.asc(),
+            )
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+    async def list_by_work_order_and_part_item(
+        self,
+        work_order_id: UUID,
+        part_item_id: UUID,
+    ) -> Sequence[MaintenancePartRequirement]:
+        stmt = (
+            select(MaintenancePartRequirement)
+            .where(
+                MaintenancePartRequirement.work_order_id == work_order_id,
+                MaintenancePartRequirement.part_item_id == part_item_id,
+            )
+            .order_by(
+                MaintenancePartRequirement.is_critical.desc(),
+                MaintenancePartRequirement.id.asc(),
+            )
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+    async def update(
+        self,
+        item: MaintenancePartRequirement,
+        **changes: object,
+    ) -> MaintenancePartRequirement:
+        for key, value in changes.items():
+            setattr(item, key, value)
+        await self.session.flush()
+        return item
+
+
+class MaintenanceVendorPersonnelRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenanceVendorPersonnel) -> MaintenanceVendorPersonnel:
+        self.session.add(item)
+        await self.session.flush()
+        await self.session.refresh(item, attribute_names=["vendor_partner"])
+        return item
+
+    async def list_by_work_order(self, work_order_id: UUID) -> Sequence[MaintenanceVendorPersonnel]:
+        stmt = (
+            select(MaintenanceVendorPersonnel)
+            .options(selectinload(MaintenanceVendorPersonnel.vendor_partner))
+            .where(MaintenanceVendorPersonnel.work_order_id == work_order_id)
+            .order_by(
+                MaintenanceVendorPersonnel.check_in_at.asc(),
+                MaintenanceVendorPersonnel.person_name.asc(),
+            )
         )
         result = await self.session.scalars(stmt)
         return result.all()
@@ -1431,6 +1554,18 @@ class MaintenanceWorkOrderAssignmentRepository:
         await self.session.flush()
         return item
 
+    async def list_by_work_order(
+        self,
+        work_order_id: UUID,
+    ) -> Sequence[MaintenanceWorkOrderAssignment]:
+        stmt = (
+            select(MaintenanceWorkOrderAssignment)
+            .where(MaintenanceWorkOrderAssignment.work_order_id == work_order_id)
+            .order_by(MaintenanceWorkOrderAssignment.assigned_at.asc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
 
 class MaintenanceTeamRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -1485,6 +1620,134 @@ class MaintenanceTeamMemberRepository:
         self.session.add(item)
         await self.session.flush()
         return item
+
+    async def list_active_by_team_and_employee(
+        self,
+        maintenance_team_id: UUID,
+        employee_id: UUID,
+        *,
+        as_of: date,
+    ) -> Sequence[MaintenanceTeamMember]:
+        stmt = (
+            select(MaintenanceTeamMember)
+            .where(
+                MaintenanceTeamMember.maintenance_team_id == maintenance_team_id,
+                MaintenanceTeamMember.employee_id == employee_id,
+                MaintenanceTeamMember.effective_from <= as_of,
+                or_(
+                    MaintenanceTeamMember.effective_to.is_(None),
+                    MaintenanceTeamMember.effective_to >= as_of,
+                ),
+            )
+            .order_by(
+                MaintenanceTeamMember.is_primary.desc(),
+                MaintenanceTeamMember.effective_from.desc(),
+            )
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+
+class MaintenanceSkillRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenanceSkill) -> MaintenanceSkill:
+        self.session.add(item)
+        await self.session.flush()
+        return item
+
+    async def get(self, skill_id: UUID) -> MaintenanceSkill | None:
+        return await self.session.get(MaintenanceSkill, skill_id)
+
+    async def list(self) -> Sequence[MaintenanceSkill]:
+        result = await self.session.scalars(
+            select(MaintenanceSkill).order_by(
+                MaintenanceSkill.skill_code.asc(),
+            )
+        )
+        return result.all()
+
+
+class EmployeeMaintenanceSkillRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: EmployeeMaintenanceSkill) -> EmployeeMaintenanceSkill:
+        self.session.add(item)
+        await self.session.flush()
+        await self.session.refresh(item, attribute_names=["maintenance_skill"])
+        return item
+
+    async def list_by_employee(self, employee_id: UUID) -> Sequence[EmployeeMaintenanceSkill]:
+        stmt = (
+            select(EmployeeMaintenanceSkill)
+            .options(selectinload(EmployeeMaintenanceSkill.maintenance_skill))
+            .where(EmployeeMaintenanceSkill.employee_id == employee_id)
+            .order_by(
+                EmployeeMaintenanceSkill.valid_from.desc(),
+                EmployeeMaintenanceSkill.id.desc(),
+            )
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+    async def list_active_by_employee(
+        self,
+        employee_id: UUID,
+        *,
+        as_of: date,
+    ) -> Sequence[EmployeeMaintenanceSkill]:
+        stmt = (
+            select(EmployeeMaintenanceSkill)
+            .options(selectinload(EmployeeMaintenanceSkill.maintenance_skill))
+            .where(
+                EmployeeMaintenanceSkill.employee_id == employee_id,
+                or_(
+                    EmployeeMaintenanceSkill.valid_from.is_(None),
+                    EmployeeMaintenanceSkill.valid_from <= as_of,
+                ),
+                or_(
+                    EmployeeMaintenanceSkill.valid_to.is_(None),
+                    EmployeeMaintenanceSkill.valid_to >= as_of,
+                ),
+            )
+            .order_by(
+                EmployeeMaintenanceSkill.valid_from.desc(),
+                EmployeeMaintenanceSkill.id.desc(),
+            )
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+
+class MaintenanceWorkOrderRequiredSkillRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(
+        self,
+        item: MaintenanceWorkOrderRequiredSkill,
+    ) -> MaintenanceWorkOrderRequiredSkill:
+        self.session.add(item)
+        await self.session.flush()
+        await self.session.refresh(item, attribute_names=["maintenance_skill"])
+        return item
+
+    async def list_by_work_order(
+        self,
+        work_order_id: UUID,
+    ) -> Sequence[MaintenanceWorkOrderRequiredSkill]:
+        stmt = (
+            select(MaintenanceWorkOrderRequiredSkill)
+            .options(
+                selectinload(MaintenanceWorkOrderRequiredSkill.maintenance_skill),
+            )
+            .where(MaintenanceWorkOrderRequiredSkill.work_order_id == work_order_id)
+            .order_by(MaintenanceWorkOrderRequiredSkill.id.asc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
 
 
 class MaintenanceScheduleRepository:

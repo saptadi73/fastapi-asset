@@ -15,6 +15,7 @@ from app.core.database import Base  # noqa: E402
 from app.modules.assets import models as _asset_models  # noqa: E402,F401
 from app.modules.attachments import models as _attachment_models  # noqa: E402,F401
 from app.modules.auth import models as _auth_models  # noqa: E402,F401
+from app.modules.leases import models as _lease_models  # noqa: E402,F401
 from app.modules.maintenance import models as _maintenance_models  # noqa: E402,F401
 from app.modules.partners import models as _partner_models  # noqa: E402,F401
 from app.modules.tracking import models as _tracking_models  # noqa: E402,F401

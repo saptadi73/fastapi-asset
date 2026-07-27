@@ -25,11 +25,12 @@ Rekomendasi menu sidebar/top-level:
 1. Dashboard
 2. Asset Registry
 3. Asset Transfers
-4. Tracking & Stocktake
-5. Maintenance
-6. Reports
-7. Master Data
-8. Authentication / User Session
+4. Leases
+5. Tracking & Stocktake
+6. Maintenance
+7. Reports
+8. Master Data
+9. Authentication / User Session
 
 ## 2. Dashboard
 
@@ -245,7 +246,63 @@ Frontend sebaiknya:
 - menampilkan chip status yang jelas;
 - menampilkan perubahan lokasi asset setelah complete.
 
-## 5. Tracking & Stocktake
+## 5. Lease Management
+
+Tujuan:
+
+- memisahkan aset sewa dari ownership biasa;
+- memberi visibilitas kontrak, item aset, dan payment lease;
+- membantu frontend menampilkan kontrak aktif yang melekat pada aset.
+
+### 5.1 Lease Contract List
+
+Fungsi halaman:
+
+- menampilkan daftar lease contract;
+- filter berdasarkan status, lease type, dan lessor;
+- membuka detail kontrak.
+
+Kolom yang direkomendasikan:
+
+- contract number
+- lessor
+- lease type
+- start date
+- end date
+- billing frequency
+- payment amount
+- currency
+- status
+
+### 5.2 Lease Contract Detail
+
+Tab yang direkomendasikan:
+
+1. Overview
+2. Lease Items
+3. Payments
+
+Konten utama:
+
+- informasi lessor dan lessee
+- accounting treatment
+- periode kontrak
+- opsi extension dan auto renewal
+- daftar asset item beserta return condition
+- daftar payment due, paid, atau overdue
+
+Aksi yang direkomendasikan:
+
+- create lease contract
+- add lease item
+- add payment
+
+Catatan frontend:
+
+- tampilkan warning bila kontrak aktif mendekati end date
+- tampilkan badge asset leased pada asset detail bila asset muncul di lease item
+
+## 6. Tracking & Stocktake
 
 Tujuan:
 
@@ -430,12 +487,15 @@ Tab yang direkomendasikan:
 1. Overview
 2. Attachments
 3. Assignments
-4. Parts
-5. Labor Logs
-6. Downtimes
-7. Failures
-8. Checklist
-9. Events
+4. Required Skills
+5. Material Planning
+6. Vendor Personnel
+7. Parts
+8. Labor Logs
+9. Downtimes
+10. Failures
+11. Checklist
+12. Events
 
 Konten utama:
 
@@ -443,6 +503,9 @@ Konten utama:
 - relasi ke request/plan bila ada
 - info asset
 - info vendor/team
+- daftar required skill dan status pemenuhan skill assignee
+- perbandingan planned part, reserved part, issued part, dan returned part
+- daftar teknisi vendor beserta check-in/check-out
 - biaya aktual dan estimasi
 - actual start/end
 
@@ -450,7 +513,10 @@ Aksi yang direkomendasikan:
 
 - approve
 - assign
+- add required skill
 - start
+- add part requirement
+- add vendor personnel
 - hold
 - resume
 - add part usage
@@ -469,16 +535,18 @@ Workflow backend yang direkomendasikan:
 
 1. create atau convert dari request
 2. approve
-3. assign
-4. start
-5. input operational data selama pekerjaan berjalan
-6. complete
-7. verify bila diperlukan
-8. close
+3. tetapkan required skill bila dibutuhkan
+4. assign
+5. start
+6. input operational data selama pekerjaan berjalan
+7. complete
+8. verify bila diperlukan
+9. close
 
 Frontend sebaiknya:
 
 - memunculkan tombol aksi hanya pada status valid;
+- menampilkan warning skill mismatch sebelum assign disubmit;
 - memisahkan data transaksi per tab;
 - menyediakan panel cost summary dan event timeline;
 - pada tab attachment, sediakan version history, upload revisi file, dan audit trail.

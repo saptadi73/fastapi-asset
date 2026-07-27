@@ -620,6 +620,83 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
             f"{API_PREFIX}/assets/{asset_id}/ownerships",
             label="list asset ownerships",
         )
+        lease_contract = await runner.call(
+            "POST",
+            f"{API_PREFIX}/lease-contracts",
+            label="create lease contract",
+            json_body={
+                "contract_number": f"LEASE-{suffix}",
+                "lessor_partner_id": partner_id,
+                "lessee_company_id": company_id,
+                "lease_type": "OPERATING_LEASE",
+                "accounting_treatment": "EXPENSE_ONLY",
+                "start_date": "2026-07-01",
+                "end_date": "2026-12-31",
+                "extension_option_end_date": "2027-03-31",
+                "billing_frequency": "MONTHLY",
+                "payment_amount": "2500000",
+                "currency_code": "IDR",
+                "deposit_amount": "5000000",
+                "purchase_option_amount": "10000000",
+                "auto_renewal": False,
+                "notice_period_days": 30,
+                "maintenance_included": True,
+                "insurance_included": True,
+                "tax_included": False,
+                "status": "ACTIVE",
+            },
+        )
+        lease_contract_id = lease_contract["data"]["id"]
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/lease-contracts",
+            label="list lease contracts",
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/lease-contracts/{lease_contract_id}",
+            label="get lease contract",
+        )
+        await runner.call(
+            "POST",
+            f"{API_PREFIX}/lease-contracts/{lease_contract_id}/assets",
+            label="create lease contract asset item",
+            json_body={
+                "asset_id": asset_id,
+                "lease_start_date": "2026-07-01",
+                "lease_end_date": "2026-12-31",
+                "monthly_amount": "2500000",
+                "allocation_percentage": "100",
+                "return_condition": "Asset leased untuk skenario smoke test",
+            },
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/lease-contracts/{lease_contract_id}/assets",
+            label="list lease contract assets",
+        )
+        await runner.call(
+            "POST",
+            f"{API_PREFIX}/lease-contracts/{lease_contract_id}/payments",
+            label="create lease contract payment",
+            json_body={
+                "period_start": "2026-07-01",
+                "period_end": "2026-07-31",
+                "due_date": "2026-07-25",
+                "principal_amount": "2000000",
+                "interest_amount": "250000",
+                "service_amount": "150000",
+                "tax_amount": "100000",
+                "total_amount": "2500000",
+                "payment_status": "DUE",
+                "sap_ap_invoice_doc_entry": 12001,
+            },
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/lease-contracts/{lease_contract_id}/payments",
+            label="list lease contract payments",
+        )
         assignment = await runner.call(
             "POST",
             f"{API_PREFIX}/assets/{asset_id}/assignments",
@@ -1293,6 +1370,39 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
             label="approve maintenance request",
             json_body={"actor_id": user_id, "acted_at": "2026-07-27T12:45:00Z"},
         )
+        skill = await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/skills",
+            label="create maintenance skill",
+            json_body={
+                "skill_code": f"BRG-{suffix}",
+                "skill_name": "Bearing Replacement",
+                "certification_required": True,
+            },
+        )
+        skill_id = skill["data"]["id"]
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/maintenance/skills",
+            label="list maintenance skills",
+        )
+        await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/employees/{user_id}/skills",
+            label="add employee maintenance skill",
+            json_body={
+                "maintenance_skill_id": skill_id,
+                "proficiency_level": "ADVANCED",
+                "certificate_number": f"CERT-{suffix}",
+                "valid_from": "2026-01-01",
+                "valid_to": "2026-12-31",
+            },
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/maintenance/employees/{user_id}/skills",
+            label="list employee maintenance skills",
+        )
         converted_work_order = await runner.call(
             "POST",
             f"{API_PREFIX}/maintenance/requests/{request_id}/convert-to-work-order",
@@ -1300,7 +1410,7 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
             json_body={
                 "work_order_number": f"WO-{suffix}",
                 "maintenance_type": "BREAKDOWN",
-                "execution_mode": "INTERNAL",
+                "execution_mode": "HYBRID",
                 "scope_of_work": "Investigasi dan perbaikan bearing pompa",
                 "planned_start_at": "2026-07-27T13:00:00Z",
                 "planned_end_at": "2026-07-27T17:00:00Z",
@@ -1348,6 +1458,22 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
         )
         await runner.call(
             "POST",
+            f"{API_PREFIX}/maintenance/work-orders/{work_order_id}/required-skills",
+            label="create maintenance work order required skill",
+            json_body={
+                "maintenance_skill_id": skill_id,
+                "minimum_proficiency_level": "ADVANCED",
+                "certification_required": True,
+                "notes": "Skill wajib untuk penggantian bearing smoke test",
+            },
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/maintenance/work-orders/{work_order_id}/required-skills",
+            label="list maintenance work order required skills",
+        )
+        await runner.call(
+            "POST",
             f"{API_PREFIX}/maintenance/work-orders/{work_order_id}/assign",
             label="assign maintenance work order",
             json_body={
@@ -1385,12 +1511,50 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
                 "notes": "Part tersedia, pekerjaan dilanjutkan",
             },
         )
+        work_order_part_item_id = str(uuid4())
+        await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/work-orders/{work_order_id}/part-requirements",
+            label="create maintenance work order part requirement",
+            json_body={
+                "part_item_id": work_order_part_item_id,
+                "required_quantity": "2",
+                "reserved_quantity": "1",
+                "unit_of_measure": "EA",
+                "requirement_status": "PLANNED",
+                "is_critical": True,
+                "notes": "Bearing replacement untuk corrective maintenance smoke test",
+            },
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/maintenance/work-orders/{work_order_id}/part-requirements",
+            label="list maintenance work order part requirements",
+        )
+        await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/work-orders/{work_order_id}/vendor-personnel",
+            label="create maintenance work order vendor personnel",
+            json_body={
+                "vendor_partner_id": partner_id,
+                "person_name": "Budi Vendor",
+                "contact_phone": "0812-5555-0101",
+                "technician_reference": f"VND-{suffix}",
+                "check_in_at": "2026-07-27T13:18:00Z",
+                "check_out_at": "2026-07-27T15:05:00Z",
+            },
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/maintenance/work-orders/{work_order_id}/vendor-personnel",
+            label="list maintenance work order vendor personnel",
+        )
         await runner.call(
             "POST",
             f"{API_PREFIX}/maintenance/work-orders/{work_order_id}/parts",
             label="create maintenance work order part usage",
             json_body={
-                "part_item_id": str(uuid4()),
+                "part_item_id": work_order_part_item_id,
                 "quantity": "2",
                 "unit_cost": "150000",
                 "currency_code": "IDR",

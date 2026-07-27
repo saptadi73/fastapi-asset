@@ -23,6 +23,7 @@ from app.modules.maintenance.constants import (
     MaintenanceFindingSeverity,
     MaintenanceFindingStatus,
     MaintenanceFindingType,
+    MaintenancePartRequirementStatus,
     MaintenancePartUsageType,
     MaintenancePlanTriggerType,
     MaintenanceRequestSourceType,
@@ -49,6 +50,7 @@ from app.modules.maintenance.exceptions import (
 from app.modules.maintenance.models import (
     AssetFailure,
     AssetWarranty,
+    EmployeeMaintenanceSkill,
     MaintenanceChecklistExecution,
     MaintenanceChecklistResult,
     MaintenanceChecklistTemplate,
@@ -59,6 +61,7 @@ from app.modules.maintenance.models import (
     MaintenanceFailureMode,
     MaintenanceFinding,
     MaintenanceLaborLog,
+    MaintenancePartRequirement,
     MaintenancePartUsage,
     MaintenancePlan,
     MaintenancePlanAsset,
@@ -67,17 +70,21 @@ from app.modules.maintenance.models import (
     MaintenanceRequestWorkOrder,
     MaintenanceRootCauseCode,
     MaintenanceSchedule,
+    MaintenanceSkill,
     MaintenanceSlaSnapshot,
     MaintenanceSymptomCode,
     MaintenanceTeam,
     MaintenanceTeamMember,
+    MaintenanceVendorPersonnel,
     MaintenanceWorkOrder,
     MaintenanceWorkOrderAssignment,
     MaintenanceWorkOrderEvent,
+    MaintenanceWorkOrderRequiredSkill,
 )
 from app.modules.maintenance.repository import (
     AssetFailureRepository,
     AssetWarrantyRepository,
+    EmployeeMaintenanceSkillRepository,
     MaintenanceChecklistExecutionRepository,
     MaintenanceChecklistResultRepository,
     MaintenanceChecklistTemplateItemRepository,
@@ -88,6 +95,7 @@ from app.modules.maintenance.repository import (
     MaintenanceFailureModeRepository,
     MaintenanceFindingRepository,
     MaintenanceLaborLogRepository,
+    MaintenancePartRequirementRepository,
     MaintenancePartUsageRepository,
     MaintenancePlanAssetRepository,
     MaintenancePlanRepository,
@@ -97,19 +105,23 @@ from app.modules.maintenance.repository import (
     MaintenanceRequestWorkOrderRepository,
     MaintenanceRootCauseCodeRepository,
     MaintenanceScheduleRepository,
+    MaintenanceSkillRepository,
     MaintenanceSlaSnapshotRepository,
     MaintenanceSymptomCodeRepository,
     MaintenanceTeamMemberRepository,
     MaintenanceTeamRepository,
+    MaintenanceVendorPersonnelRepository,
     MaintenanceWorkOrderAssignmentRepository,
     MaintenanceWorkOrderEventRepository,
     MaintenanceWorkOrderRepository,
+    MaintenanceWorkOrderRequiredSkillRepository,
 )
 from app.modules.maintenance.schemas import (
     AssetFailureCreate,
     AssetFailureUpdate,
     AssetMaintenanceHistoryItemRead,
     AssetWarrantyCreate,
+    EmployeeMaintenanceSkillCreate,
     MaintenanceBacklogReportRead,
     MaintenanceChecklistExecutionStartPayload,
     MaintenanceChecklistResultEntryCreate,
@@ -126,6 +138,7 @@ from app.modules.maintenance.schemas import (
     MaintenanceFindingCreateRequestPayload,
     MaintenanceLaborLogCreate,
     MaintenanceMasterCodeCreate,
+    MaintenancePartRequirementCreate,
     MaintenancePartUsageCreate,
     MaintenancePlanAssetCreate,
     MaintenancePlanCreate,
@@ -139,12 +152,15 @@ from app.modules.maintenance.schemas import (
     MaintenanceScheduleConfirmPayload,
     MaintenanceScheduleCreate,
     MaintenanceScheduleReschedulePayload,
+    MaintenanceSkillCreate,
     MaintenanceSlaReportRead,
     MaintenanceTeamCreate,
     MaintenanceTeamMemberCreate,
+    MaintenanceVendorPersonnelCreate,
     MaintenanceWorkOrderAssignPayload,
     MaintenanceWorkOrderCompletePayload,
     MaintenanceWorkOrderCreate,
+    MaintenanceWorkOrderRequiredSkillCreate,
     MaintenanceWorkOrderVerifyPayload,
 )
 from app.modules.partners.exceptions import BusinessPartnerNotFoundError
@@ -171,8 +187,10 @@ class MaintenanceService:
         self.failure_modes = MaintenanceFailureModeRepository(session)
         self.root_cause_codes = MaintenanceRootCauseCodeRepository(session)
         self.failures = AssetFailureRepository(session)
+        self.part_requirements = MaintenancePartRequirementRepository(session)
         self.part_usages = MaintenancePartUsageRepository(session)
         self.labor_logs = MaintenanceLaborLogRepository(session)
+        self.vendor_personnel = MaintenanceVendorPersonnelRepository(session)
         self.events = MaintenanceWorkOrderEventRepository(session)
         self.reports = MaintenanceReportRepository(session)
         self.requests = MaintenanceRequestRepository(session)
@@ -182,6 +200,9 @@ class MaintenanceService:
         self.assignments = MaintenanceWorkOrderAssignmentRepository(session)
         self.teams = MaintenanceTeamRepository(session)
         self.team_members = MaintenanceTeamMemberRepository(session)
+        self.skills = MaintenanceSkillRepository(session)
+        self.employee_skills = EmployeeMaintenanceSkillRepository(session)
+        self.work_order_required_skills = MaintenanceWorkOrderRequiredSkillRepository(session)
         self.schedules = MaintenanceScheduleRepository(session)
         self.assets = AssetRepository(session)
         self.asset_locations = AssetLocationRepository(session)
@@ -716,6 +737,137 @@ class MaintenanceService:
             await self.session.rollback()
             raise
         return await self.get_team(team_id)
+
+    async def create_skill(self, payload: MaintenanceSkillCreate) -> MaintenanceSkill:
+        item = MaintenanceSkill(**payload.model_dump())
+        try:
+            await self.skills.create(item)
+            await self.session.commit()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise AppError(
+                code="MAINTENANCE_SKILL_CONFLICT",
+                message="Skill code maintenance sudah digunakan.",
+                status_code=409,
+            ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
+        return item
+
+    async def list_skills(self) -> list[MaintenanceSkill]:
+        return list(await self.skills.list())
+
+    async def add_employee_skill(
+        self,
+        employee_id,
+        payload: EmployeeMaintenanceSkillCreate,
+    ) -> list[EmployeeMaintenanceSkill]:
+        if payload.valid_to is not None and payload.valid_from is not None:
+            if payload.valid_to < payload.valid_from:
+                raise AppError(
+                    code="EMPLOYEE_MAINTENANCE_SKILL_PERIOD_INVALID",
+                    message="valid_to tidak boleh lebih kecil dari valid_from.",
+                    status_code=422,
+                )
+        skill = await self._get_skill_or_raise(payload.maintenance_skill_id)
+        if skill.certification_required and not payload.certificate_number:
+            raise AppError(
+                code="EMPLOYEE_MAINTENANCE_SKILL_CERTIFICATE_REQUIRED",
+                message="Skill ini membutuhkan certificate_number.",
+                status_code=422,
+            )
+        item = EmployeeMaintenanceSkill(
+            employee_id=employee_id,
+            maintenance_skill_id=payload.maintenance_skill_id,
+            proficiency_level=payload.proficiency_level,
+            certificate_number=payload.certificate_number,
+            valid_from=payload.valid_from,
+            valid_to=payload.valid_to,
+        )
+        try:
+            await self.employee_skills.create(item)
+            await self.session.commit()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise AppError(
+                code="EMPLOYEE_MAINTENANCE_SKILL_CONFLICT",
+                message="Skill maintenance employee dengan periode yang sama sudah ada.",
+                status_code=409,
+            ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
+        return list(await self.employee_skills.list_by_employee(employee_id))
+
+    async def list_employee_skills(self, employee_id) -> list[EmployeeMaintenanceSkill]:
+        return list(await self.employee_skills.list_by_employee(employee_id))
+
+    async def add_work_order_required_skill(
+        self,
+        work_order_id,
+        payload: MaintenanceWorkOrderRequiredSkillCreate,
+    ) -> MaintenanceWorkOrder:
+        item = await self.get_work_order(work_order_id)
+        if item.status in {
+            MaintenanceWorkOrderStatus.CLOSED.value,
+            MaintenanceWorkOrderStatus.CANCELLED.value,
+        }:
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_REQUIRED_SKILL_INVALID_STATUS",
+                message=(
+                    "Work order yang sudah ditutup atau dibatalkan "
+                    "tidak bisa ditambah required skill."
+                ),
+                status_code=409,
+            )
+        skill = await self._get_skill_or_raise(payload.maintenance_skill_id)
+        required_skill = MaintenanceWorkOrderRequiredSkill(
+            work_order_id=item.id,
+            maintenance_skill_id=payload.maintenance_skill_id,
+            minimum_proficiency_level=payload.minimum_proficiency_level,
+            certification_required=(
+                payload.certification_required or skill.certification_required
+            ),
+            notes=payload.notes,
+        )
+        try:
+            await self.work_order_required_skills.create(required_skill)
+            await self._record_work_order_event(
+                work_order_id=item.id,
+                event_type=MaintenanceWorkOrderEventType.REQUIRED_SKILL_ADDED.value,
+                previous_status=None,
+                new_status=item.status,
+                event_at=datetime.now(UTC),
+                performed_by=item.updated_by or item.created_by,
+                reason=payload.notes,
+                event_payload={
+                    "maintenance_skill_id": str(payload.maintenance_skill_id),
+                    "minimum_proficiency_level": payload.minimum_proficiency_level,
+                    "certification_required": (
+                        payload.certification_required or skill.certification_required
+                    ),
+                },
+            )
+            await self.session.commit()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_REQUIRED_SKILL_CONFLICT",
+                message="Required skill work order sudah ada.",
+                status_code=409,
+            ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
+        return await self.get_work_order(work_order_id)
+
+    async def list_work_order_required_skills(
+        self,
+        work_order_id,
+    ) -> list[MaintenanceWorkOrderRequiredSkill]:
+        await self.get_work_order(work_order_id)
+        return list(await self.work_order_required_skills.list_by_work_order(work_order_id))
 
     async def create_schedule(self, payload: MaintenanceScheduleCreate) -> MaintenanceSchedule:
         await self._get_asset_or_raise(payload.asset_id)
@@ -1514,6 +1666,131 @@ class MaintenanceService:
         await self.get_work_order(work_order_id)
         return list(await self.downtimes.list_by_work_order(work_order_id))
 
+    async def create_part_requirement(
+        self,
+        work_order_id,
+        payload: MaintenancePartRequirementCreate,
+    ) -> MaintenanceWorkOrder:
+        work_order = await self.get_work_order(work_order_id)
+        if work_order.status in {
+            MaintenanceWorkOrderStatus.CLOSED.value,
+            MaintenanceWorkOrderStatus.CANCELLED.value,
+        }:
+            raise AppError(
+                code="MAINTENANCE_PART_REQUIREMENT_INVALID_STATUS",
+                message=(
+                    "Work order yang sudah ditutup atau dibatalkan "
+                    "tidak bisa ditambah part requirement."
+                ),
+                status_code=409,
+            )
+        if payload.reserved_quantity > payload.required_quantity:
+            raise AppError(
+                code="MAINTENANCE_PART_REQUIREMENT_QUANTITY_INVALID",
+                message="reserved_quantity tidak boleh lebih besar dari required_quantity.",
+                status_code=422,
+            )
+        requirement = MaintenancePartRequirement(
+            work_order_id=work_order.id,
+            part_item_id=payload.part_item_id,
+            required_quantity=payload.required_quantity,
+            reserved_quantity=payload.reserved_quantity,
+            issued_quantity=Decimal("0"),
+            returned_quantity=Decimal("0"),
+            unit_of_measure=payload.unit_of_measure,
+            requirement_status=payload.requirement_status.value,
+            is_critical=payload.is_critical,
+            notes=payload.notes,
+        )
+        try:
+            await self.part_requirements.create(requirement)
+            await self._record_work_order_event(
+                work_order_id=work_order.id,
+                event_type=MaintenanceWorkOrderEventType.PART_REQUIREMENT_ADDED.value,
+                previous_status=None,
+                new_status=work_order.status,
+                event_at=datetime.now(UTC),
+                performed_by=work_order.updated_by or work_order.created_by,
+                reason=payload.notes,
+                event_payload={
+                    "part_item_id": str(payload.part_item_id),
+                    "required_quantity": str(payload.required_quantity),
+                    "reserved_quantity": str(payload.reserved_quantity),
+                    "requirement_status": payload.requirement_status.value,
+                    "is_critical": payload.is_critical,
+                },
+            )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
+        return await self.get_work_order(work_order_id)
+
+    async def list_part_requirements(self, work_order_id) -> list[MaintenancePartRequirement]:
+        await self.get_work_order(work_order_id)
+        return list(await self.part_requirements.list_by_work_order(work_order_id))
+
+    async def create_vendor_personnel(
+        self,
+        work_order_id,
+        payload: MaintenanceVendorPersonnelCreate,
+    ) -> MaintenanceWorkOrder:
+        work_order = await self.get_work_order(work_order_id)
+        if work_order.status in {
+            MaintenanceWorkOrderStatus.CLOSED.value,
+            MaintenanceWorkOrderStatus.CANCELLED.value,
+        }:
+            raise AppError(
+                code="MAINTENANCE_VENDOR_PERSONNEL_INVALID_STATUS",
+                message=(
+                    "Work order yang sudah ditutup atau dibatalkan "
+                    "tidak bisa ditambah vendor personnel."
+                ),
+                status_code=409,
+            )
+        if payload.check_out_at is not None and payload.check_in_at is not None:
+            if payload.check_out_at < payload.check_in_at:
+                raise AppError(
+                    code="MAINTENANCE_VENDOR_PERSONNEL_TIME_INVALID",
+                    message="check_out_at tidak boleh lebih kecil dari check_in_at.",
+                    status_code=422,
+                )
+        await self._get_partner_or_raise(payload.vendor_partner_id)
+        item = MaintenanceVendorPersonnel(
+            work_order_id=work_order.id,
+            vendor_partner_id=payload.vendor_partner_id,
+            person_name=payload.person_name,
+            contact_phone=payload.contact_phone,
+            technician_reference=payload.technician_reference,
+            check_in_at=payload.check_in_at,
+            check_out_at=payload.check_out_at,
+        )
+        try:
+            await self.vendor_personnel.create(item)
+            await self._record_work_order_event(
+                work_order_id=work_order.id,
+                event_type=MaintenanceWorkOrderEventType.VENDOR_PERSONNEL_ADDED.value,
+                previous_status=None,
+                new_status=work_order.status,
+                event_at=payload.check_in_at or datetime.now(UTC),
+                performed_by=work_order.updated_by or work_order.created_by,
+                reason=payload.person_name,
+                event_payload={
+                    "vendor_partner_id": str(payload.vendor_partner_id),
+                    "person_name": payload.person_name,
+                    "technician_reference": payload.technician_reference,
+                },
+            )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
+        return await self.get_work_order(work_order_id)
+
+    async def list_vendor_personnel(self, work_order_id) -> list[MaintenanceVendorPersonnel]:
+        await self.get_work_order(work_order_id)
+        return list(await self.vendor_personnel.list_by_work_order(work_order_id))
+
     async def create_part_usage(
         self,
         work_order_id,
@@ -1550,6 +1827,7 @@ class MaintenanceService:
         )
         try:
             await self.part_usages.create(part_usage)
+            await self._sync_part_requirements(work_order.id, payload.part_item_id)
             actual_part_cost = await self._calculate_actual_part_cost(work_order.id)
             await self.work_orders.update(
                 work_order,
@@ -1908,6 +2186,7 @@ class MaintenanceService:
         priority = await self._get_priority_or_raise(request.priority_id)
         if payload.vendor_partner_id is not None:
             await self._get_partner_or_raise(payload.vendor_partner_id)
+        self._validate_work_order_window(payload.planned_start_at, payload.planned_end_at)
         entitlement_date = (
             payload.planned_start_at.date()
             if payload.planned_start_at
@@ -1924,6 +2203,14 @@ class MaintenanceService:
             warranty_id=request.warranty_id,
             as_of=entitlement_date,
         )
+        vendor_partner_id = payload.vendor_partner_id or request.requested_vendor_partner_id
+        self._validate_work_order_decision_rules(
+            execution_mode=payload.execution_mode.value,
+            vendor_partner_id=vendor_partner_id,
+            requires_permit=payload.requires_permit,
+            requires_shutdown=payload.requires_shutdown,
+            requires_verification=payload.requires_verification,
+        )
         work_order = MaintenanceWorkOrder(
             work_order_number=payload.work_order_number,
             company_id=request.company_id,
@@ -1933,7 +2220,7 @@ class MaintenanceService:
             title=request.title,
             scope_of_work=payload.scope_of_work,
             execution_mode=payload.execution_mode.value,
-            vendor_partner_id=payload.vendor_partner_id or request.requested_vendor_partner_id,
+            vendor_partner_id=vendor_partner_id,
             maintenance_contract_id=contract_coverage.contract.id if contract_coverage else None,
             warranty_id=warranty.id if warranty else None,
             planned_start_at=payload.planned_start_at,
@@ -1988,6 +2275,14 @@ class MaintenanceService:
         await self._get_priority_or_raise(payload.priority_id)
         if payload.vendor_partner_id is not None:
             await self._get_partner_or_raise(payload.vendor_partner_id)
+        self._validate_work_order_window(payload.planned_start_at, payload.planned_end_at)
+        self._validate_work_order_decision_rules(
+            execution_mode=payload.execution_mode.value,
+            vendor_partner_id=payload.vendor_partner_id,
+            requires_permit=payload.requires_permit,
+            requires_shutdown=payload.requires_shutdown,
+            requires_verification=payload.requires_verification,
+        )
         item = MaintenanceWorkOrder(
             work_order_number=payload.work_order_number,
             company_id=payload.company_id,
@@ -2271,6 +2566,7 @@ class MaintenanceService:
                 message="Work order belum siap untuk assignment.",
                 status_code=409,
             )
+        await self._validate_assignment_rules(item, payload.employee_id, payload.acted_at.date())
         assignment = MaintenanceWorkOrderAssignment(
             work_order_id=item.id,
             employee_id=payload.employee_id,
@@ -2329,6 +2625,7 @@ class MaintenanceService:
                 status_code=409,
             )
         asset = await self._get_asset_or_raise(item.asset_id)
+        await self._validate_work_order_start_rules(item, payload.acted_at.date())
         try:
             previous_status = item.status
             await self.work_orders.update(
@@ -2973,6 +3270,74 @@ class MaintenanceService:
     def _generate_finding_number(self, execution_id: UUID, index: int) -> str:
         return f"FD-{str(execution_id).split('-')[0].upper()}-{index:03d}"
 
+    async def _sync_part_requirements(self, work_order_id, part_item_id) -> None:
+        requirements = list(
+            await self.part_requirements.list_by_work_order_and_part_item(
+                work_order_id,
+                part_item_id,
+            )
+        )
+        if not requirements:
+            return
+        usages = list(
+            await self.part_usages.list_by_work_order_and_part_item(
+                work_order_id,
+                part_item_id,
+            )
+        )
+        total_issued = Decimal("0")
+        total_returned = Decimal("0")
+        for usage in usages:
+            if usage.usage_type == MaintenancePartUsageType.RETURN.value:
+                total_returned += usage.quantity
+            else:
+                total_issued += usage.quantity
+
+        issued_remaining = total_issued
+        returned_remaining = total_returned
+        for requirement in requirements:
+            issued_quantity = min(
+                requirement.required_quantity,
+                max(Decimal("0"), issued_remaining),
+            )
+            issued_remaining -= issued_quantity
+            returned_quantity = min(issued_quantity, max(Decimal("0"), returned_remaining))
+            returned_remaining -= returned_quantity
+            requirement_status = self._derive_part_requirement_status(
+                reserved_quantity=requirement.reserved_quantity,
+                required_quantity=requirement.required_quantity,
+                issued_quantity=issued_quantity,
+                returned_quantity=returned_quantity,
+                current_status=requirement.requirement_status,
+            )
+            await self.part_requirements.update(
+                requirement,
+                issued_quantity=issued_quantity,
+                returned_quantity=returned_quantity,
+                requirement_status=requirement_status,
+            )
+
+    def _derive_part_requirement_status(
+        self,
+        *,
+        reserved_quantity: Decimal,
+        required_quantity: Decimal,
+        issued_quantity: Decimal,
+        returned_quantity: Decimal,
+        current_status: str,
+    ) -> str:
+        if current_status == MaintenancePartRequirementStatus.CANCELLED.value:
+            return current_status
+        if returned_quantity > 0 and issued_quantity > 0 and returned_quantity >= issued_quantity:
+            return MaintenancePartRequirementStatus.RETURNED.value
+        if issued_quantity >= required_quantity and required_quantity > 0:
+            return MaintenancePartRequirementStatus.FULLY_ISSUED.value
+        if issued_quantity > 0:
+            return MaintenancePartRequirementStatus.PARTIALLY_ISSUED.value
+        if reserved_quantity > 0:
+            return MaintenancePartRequirementStatus.RESERVED.value
+        return MaintenancePartRequirementStatus.PLANNED.value
+
     async def _calculate_actual_part_cost(self, work_order_id) -> Decimal:
         total = Decimal("0")
         for usage in await self.part_usages.list_by_work_order(work_order_id):
@@ -3067,6 +3432,136 @@ class MaintenanceService:
         if partner is None:
             raise BusinessPartnerNotFoundError(str(partner_id))
         return partner
+
+    async def _get_skill_or_raise(self, skill_id: UUID) -> MaintenanceSkill:
+        item = await self.skills.get(skill_id)
+        if item is None:
+            raise AppError(
+                code="MAINTENANCE_SKILL_NOT_FOUND",
+                message=f"Maintenance skill {skill_id} tidak ditemukan.",
+                status_code=404,
+            )
+        return item
+
+    def _validate_work_order_window(self, planned_start_at, planned_end_at) -> None:
+        if planned_start_at is not None and planned_end_at is not None:
+            if planned_end_at <= planned_start_at:
+                raise AppError(
+                    code="MAINTENANCE_WORK_ORDER_WINDOW_INVALID",
+                    message="planned_end_at harus lebih besar dari planned_start_at.",
+                    status_code=422,
+                )
+
+    def _validate_work_order_decision_rules(
+        self,
+        *,
+        execution_mode: str,
+        vendor_partner_id,
+        requires_permit: bool,
+        requires_shutdown: bool,
+        requires_verification: bool,
+    ) -> None:
+        if execution_mode in {"VENDOR", "HYBRID"} and vendor_partner_id is None:
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_VENDOR_REQUIRED",
+                message="Execution mode VENDOR atau HYBRID wajib memiliki vendor_partner_id.",
+                status_code=422,
+            )
+        if execution_mode == "INTERNAL" and requires_permit and not requires_shutdown:
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_PERMIT_RULE_INVALID",
+                message="Work order INTERNAL dengan permit harus ditandai requires_shutdown.",
+                status_code=422,
+            )
+        if execution_mode == "VENDOR" and not requires_verification:
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_VERIFICATION_REQUIRED",
+                message="Work order VENDOR wajib melalui verification sebelum close.",
+                status_code=422,
+            )
+
+    async def _validate_assignment_rules(
+        self,
+        work_order: MaintenanceWorkOrder,
+        employee_id,
+        as_of: date,
+    ) -> None:
+        if work_order.maintenance_team_id is not None:
+            memberships = await self.team_members.list_active_by_team_and_employee(
+                work_order.maintenance_team_id,
+                employee_id,
+                as_of=as_of,
+            )
+            if not memberships:
+                raise AppError(
+                    code="MAINTENANCE_WORK_ORDER_TEAM_MEMBERSHIP_REQUIRED",
+                    message="Employee belum menjadi anggota aktif maintenance team work order.",
+                    status_code=422,
+                )
+        required_skills = list(
+            await self.work_order_required_skills.list_by_work_order(work_order.id)
+        )
+        if not required_skills:
+            return
+        employee_skills = list(
+            await self.employee_skills.list_active_by_employee(employee_id, as_of=as_of)
+        )
+        employee_skill_map = {
+            skill.maintenance_skill_id: skill
+            for skill in employee_skills
+        }
+        missing_skill_codes: list[str] = []
+        for required_skill in required_skills:
+            employee_skill = employee_skill_map.get(required_skill.maintenance_skill_id)
+            if employee_skill is None:
+                missing_skill_codes.append(required_skill.maintenance_skill.skill_code)
+                continue
+            if required_skill.certification_required and not employee_skill.certificate_number:
+                missing_skill_codes.append(required_skill.maintenance_skill.skill_code)
+                continue
+        if missing_skill_codes:
+            missing_codes = ", ".join(sorted(set(missing_skill_codes)))
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_SKILL_REQUIREMENT_MISSING",
+                message=f"Employee belum memenuhi required skill aktif: {missing_codes}.",
+                status_code=422,
+            )
+
+    async def _validate_work_order_start_rules(
+        self,
+        work_order: MaintenanceWorkOrder,
+        as_of: date,
+    ) -> None:
+        self._validate_work_order_decision_rules(
+            execution_mode=work_order.execution_mode,
+            vendor_partner_id=work_order.vendor_partner_id,
+            requires_permit=work_order.requires_permit,
+            requires_shutdown=work_order.requires_shutdown,
+            requires_verification=work_order.requires_verification,
+        )
+        assignments = list(await self.assignments.list_by_work_order(work_order.id))
+        if not assignments:
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_ASSIGNMENT_REQUIRED",
+                message="Work order harus memiliki assignment sebelum dapat dimulai.",
+                status_code=422,
+            )
+        if work_order.execution_mode == "VENDOR":
+            vendor_personnel = list(
+                await self.vendor_personnel.list_by_work_order(work_order.id)
+            )
+            if not vendor_personnel:
+                raise AppError(
+                    code="MAINTENANCE_WORK_ORDER_VENDOR_PERSONNEL_REQUIRED",
+                    message="Work order VENDOR harus memiliki vendor personnel sebelum start.",
+                    status_code=422,
+                )
+        for assignment in assignments:
+            await self._validate_assignment_rules(
+                work_order,
+                assignment.employee_id,
+                as_of,
+            )
 
     def _validate_schedule_window(self, scheduled_start_at, scheduled_end_at) -> None:
         if scheduled_end_at <= scheduled_start_at:

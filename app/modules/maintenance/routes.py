@@ -23,6 +23,8 @@ from app.modules.maintenance.schemas import (
     AssetFailureUpdate,
     AssetWarrantyCreate,
     AssetWarrantyRead,
+    EmployeeMaintenanceSkillCreate,
+    EmployeeMaintenanceSkillRead,
     MaintenanceChecklistExecutionRead,
     MaintenanceChecklistExecutionStartPayload,
     MaintenanceChecklistResultSubmitPayload,
@@ -41,6 +43,8 @@ from app.modules.maintenance.schemas import (
     MaintenanceLaborLogCreate,
     MaintenanceMasterCodeCreate,
     MaintenanceMasterCodeRead,
+    MaintenancePartRequirementCreate,
+    MaintenancePartRequirementRead,
     MaintenancePartUsageCreate,
     MaintenancePlanAssetCreate,
     MaintenancePlanCreate,
@@ -61,18 +65,24 @@ from app.modules.maintenance.schemas import (
     MaintenanceScheduleListItemRead,
     MaintenanceScheduleRead,
     MaintenanceScheduleReschedulePayload,
+    MaintenanceSkillCreate,
+    MaintenanceSkillRead,
     MaintenanceSlaReportRead,
     MaintenanceSlaSnapshotRead,
     MaintenanceTeamCreate,
     MaintenanceTeamListItemRead,
     MaintenanceTeamMemberCreate,
     MaintenanceTeamRead,
+    MaintenanceVendorPersonnelCreate,
+    MaintenanceVendorPersonnelRead,
     MaintenanceWorkOrderAssignPayload,
     MaintenanceWorkOrderCompletePayload,
     MaintenanceWorkOrderCreate,
     MaintenanceWorkOrderEventRead,
     MaintenanceWorkOrderListItemRead,
     MaintenanceWorkOrderRead,
+    MaintenanceWorkOrderRequiredSkillCreate,
+    MaintenanceWorkOrderRequiredSkillRead,
     MaintenanceWorkOrderVerifyPayload,
 )
 from app.modules.maintenance.service import MaintenanceService
@@ -570,6 +580,83 @@ async def add_maintenance_team_member(
         request=request,
         message="Member maintenance team berhasil ditambahkan.",
         data=MaintenanceTeamRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post(
+    "/skills",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def create_maintenance_skill(
+    request: Request,
+    payload: MaintenanceSkillCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.create_skill(payload)
+    return success_response(
+        request=request,
+        message="Maintenance skill berhasil dibuat.",
+        data=MaintenanceSkillRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get("/skills", dependencies=[Depends(require_maintenance_read)])
+async def list_maintenance_skills(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.list_skills()
+    return success_response(
+        request=request,
+        message="Daftar maintenance skill berhasil diambil.",
+        data=[MaintenanceSkillRead.model_validate(item).model_dump(mode="json") for item in items],
+    )
+
+
+@router.post(
+    "/employees/{employee_id}/skills",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def add_employee_maintenance_skill(
+    request: Request,
+    employee_id: UUID,
+    payload: EmployeeMaintenanceSkillCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.add_employee_skill(employee_id, payload)
+    return success_response(
+        request=request,
+        message="Skill maintenance employee berhasil ditambahkan.",
+        data=[
+            EmployeeMaintenanceSkillRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
+    )
+
+
+@router.get(
+    "/employees/{employee_id}/skills",
+    dependencies=[Depends(require_maintenance_read)],
+)
+async def list_employee_maintenance_skills(
+    request: Request,
+    employee_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.list_employee_skills(employee_id)
+    return success_response(
+        request=request,
+        message="Daftar skill maintenance employee berhasil diambil.",
+        data=[
+            EmployeeMaintenanceSkillRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
     )
 
 
@@ -1109,6 +1196,131 @@ async def start_maintenance_work_order_checklist(
         request=request,
         message="Checklist execution maintenance berhasil dimulai.",
         data=MaintenanceChecklistExecutionRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post(
+    "/work-orders/{work_order_id}/required-skills",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def create_maintenance_work_order_required_skill(
+    request: Request,
+    work_order_id: UUID,
+    payload: MaintenanceWorkOrderRequiredSkillCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.add_work_order_required_skill(work_order_id, payload)
+    return success_response(
+        request=request,
+        message="Required skill maintenance work order berhasil dicatat.",
+        data=MaintenanceWorkOrderRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get(
+    "/work-orders/{work_order_id}/required-skills",
+    dependencies=[Depends(require_maintenance_read)],
+)
+async def list_maintenance_work_order_required_skills(
+    request: Request,
+    work_order_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.list_work_order_required_skills(work_order_id)
+    return success_response(
+        request=request,
+        message="Daftar required skill maintenance work order berhasil diambil.",
+        data=[
+            MaintenanceWorkOrderRequiredSkillRead.model_validate(item).model_dump(
+                mode="json"
+            )
+            for item in items
+        ],
+    )
+
+
+@router.post(
+    "/work-orders/{work_order_id}/part-requirements",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def create_maintenance_work_order_part_requirement(
+    request: Request,
+    work_order_id: UUID,
+    payload: MaintenancePartRequirementCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.create_part_requirement(work_order_id, payload)
+    return success_response(
+        request=request,
+        message="Part requirement maintenance work order berhasil dicatat.",
+        data=MaintenanceWorkOrderRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get(
+    "/work-orders/{work_order_id}/part-requirements",
+    dependencies=[Depends(require_maintenance_read)],
+)
+async def list_maintenance_work_order_part_requirements(
+    request: Request,
+    work_order_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.list_part_requirements(work_order_id)
+    return success_response(
+        request=request,
+        message="Daftar part requirement maintenance work order berhasil diambil.",
+        data=[
+            MaintenancePartRequirementRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
+    )
+
+
+@router.post(
+    "/work-orders/{work_order_id}/vendor-personnel",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def create_maintenance_work_order_vendor_personnel(
+    request: Request,
+    work_order_id: UUID,
+    payload: MaintenanceVendorPersonnelCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.create_vendor_personnel(work_order_id, payload)
+    return success_response(
+        request=request,
+        message="Vendor personnel maintenance work order berhasil dicatat.",
+        data=MaintenanceWorkOrderRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get(
+    "/work-orders/{work_order_id}/vendor-personnel",
+    dependencies=[Depends(require_maintenance_read)],
+)
+async def list_maintenance_work_order_vendor_personnel(
+    request: Request,
+    work_order_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.list_vendor_personnel(work_order_id)
+    return success_response(
+        request=request,
+        message="Daftar vendor personnel maintenance work order berhasil diambil.",
+        data=[
+            MaintenanceVendorPersonnelRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
     )
 
 

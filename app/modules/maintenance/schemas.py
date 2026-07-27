@@ -17,6 +17,7 @@ from app.modules.maintenance.constants import (
     MaintenanceFindingSeverity,
     MaintenanceFindingType,
     MaintenanceLaborActivityType,
+    MaintenancePartRequirementStatus,
     MaintenancePartUsageType,
     MaintenancePlanTriggerType,
     MaintenanceRequestSourceType,
@@ -353,6 +354,56 @@ class MaintenanceWorkOrderAssignmentRead(BaseModel):
     assigned_at: datetime
     accepted_at: datetime | None
     released_at: datetime | None
+
+
+class MaintenancePartRequirementCreate(BaseModel):
+    part_item_id: UUID
+    required_quantity: Decimal = Field(gt=0)
+    reserved_quantity: Decimal = Field(default=Decimal("0"), ge=0)
+    unit_of_measure: str = Field(max_length=20)
+    requirement_status: MaintenancePartRequirementStatus = (
+        MaintenancePartRequirementStatus.PLANNED
+    )
+    is_critical: bool = False
+    notes: str | None = None
+
+
+class MaintenancePartRequirementRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    work_order_id: UUID
+    part_item_id: UUID
+    required_quantity: Decimal
+    reserved_quantity: Decimal
+    issued_quantity: Decimal
+    returned_quantity: Decimal
+    unit_of_measure: str
+    requirement_status: str
+    is_critical: bool
+    notes: str | None
+
+
+class MaintenanceVendorPersonnelCreate(BaseModel):
+    vendor_partner_id: UUID
+    person_name: str = Field(max_length=150)
+    contact_phone: str | None = Field(default=None, max_length=50)
+    technician_reference: str | None = Field(default=None, max_length=100)
+    check_in_at: datetime | None = None
+    check_out_at: datetime | None = None
+
+
+class MaintenanceVendorPersonnelRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    work_order_id: UUID
+    vendor_partner_id: UUID
+    person_name: str
+    contact_phone: str | None
+    technician_reference: str | None
+    check_in_at: datetime | None
+    check_out_at: datetime | None
 
 
 class MaintenancePartUsageCreate(BaseModel):
@@ -831,6 +882,9 @@ class MaintenanceWorkOrderRead(BaseModel):
     priority: MaintenancePriorityRead
     requests: list[MaintenanceRequestWorkOrderLinkRead] = []
     assignments: list[MaintenanceWorkOrderAssignmentRead] = []
+    required_skills: list[MaintenanceWorkOrderRequiredSkillRead] = []
+    part_requirements: list[MaintenancePartRequirementRead] = []
+    vendor_personnel: list[MaintenanceVendorPersonnelRead] = []
     failures: list[AssetFailureRead] = []
     part_usages: list[MaintenancePartUsageRead] = []
     labor_logs: list[MaintenanceLaborLogRead] = []
@@ -875,6 +929,61 @@ class MaintenanceTeamCreate(BaseModel):
     supervisor_employee_id: UUID | None = None
     default_location_id: UUID | None = None
     is_active: bool = True
+
+
+class MaintenanceSkillCreate(BaseModel):
+    skill_code: str = Field(max_length=30)
+    skill_name: str = Field(max_length=150)
+    certification_required: bool = False
+
+
+class MaintenanceSkillRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    skill_code: str
+    skill_name: str
+    certification_required: bool
+
+
+class EmployeeMaintenanceSkillCreate(BaseModel):
+    maintenance_skill_id: UUID
+    proficiency_level: str | None = Field(default=None, max_length=20)
+    certificate_number: str | None = Field(default=None, max_length=100)
+    valid_from: date | None = None
+    valid_to: date | None = None
+
+
+class EmployeeMaintenanceSkillRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    employee_id: UUID
+    maintenance_skill_id: UUID
+    proficiency_level: str | None
+    certificate_number: str | None
+    valid_from: date | None
+    valid_to: date | None
+    maintenance_skill: MaintenanceSkillRead
+
+
+class MaintenanceWorkOrderRequiredSkillCreate(BaseModel):
+    maintenance_skill_id: UUID
+    minimum_proficiency_level: str | None = Field(default=None, max_length=20)
+    certification_required: bool = False
+    notes: str | None = None
+
+
+class MaintenanceWorkOrderRequiredSkillRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    work_order_id: UUID
+    maintenance_skill_id: UUID
+    minimum_proficiency_level: str | None
+    certification_required: bool
+    notes: str | None
+    maintenance_skill: MaintenanceSkillRead
 
 
 class MaintenanceTeamMemberCreate(BaseModel):

@@ -131,6 +131,48 @@ Seed entity:
 
 - `asset_transfer_id`
 
+## Lease Contract List
+
+Tujuan data:
+
+- tabel kontrak sewa/rental/borrowed asset;
+- monitoring status kontrak aktif;
+- navigasi ke detail kontrak.
+
+Endpoint utama:
+
+- `GET /api/v1/lease-contracts`
+
+Action sample:
+
+- `POST /api/v1/lease-contracts`
+
+Seed entity:
+
+- `lease_contract_id`
+
+## Lease Contract Detail
+
+Tujuan data:
+
+- header kontrak lease;
+- daftar asset item dalam kontrak;
+- daftar payment lease.
+
+Endpoint utama:
+
+- `GET /api/v1/lease-contracts/{lease_contract_id}`
+
+Endpoint tab:
+
+- `GET /api/v1/lease-contracts/{lease_contract_id}/assets`
+- `GET /api/v1/lease-contracts/{lease_contract_id}/payments`
+
+Action sample:
+
+- `POST /api/v1/lease-contracts/{lease_contract_id}/assets`
+- `POST /api/v1/lease-contracts/{lease_contract_id}/payments`
+
 ## Tracking Timeline
 
 Tujuan data:
@@ -352,6 +394,9 @@ Tujuan data:
 - attachment;
 - event log;
 - downtime;
+- required skill;
+- vendor personnel;
+- part requirement vs actual usage;
 - linked failures;
 - lifecycle action state.
 
@@ -364,6 +409,9 @@ Endpoint tab:
 - `GET /api/v1/maintenance/work-orders/{maintenance_work_order_id}/attachments`
 - `GET /api/v1/maintenance/work-orders/{maintenance_work_order_id}/downtimes`
 - `GET /api/v1/maintenance/work-orders/{maintenance_work_order_id}/events`
+- `GET /api/v1/maintenance/work-orders/{maintenance_work_order_id}/required-skills`
+- `GET /api/v1/maintenance/work-orders/{maintenance_work_order_id}/part-requirements`
+- `GET /api/v1/maintenance/work-orders/{maintenance_work_order_id}/vendor-personnel`
 - `GET /api/v1/maintenance/failures?work_order_id={maintenance_work_order_id}`
 
 Action sample:
@@ -372,6 +420,9 @@ Action sample:
 - `POST /api/v1/maintenance/work-orders/{maintenance_work_order_id}/approve`
 - `POST /api/v1/maintenance/work-orders/{maintenance_work_order_id}/assign`
 - `POST /api/v1/maintenance/work-orders/{maintenance_work_order_id}/start`
+- `POST /api/v1/maintenance/work-orders/{maintenance_work_order_id}/required-skills`
+- `POST /api/v1/maintenance/work-orders/{maintenance_work_order_id}/part-requirements`
+- `POST /api/v1/maintenance/work-orders/{maintenance_work_order_id}/vendor-personnel`
 - `POST /api/v1/maintenance/work-orders/{maintenance_work_order_id}/hold`
 - `POST /api/v1/maintenance/work-orders/{maintenance_work_order_id}/resume`
 - `POST /api/v1/maintenance/work-orders/{maintenance_work_order_id}/parts`

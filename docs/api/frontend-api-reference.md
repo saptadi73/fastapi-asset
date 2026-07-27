@@ -989,7 +989,8 @@ Query:
 ### `GET /maintenance/work-orders/{work_order_id}`
 
 Mengambil detail work order beserta asset, priority, request link, assignment,
-downtime, event lifecycle, part usage, dan labor log.
+downtime, event lifecycle, part requirement, vendor personnel, part usage, dan
+labor log.
 
 ### `POST /maintenance/work-orders/{work_order_id}/approve`
 
@@ -1007,6 +1008,13 @@ Status:
 
 Endpoint ini juga membuat assignment teknisi pada work order.
 
+Perilaku backend:
+
+- bila work order memiliki `required_skills`, employee yang di-assign harus punya
+  skill aktif pada tanggal assignment
+- bila work order punya `maintenance_team_id`, employee harus menjadi anggota
+  aktif tim pada tanggal assignment
+
 ### `POST /maintenance/work-orders/{work_order_id}/start`
 
 Status:
@@ -1016,6 +1024,34 @@ Status:
 
 Saat work order dimulai, backend juga mencatat histori status aset dan
 mengubah status aset menjadi `UNDER_MAINTENANCE`.
+
+Rule tambahan:
+
+- work order harus memiliki assignment lebih dulu
+- work order `VENDOR` wajib sudah memiliki `vendor_personnel`
+- seluruh assignment yang ada akan divalidasi ulang terhadap skill aktif
+
+### `POST /maintenance/skills`
+
+Membuat master maintenance skill.
+
+### `GET /maintenance/skills`
+
+Mengambil daftar master maintenance skill untuk form planner, work order skill
+matrix, dan master data UI.
+
+### `POST /maintenance/employees/{employee_id}/skills`
+
+Menambahkan skill maintenance ke employee.
+
+Perilaku backend:
+
+- `valid_to` tidak boleh lebih kecil dari `valid_from`
+- bila skill mewajibkan sertifikasi, `certificate_number` wajib diisi
+
+### `GET /maintenance/employees/{employee_id}/skills`
+
+Mengambil daftar skill maintenance employee beserta master skill yang terkait.
 
 ### `POST /maintenance/work-orders/{work_order_id}/hold`
 
@@ -1083,6 +1119,62 @@ Aturan backend yang sudah aktif:
 - `checklist_template_id` bisa dikirim eksplisit atau diambil dari maintenance
   plan yang terkait
 
+### `POST /maintenance/work-orders/{work_order_id}/required-skills`
+
+Menetapkan skill wajib pada work order.
+
+Perilaku backend:
+
+- tidak bisa ditambah bila work order sudah `CLOSED` atau `CANCELLED`
+- jika master skill punya `certification_required=true`, requirement work order
+  ikut dianggap membutuhkan sertifikasi
+- endpoint ini menambah audit event `REQUIRED_SKILL_ADDED`
+
+### `GET /maintenance/work-orders/{work_order_id}/required-skills`
+
+Mengambil daftar skill wajib pada work order untuk planner dan assignment screen.
+
+### `POST /maintenance/work-orders/{work_order_id}/part-requirements`
+
+Mencatat kebutuhan part terencana sebelum actual usage dicatat.
+
+Perilaku backend:
+
+- menolak penambahan bila work order sudah `CLOSED` atau `CANCELLED`
+- `reserved_quantity` tidak boleh lebih besar dari `required_quantity`
+- endpoint ini menambah audit event `PART_REQUIREMENT_ADDED`
+
+### `GET /maintenance/work-orders/{work_order_id}/part-requirements`
+
+Mengambil daftar kebutuhan part terencana untuk work order.
+
+Kegunaan frontend:
+
+- tampilkan tab material planning
+- bedakan planned quantity, reserved quantity, issued quantity, dan returned
+  quantity
+- gunakan `requirement_status` untuk badge readiness
+
+### `POST /maintenance/work-orders/{work_order_id}/vendor-personnel`
+
+Mencatat teknisi atau personel vendor yang hadir pada work order.
+
+Perilaku backend:
+
+- menolak penambahan bila work order sudah `CLOSED` atau `CANCELLED`
+- `check_out_at` tidak boleh lebih kecil dari `check_in_at`
+- endpoint ini menambah audit event `VENDOR_PERSONNEL_ADDED`
+
+### `GET /maintenance/work-orders/{work_order_id}/vendor-personnel`
+
+Mengambil daftar teknisi vendor yang terlibat pada work order.
+
+Kegunaan frontend:
+
+- tampilkan tab eksternal/vendor execution
+- tampilkan histori check-in dan check-out vendor di lapangan
+- gunakan untuk halaman approval biaya vendor dan bukti kehadiran
+
 ### `POST /maintenance/work-orders/{work_order_id}/parts`
 
 Mencatat penggunaan spare part pada work order.
@@ -1092,6 +1184,8 @@ Perilaku backend:
 - `asset_id` part usage mengikuti asset pada work order
 - biaya aktual part pada work order dihitung ulang dari seluruh part usage yang
   tersimpan
+- jika ada `part requirement` untuk `part_item_id` yang sama, backend
+  menyinkronkan `issued_quantity`, `returned_quantity`, dan `requirement_status`
 
 ### `POST /maintenance/work-orders/{work_order_id}/labor-logs`
 
@@ -1627,6 +1721,54 @@ Mencatat kepemilikan aset berdasarkan periode berlaku.
 ### `GET /assets/{asset_id}/ownerships`
 
 Mengambil histori ownership aset.
+
+## Lease Domain
+
+### `POST /lease-contracts`
+
+Membuat lease contract baru untuk aset sewa, rental, borrowed asset, atau
+partner placement.
+
+Perilaku backend:
+
+- `end_date` tidak boleh lebih kecil dari `start_date`
+- `extension_option_end_date` tidak boleh lebih kecil dari `end_date`
+
+### `GET /lease-contracts`
+
+Mengambil daftar lease contract untuk halaman list lease.
+
+### `GET /lease-contracts/{contract_id}`
+
+Mengambil detail lease contract beserta asset item dan payment yang terkait.
+
+### `POST /lease-contracts/{contract_id}/assets`
+
+Menambahkan asset lease item ke contract.
+
+Perilaku backend:
+
+- periode item harus berada dalam periode contract
+- `lease_end_date` tidak boleh lebih kecil dari `lease_start_date`
+- satu aset tidak boleh memiliki active lease item yang overlap
+
+### `GET /lease-contracts/{contract_id}/assets`
+
+Mengambil daftar asset item pada lease contract.
+
+### `POST /lease-contracts/{contract_id}/payments`
+
+Mencatat payment schedule atau realisasi payment lease contract.
+
+Perilaku backend:
+
+- periode payment harus berada dalam periode contract
+- `period_end` tidak boleh lebih kecil dari `period_start`
+- `due_date` tidak boleh lebih kecil dari `period_start`
+
+### `GET /lease-contracts/{contract_id}/payments`
+
+Mengambil daftar payment lease contract.
 
 ### `POST /assets/{asset_id}/status-changes`
 

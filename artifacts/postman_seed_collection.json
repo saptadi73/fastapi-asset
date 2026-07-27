@@ -118,7 +118,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"partner_code\": \"BP-20260727223545-3D6BDA\",\n  \"partner_name\": \"Vendor Smoke 20260727223545-3D6BDA\",\n  \"email\": \"vendor-20260727223545-3D6BDA@example.com\",\n  \"phone\": \"021555000\",\n  \"address\": \"Jl. Testing No. 1\",\n  \"sap_card_code\": \"VND20260727223545-3D6BDA\",\n  \"is_active\": true,\n  \"roles\": [\n    {\n      \"role_type\": \"SUPPLIER\",\n      \"valid_from\": \"2026-07-27\"\n    }\n  ]\n}",
+              "raw": "{\n  \"partner_code\": \"BP-20260727235601-0C8841\",\n  \"partner_name\": \"Vendor Smoke 20260727235601-0C8841\",\n  \"email\": \"vendor-20260727235601-0C8841@example.com\",\n  \"phone\": \"021555000\",\n  \"address\": \"Jl. Testing No. 1\",\n  \"sap_card_code\": \"VND20260727235601-0C8841\",\n  \"is_active\": true,\n  \"roles\": [\n    {\n      \"role_type\": \"SUPPLIER\",\n      \"valid_from\": \"2026-07-27\"\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -170,7 +170,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/business-partners/43ce9475-6cd3-46c4-b036-51b713a9d310",
+              "raw": "{{base_url}}/api/v1/business-partners/7472da85-ec58-4b87-a5f3-17a94634be1d",
               "host": [
                 "{{base_url}}"
               ],
@@ -178,7 +178,7 @@
                 "api",
                 "v1",
                 "business-partners",
-                "43ce9475-6cd3-46c4-b036-51b713a9d310"
+                "7472da85-ec58-4b87-a5f3-17a94634be1d"
               ],
               "query": []
             }
@@ -217,7 +217,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"category_code\": \"CAT-20260727223545-3D6BDA\",\n  \"category_name\": \"Category Smoke 20260727223545-3D6BDA\",\n  \"description\": \"Kategori smoke test\",\n  \"is_active\": true\n}",
+              "raw": "{\n  \"category_code\": \"CAT-20260727235601-0C8841\",\n  \"category_name\": \"Category Smoke 20260727235601-0C8841\",\n  \"description\": \"Kategori smoke test\",\n  \"is_active\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -282,7 +282,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"class_code\": \"CLS-20260727223545-3D6BDA\",\n  \"class_name\": \"Class Smoke 20260727223545-3D6BDA\",\n  \"sap_asset_class_code\": \"SAP-20260727223545-3D6BDA\",\n  \"default_useful_life_months\": 48,\n  \"is_depreciable\": true,\n  \"is_active\": true\n}",
+              "raw": "{\n  \"class_code\": \"CLS-20260727235601-0C8841\",\n  \"class_name\": \"Class Smoke 20260727235601-0C8841\",\n  \"sap_asset_class_code\": \"SAP-20260727235601-0C8841\",\n  \"default_useful_life_months\": 48,\n  \"is_depreciable\": true,\n  \"is_active\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -347,7 +347,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"location_code\": \"LOC-A-20260727223545-3D6BDA\",\n  \"location_name\": \"Gudang A Smoke 20260727223545-3D6BDA\",\n  \"location_type\": \"WAREHOUSE\",\n  \"company_id\": \"00e049ea-938d-462e-90ea-2adb311c3550\",\n  \"branch_id\": \"e43c68bc-3d0a-46a5-be76-78b46c1ab2c7\",\n  \"warehouse_code\": \"WHA6BDA\",\n  \"is_active\": true\n}",
+              "raw": "{\n  \"location_code\": \"LOC-A-20260727235601-0C8841\",\n  \"location_name\": \"Gudang A Smoke 20260727235601-0C8841\",\n  \"location_type\": \"WAREHOUSE\",\n  \"company_id\": \"e5dc04dc-0519-4a7c-ae63-eb0045b34909\",\n  \"branch_id\": \"962ea829-a5fe-4561-88b2-4efc7f2b2171\",\n  \"warehouse_code\": \"WHA8841\",\n  \"is_active\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -384,7 +384,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"location_code\": \"LOC-B-20260727223545-3D6BDA\",\n  \"location_name\": \"Workshop Smoke 20260727223545-3D6BDA\",\n  \"location_type\": \"WORKSHOP\",\n  \"company_id\": \"00e049ea-938d-462e-90ea-2adb311c3550\",\n  \"branch_id\": \"e43c68bc-3d0a-46a5-be76-78b46c1ab2c7\",\n  \"warehouse_code\": \"WHB6BDA\",\n  \"is_active\": true\n}",
+              "raw": "{\n  \"location_code\": \"LOC-B-20260727235601-0C8841\",\n  \"location_name\": \"Workshop Smoke 20260727235601-0C8841\",\n  \"location_type\": \"WORKSHOP\",\n  \"company_id\": \"e5dc04dc-0519-4a7c-ae63-eb0045b34909\",\n  \"branch_id\": \"962ea829-a5fe-4561-88b2-4efc7f2b2171\",\n  \"warehouse_code\": \"WHB8841\",\n  \"is_active\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -449,7 +449,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"asset_category_id\": \"f01e079e-713b-4e9a-9c1f-ba1acf149746\",\n  \"attribute_code\": \"POWER-20260727223545-3D6BDA\",\n  \"attribute_name\": \"Rated Power\",\n  \"data_type\": \"NUMBER\",\n  \"unit_of_measure\": \"kW\",\n  \"is_required\": true,\n  \"validation_rule\": {\n    \"min\": 1,\n    \"max\": 500\n  }\n}",
+              "raw": "{\n  \"asset_category_id\": \"7340ce9b-894b-42bf-8539-720461c1929d\",\n  \"attribute_code\": \"POWER-20260727235601-0C8841\",\n  \"attribute_name\": \"Rated Power\",\n  \"data_type\": \"NUMBER\",\n  \"unit_of_measure\": \"kW\",\n  \"is_required\": true,\n  \"validation_rule\": {\n    \"min\": 1,\n    \"max\": 500\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -473,7 +473,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/asset-categories/f01e079e-713b-4e9a-9c1f-ba1acf149746/attribute-definitions",
+              "raw": "{{base_url}}/api/v1/asset-categories/7340ce9b-894b-42bf-8539-720461c1929d/attribute-definitions",
               "host": [
                 "{{base_url}}"
               ],
@@ -481,7 +481,7 @@
                 "api",
                 "v1",
                 "asset-categories",
-                "f01e079e-713b-4e9a-9c1f-ba1acf149746",
+                "7340ce9b-894b-42bf-8539-720461c1929d",
                 "attribute-definitions"
               ],
               "query": []
@@ -516,7 +516,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"asset_code\": \"AST-20260727223545-3D6BDA\",\n  \"asset_name\": \"Pompa Smoke 20260727223545-3D6BDA\",\n  \"description\": \"Asset smoke test end-to-end\",\n  \"asset_category_id\": \"f01e079e-713b-4e9a-9c1f-ba1acf149746\",\n  \"asset_class_id\": \"1b4f5a01-73e8-4ab0-8886-1d73bbd327f0\",\n  \"asset_type\": \"FIXED_ASSET\",\n  \"asset_status\": \"IN_SERVICE\",\n  \"condition_status\": \"GOOD\",\n  \"criticality_level\": \"HIGH\",\n  \"serial_number\": \"SN-20260727223545-3D6BDA\",\n  \"manufacturer_id\": \"43ce9475-6cd3-46c4-b036-51b713a9d310\",\n  \"brand\": \"SmokeBrand\",\n  \"model\": \"SM-1000\",\n  \"manufacture_year\": 2025,\n  \"company_id\": \"00e049ea-938d-462e-90ea-2adb311c3550\",\n  \"branch_id\": \"e43c68bc-3d0a-46a5-be76-78b46c1ab2c7\",\n  \"current_location_id\": \"3ef35a10-96f0-4e76-ba1c-7de278667db9\",\n  \"barcode\": \"BC-20260727223545-3D6BDA\",\n  \"qr_code\": \"QR-20260727223545-3D6BDA\",\n  \"tag_number\": \"TAG-20260727223545-3D6BDA\",\n  \"tracking_status\": \"TRACKED\",\n  \"in_service_date\": \"2026-07-01\",\n  \"sap_asset_code\": \"SAP-AST-20260727223545-3D6BDA\",\n  \"sap_item_code\": \"ITEM-20260727223545-3D6BDA\"\n}",
+              "raw": "{\n  \"asset_code\": \"AST-20260727235601-0C8841\",\n  \"asset_name\": \"Pompa Smoke 20260727235601-0C8841\",\n  \"description\": \"Asset smoke test end-to-end\",\n  \"asset_category_id\": \"7340ce9b-894b-42bf-8539-720461c1929d\",\n  \"asset_class_id\": \"a2c8f08d-d2cf-466f-a919-be369b757d9d\",\n  \"asset_type\": \"FIXED_ASSET\",\n  \"asset_status\": \"IN_SERVICE\",\n  \"condition_status\": \"GOOD\",\n  \"criticality_level\": \"HIGH\",\n  \"serial_number\": \"SN-20260727235601-0C8841\",\n  \"manufacturer_id\": \"7472da85-ec58-4b87-a5f3-17a94634be1d\",\n  \"brand\": \"SmokeBrand\",\n  \"model\": \"SM-1000\",\n  \"manufacture_year\": 2025,\n  \"company_id\": \"e5dc04dc-0519-4a7c-ae63-eb0045b34909\",\n  \"branch_id\": \"962ea829-a5fe-4561-88b2-4efc7f2b2171\",\n  \"current_location_id\": \"44934d4b-cd06-4f55-9946-e1618e6b641e\",\n  \"barcode\": \"BC-20260727235601-0C8841\",\n  \"qr_code\": \"QR-20260727235601-0C8841\",\n  \"tag_number\": \"TAG-20260727235601-0C8841\",\n  \"tracking_status\": \"TRACKED\",\n  \"in_service_date\": \"2026-07-01\",\n  \"sap_asset_code\": \"SAP-AST-20260727235601-0C8841\",\n  \"sap_item_code\": \"ITEM-20260727235601-0C8841\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -568,7 +568,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/assets/52c6e820-3270-4972-b698-0e3bb81d001e",
+              "raw": "{{base_url}}/api/v1/assets/2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
               "host": [
                 "{{base_url}}"
               ],
@@ -576,7 +576,7 @@
                 "api",
                 "v1",
                 "assets",
-                "52c6e820-3270-4972-b698-0e3bb81d001e"
+                "2b696fe1-bc19-4c01-b54b-36a2dfd3066b"
               ],
               "query": []
             }
@@ -597,7 +597,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/assets/52c6e820-3270-4972-b698-0e3bb81d001e",
+              "raw": "{{base_url}}/api/v1/assets/2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
               "host": [
                 "{{base_url}}"
               ],
@@ -605,13 +605,13 @@
                 "api",
                 "v1",
                 "assets",
-                "52c6e820-3270-4972-b698-0e3bb81d001e"
+                "2b696fe1-bc19-4c01-b54b-36a2dfd3066b"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"asset_name\": \"Pompa Smoke Updated 20260727223545-3D6BDA\",\n  \"description\": \"Asset smoke test updated\",\n  \"condition_status\": \"FAIR\",\n  \"brand\": \"SmokeBrandX\",\n  \"model\": \"SM-2000\"\n}",
+              "raw": "{\n  \"asset_name\": \"Pompa Smoke Updated 20260727235601-0C8841\",\n  \"description\": \"Asset smoke test updated\",\n  \"condition_status\": \"FAIR\",\n  \"brand\": \"SmokeBrandX\",\n  \"model\": \"SM-2000\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -635,7 +635,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/assets/52c6e820-3270-4972-b698-0e3bb81d001e/attribute-values",
+              "raw": "{{base_url}}/api/v1/assets/2b696fe1-bc19-4c01-b54b-36a2dfd3066b/attribute-values",
               "host": [
                 "{{base_url}}"
               ],
@@ -643,14 +643,14 @@
                 "api",
                 "v1",
                 "assets",
-                "52c6e820-3270-4972-b698-0e3bb81d001e",
+                "2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
                 "attribute-values"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"attribute_definition_id\": \"ceb4a846-0cb3-46ff-ba8c-cda03b2bf8f3\",\n  \"value_number\": 45.5\n}",
+              "raw": "{\n  \"attribute_definition_id\": \"782329a2-1465-4364-b100-1c17d96b8530\",\n  \"value_number\": 45.5\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -674,7 +674,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/assets/52c6e820-3270-4972-b698-0e3bb81d001e/attribute-values",
+              "raw": "{{base_url}}/api/v1/assets/2b696fe1-bc19-4c01-b54b-36a2dfd3066b/attribute-values",
               "host": [
                 "{{base_url}}"
               ],
@@ -682,7 +682,7 @@
                 "api",
                 "v1",
                 "assets",
-                "52c6e820-3270-4972-b698-0e3bb81d001e",
+                "2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
                 "attribute-values"
               ],
               "query": []
@@ -704,7 +704,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/assets/52c6e820-3270-4972-b698-0e3bb81d001e/ownerships",
+              "raw": "{{base_url}}/api/v1/assets/2b696fe1-bc19-4c01-b54b-36a2dfd3066b/ownerships",
               "host": [
                 "{{base_url}}"
               ],
@@ -712,14 +712,14 @@
                 "api",
                 "v1",
                 "assets",
-                "52c6e820-3270-4972-b698-0e3bb81d001e",
+                "2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
                 "ownerships"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"owner_type\": \"PARTNER\",\n  \"owner_partner_id\": \"43ce9475-6cd3-46c4-b036-51b713a9d310\",\n  \"ownership_percentage\": 100,\n  \"effective_from\": \"2026-07-01\",\n  \"source_reference\": \"SMOKE-OWNERSHIP\"\n}",
+              "raw": "{\n  \"owner_type\": \"PARTNER\",\n  \"owner_partner_id\": \"7472da85-ec58-4b87-a5f3-17a94634be1d\",\n  \"ownership_percentage\": 100,\n  \"effective_from\": \"2026-07-01\",\n  \"source_reference\": \"SMOKE-OWNERSHIP\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -743,7 +743,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/assets/52c6e820-3270-4972-b698-0e3bb81d001e/ownerships",
+              "raw": "{{base_url}}/api/v1/assets/2b696fe1-bc19-4c01-b54b-36a2dfd3066b/ownerships",
               "host": [
                 "{{base_url}}"
               ],
@@ -751,7 +751,7 @@
                 "api",
                 "v1",
                 "assets",
-                "52c6e820-3270-4972-b698-0e3bb81d001e",
+                "2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
                 "ownerships"
               ],
               "query": []
@@ -773,7 +773,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/assets/52c6e820-3270-4972-b698-0e3bb81d001e/assignments",
+              "raw": "{{base_url}}/api/v1/assets/2b696fe1-bc19-4c01-b54b-36a2dfd3066b/assignments",
               "host": [
                 "{{base_url}}"
               ],
@@ -781,14 +781,14 @@
                 "api",
                 "v1",
                 "assets",
-                "52c6e820-3270-4972-b698-0e3bb81d001e",
+                "2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
                 "assignments"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"assignment_type\": \"PRIMARY_CUSTODIAN\",\n  \"employee_id\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"department_id\": \"cfeb89db-9bb9-4e5a-86ff-6cd5ddef2f2d\",\n  \"assigned_at\": \"2026-07-27T08:00:00Z\",\n  \"assignment_status\": \"ACTIVE\",\n  \"notes\": \"Custodian smoke test\"\n}",
+              "raw": "{\n  \"assignment_type\": \"PRIMARY_CUSTODIAN\",\n  \"employee_id\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"department_id\": \"1002cdd1-d777-4d00-80d1-16c6bafeddcd\",\n  \"assigned_at\": \"2026-07-27T08:00:00Z\",\n  \"assignment_status\": \"ACTIVE\",\n  \"notes\": \"Custodian smoke test\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -812,7 +812,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/assets/52c6e820-3270-4972-b698-0e3bb81d001e/assignment-history",
+              "raw": "{{base_url}}/api/v1/assets/2b696fe1-bc19-4c01-b54b-36a2dfd3066b/assignment-history",
               "host": [
                 "{{base_url}}"
               ],
@@ -820,7 +820,7 @@
                 "api",
                 "v1",
                 "assets",
-                "52c6e820-3270-4972-b698-0e3bb81d001e",
+                "2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
                 "assignment-history"
               ],
               "query": []
@@ -842,7 +842,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/assets/52c6e820-3270-4972-b698-0e3bb81d001e/assignment-history",
+              "raw": "{{base_url}}/api/v1/assets/2b696fe1-bc19-4c01-b54b-36a2dfd3066b/assignment-history",
               "host": [
                 "{{base_url}}"
               ],
@@ -850,7 +850,7 @@
                 "api",
                 "v1",
                 "assets",
-                "52c6e820-3270-4972-b698-0e3bb81d001e",
+                "2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
                 "assignment-history"
               ],
               "query": []
@@ -872,7 +872,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/assets/52c6e820-3270-4972-b698-0e3bb81d001e/status-changes",
+              "raw": "{{base_url}}/api/v1/assets/2b696fe1-bc19-4c01-b54b-36a2dfd3066b/status-changes",
               "host": [
                 "{{base_url}}"
               ],
@@ -880,7 +880,7 @@
                 "api",
                 "v1",
                 "assets",
-                "52c6e820-3270-4972-b698-0e3bb81d001e",
+                "2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
                 "status-changes"
               ],
               "query": []
@@ -911,7 +911,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/assets/52c6e820-3270-4972-b698-0e3bb81d001e/status-history",
+              "raw": "{{base_url}}/api/v1/assets/2b696fe1-bc19-4c01-b54b-36a2dfd3066b/status-history",
               "host": [
                 "{{base_url}}"
               ],
@@ -919,7 +919,7 @@
                 "api",
                 "v1",
                 "assets",
-                "52c6e820-3270-4972-b698-0e3bb81d001e",
+                "2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
                 "status-history"
               ],
               "query": []
@@ -941,7 +941,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/assets/52c6e820-3270-4972-b698-0e3bb81d001e/location-changes",
+              "raw": "{{base_url}}/api/v1/assets/2b696fe1-bc19-4c01-b54b-36a2dfd3066b/location-changes",
               "host": [
                 "{{base_url}}"
               ],
@@ -949,14 +949,14 @@
                 "api",
                 "v1",
                 "assets",
-                "52c6e820-3270-4972-b698-0e3bb81d001e",
+                "2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
                 "location-changes"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"to_location_id\": \"3ef35a10-96f0-4e76-ba1c-7de278667db9\",\n  \"effective_at\": \"2026-07-27T09:45:00Z\",\n  \"reason\": \"Kembali ke lokasi awal untuk tracking smoke test\"\n}",
+              "raw": "{\n  \"to_location_id\": \"44934d4b-cd06-4f55-9946-e1618e6b641e\",\n  \"effective_at\": \"2026-07-27T09:45:00Z\",\n  \"reason\": \"Kembali ke lokasi awal untuk tracking smoke test\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -980,7 +980,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/assets/52c6e820-3270-4972-b698-0e3bb81d001e/location-history",
+              "raw": "{{base_url}}/api/v1/assets/2b696fe1-bc19-4c01-b54b-36a2dfd3066b/location-history",
               "host": [
                 "{{base_url}}"
               ],
@@ -988,7 +988,7 @@
                 "api",
                 "v1",
                 "assets",
-                "52c6e820-3270-4972-b698-0e3bb81d001e",
+                "2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
                 "location-history"
               ],
               "query": []
@@ -1010,7 +1010,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/assets/52c6e820-3270-4972-b698-0e3bb81d001e/timeline",
+              "raw": "{{base_url}}/api/v1/assets/2b696fe1-bc19-4c01-b54b-36a2dfd3066b/timeline",
               "host": [
                 "{{base_url}}"
               ],
@@ -1018,7 +1018,7 @@
                 "api",
                 "v1",
                 "assets",
-                "52c6e820-3270-4972-b698-0e3bb81d001e",
+                "2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
                 "timeline"
               ],
               "query": []
@@ -1040,7 +1040,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/assets/52c6e820-3270-4972-b698-0e3bb81d001e/tracking",
+              "raw": "{{base_url}}/api/v1/assets/2b696fe1-bc19-4c01-b54b-36a2dfd3066b/tracking",
               "host": [
                 "{{base_url}}"
               ],
@@ -1048,7 +1048,7 @@
                 "api",
                 "v1",
                 "assets",
-                "52c6e820-3270-4972-b698-0e3bb81d001e",
+                "2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
                 "tracking"
               ],
               "query": []
@@ -1070,7 +1070,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/assets/52c6e820-3270-4972-b698-0e3bb81d001e/maintenance-history",
+              "raw": "{{base_url}}/api/v1/assets/2b696fe1-bc19-4c01-b54b-36a2dfd3066b/maintenance-history",
               "host": [
                 "{{base_url}}"
               ],
@@ -1078,7 +1078,7 @@
                 "api",
                 "v1",
                 "assets",
-                "52c6e820-3270-4972-b698-0e3bb81d001e",
+                "2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
                 "maintenance-history"
               ],
               "query": []
@@ -1090,6 +1090,238 @@
     {
       "name": "Misc",
       "item": [
+        {
+          "name": "create lease contract",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/lease-contracts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "lease-contracts"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contract_number\": \"LEASE-20260727235601-0C8841\",\n  \"lessor_partner_id\": \"7472da85-ec58-4b87-a5f3-17a94634be1d\",\n  \"lessee_company_id\": \"e5dc04dc-0519-4a7c-ae63-eb0045b34909\",\n  \"lease_type\": \"OPERATING_LEASE\",\n  \"accounting_treatment\": \"EXPENSE_ONLY\",\n  \"start_date\": \"2026-07-01\",\n  \"end_date\": \"2026-12-31\",\n  \"extension_option_end_date\": \"2027-03-31\",\n  \"billing_frequency\": \"MONTHLY\",\n  \"payment_amount\": \"2500000\",\n  \"currency_code\": \"IDR\",\n  \"deposit_amount\": \"5000000\",\n  \"purchase_option_amount\": \"10000000\",\n  \"auto_renewal\": false,\n  \"notice_period_days\": 30,\n  \"maintenance_included\": true,\n  \"insurance_included\": true,\n  \"tax_included\": false,\n  \"status\": \"ACTIVE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "list lease contracts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/lease-contracts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "lease-contracts"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "get lease contract",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/lease-contracts/fb531e31-3fd6-4286-b0cf-af6e2912907b",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "lease-contracts",
+                "fb531e31-3fd6-4286-b0cf-af6e2912907b"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "create lease contract asset item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/lease-contracts/fb531e31-3fd6-4286-b0cf-af6e2912907b/assets",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "lease-contracts",
+                "fb531e31-3fd6-4286-b0cf-af6e2912907b",
+                "assets"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asset_id\": \"2b696fe1-bc19-4c01-b54b-36a2dfd3066b\",\n  \"lease_start_date\": \"2026-07-01\",\n  \"lease_end_date\": \"2026-12-31\",\n  \"monthly_amount\": \"2500000\",\n  \"allocation_percentage\": \"100\",\n  \"return_condition\": \"Asset leased untuk skenario smoke test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "list lease contract assets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/lease-contracts/fb531e31-3fd6-4286-b0cf-af6e2912907b/assets",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "lease-contracts",
+                "fb531e31-3fd6-4286-b0cf-af6e2912907b",
+                "assets"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "create lease contract payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/lease-contracts/fb531e31-3fd6-4286-b0cf-af6e2912907b/payments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "lease-contracts",
+                "fb531e31-3fd6-4286-b0cf-af6e2912907b",
+                "payments"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"period_start\": \"2026-07-01\",\n  \"period_end\": \"2026-07-31\",\n  \"due_date\": \"2026-07-25\",\n  \"principal_amount\": \"2000000\",\n  \"interest_amount\": \"250000\",\n  \"service_amount\": \"150000\",\n  \"tax_amount\": \"100000\",\n  \"total_amount\": \"2500000\",\n  \"payment_status\": \"DUE\",\n  \"sap_ap_invoice_doc_entry\": 12001\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "list lease contract payments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/lease-contracts/fb531e31-3fd6-4286-b0cf-af6e2912907b/payments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "lease-contracts",
+                "fb531e31-3fd6-4286-b0cf-af6e2912907b",
+                "payments"
+              ],
+              "query": []
+            }
+          }
+        },
         {
           "name": "return asset assignment",
           "request": {
@@ -1105,7 +1337,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/assignments/0526e9b9-831c-4f06-9ae4-dcab0509dc5a/return",
+              "raw": "{{base_url}}/api/v1/assignments/88487b4f-8b47-4a46-a852-266e6bbc87ab/return",
               "host": [
                 "{{base_url}}"
               ],
@@ -1113,7 +1345,7 @@
                 "api",
                 "v1",
                 "assignments",
-                "0526e9b9-831c-4f06-9ae4-dcab0509dc5a",
+                "88487b4f-8b47-4a46-a852-266e6bbc87ab",
                 "return"
               ],
               "query": []
@@ -1144,7 +1376,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/attachments/fa695627-bded-43ac-b095-b35cc159654c",
+              "raw": "{{base_url}}/api/v1/attachments/34c69d99-9dfa-4eaf-abfa-d9a81d70bdda",
               "host": [
                 "{{base_url}}"
               ],
@@ -1152,7 +1384,7 @@
                 "api",
                 "v1",
                 "attachments",
-                "fa695627-bded-43ac-b095-b35cc159654c"
+                "34c69d99-9dfa-4eaf-abfa-d9a81d70bdda"
               ],
               "query": []
             }
@@ -1173,7 +1405,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/attachments/fa695627-bded-43ac-b095-b35cc159654c/download",
+              "raw": "{{base_url}}/api/v1/attachments/34c69d99-9dfa-4eaf-abfa-d9a81d70bdda/download",
               "host": [
                 "{{base_url}}"
               ],
@@ -1181,7 +1413,7 @@
                 "api",
                 "v1",
                 "attachments",
-                "fa695627-bded-43ac-b095-b35cc159654c",
+                "34c69d99-9dfa-4eaf-abfa-d9a81d70bdda",
                 "download"
               ],
               "query": []
@@ -1203,7 +1435,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/attachments/fa695627-bded-43ac-b095-b35cc159654c/versions",
+              "raw": "{{base_url}}/api/v1/attachments/34c69d99-9dfa-4eaf-abfa-d9a81d70bdda/versions",
               "host": [
                 "{{base_url}}"
               ],
@@ -1211,7 +1443,7 @@
                 "api",
                 "v1",
                 "attachments",
-                "fa695627-bded-43ac-b095-b35cc159654c",
+                "34c69d99-9dfa-4eaf-abfa-d9a81d70bdda",
                 "versions"
               ],
               "query": []
@@ -1233,7 +1465,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/attachments/fa695627-bded-43ac-b095-b35cc159654c/versions",
+              "raw": "{{base_url}}/api/v1/attachments/34c69d99-9dfa-4eaf-abfa-d9a81d70bdda/versions",
               "host": [
                 "{{base_url}}"
               ],
@@ -1241,14 +1473,14 @@
                 "api",
                 "v1",
                 "attachments",
-                "fa695627-bded-43ac-b095-b35cc159654c",
+                "34c69d99-9dfa-4eaf-abfa-d9a81d70bdda",
                 "versions"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"original_filename\": \"smoke-test-v2.txt\",\n  \"display_name\": \"Request Smoke Attachment v2\",\n  \"mime_type\": \"text/plain\",\n  \"extension\": \"txt\",\n  \"size_bytes\": 31,\n  \"checksum_sha256\": \"19e1f0edf85412a183229cdf13e9cd3603422c6a41f93f2901165903c27dab36\",\n  \"storage_bucket\": \"smoke-tests\",\n  \"storage_object_key\": \"smoke/maintenance_request/ffdb3861-76a7-4e41-8ca6-e416aa890e94-v2.txt\",\n  \"uploaded_at\": \"2026-07-27T12:32:00Z\",\n  \"change_notes\": \"Revisi evidensi request smoke test\",\n  \"metadata\": {\n    \"source\": \"smoke-seed-api\",\n    \"revision\": 2\n  }\n}",
+              "raw": "{\n  \"original_filename\": \"smoke-test-v2.txt\",\n  \"display_name\": \"Request Smoke Attachment v2\",\n  \"mime_type\": \"text/plain\",\n  \"extension\": \"txt\",\n  \"size_bytes\": 31,\n  \"checksum_sha256\": \"19e1f0edf85412a183229cdf13e9cd3603422c6a41f93f2901165903c27dab36\",\n  \"storage_bucket\": \"smoke-tests\",\n  \"storage_object_key\": \"smoke/maintenance_request/80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a-v2.txt\",\n  \"uploaded_at\": \"2026-07-27T12:32:00Z\",\n  \"change_notes\": \"Revisi evidensi request smoke test\",\n  \"metadata\": {\n    \"source\": \"smoke-seed-api\",\n    \"revision\": 2\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1272,7 +1504,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/attachments/fa695627-bded-43ac-b095-b35cc159654c/versions",
+              "raw": "{{base_url}}/api/v1/attachments/34c69d99-9dfa-4eaf-abfa-d9a81d70bdda/versions",
               "host": [
                 "{{base_url}}"
               ],
@@ -1280,7 +1512,7 @@
                 "api",
                 "v1",
                 "attachments",
-                "fa695627-bded-43ac-b095-b35cc159654c",
+                "34c69d99-9dfa-4eaf-abfa-d9a81d70bdda",
                 "versions"
               ],
               "query": []
@@ -1302,7 +1534,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/attachments/fa695627-bded-43ac-b095-b35cc159654c/audit-trail",
+              "raw": "{{base_url}}/api/v1/attachments/34c69d99-9dfa-4eaf-abfa-d9a81d70bdda/audit-trail",
               "host": [
                 "{{base_url}}"
               ],
@@ -1310,7 +1542,7 @@
                 "api",
                 "v1",
                 "attachments",
-                "fa695627-bded-43ac-b095-b35cc159654c",
+                "34c69d99-9dfa-4eaf-abfa-d9a81d70bdda",
                 "audit-trail"
               ],
               "query": []
@@ -1350,7 +1582,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"transfer_number\": \"TRF-20260727223545-3D6BDA\",\n  \"transfer_date\": \"2026-07-27T09:00:00Z\",\n  \"transfer_type\": \"INTERNAL\",\n  \"movement_purpose\": \"RELOCATION\",\n  \"is_permanent\": true,\n  \"from_location_id\": \"3ef35a10-96f0-4e76-ba1c-7de278667db9\",\n  \"to_location_id\": \"e21b9fe5-1fe0-4310-be98-e18f54aa2edf\",\n  \"from_department_id\": \"cfeb89db-9bb9-4e5a-86ff-6cd5ddef2f2d\",\n  \"to_department_id\": \"cfeb89db-9bb9-4e5a-86ff-6cd5ddef2f2d\",\n  \"reason\": \"Relokasi untuk smoke test\",\n  \"items\": [\n    {\n      \"asset_id\": \"52c6e820-3270-4972-b698-0e3bb81d001e\",\n      \"previous_custodian_id\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n      \"new_custodian_id\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n      \"handover_condition\": \"FAIR\",\n      \"item_status\": \"PENDING\",\n      \"notes\": \"Transfer smoke test\"\n    }\n  ]\n}",
+              "raw": "{\n  \"transfer_number\": \"TRF-20260727235601-0C8841\",\n  \"transfer_date\": \"2026-07-27T09:00:00Z\",\n  \"transfer_type\": \"INTERNAL\",\n  \"movement_purpose\": \"RELOCATION\",\n  \"is_permanent\": true,\n  \"from_location_id\": \"44934d4b-cd06-4f55-9946-e1618e6b641e\",\n  \"to_location_id\": \"e79f2951-01ce-452d-8bdf-de6dbf1c07d3\",\n  \"from_department_id\": \"1002cdd1-d777-4d00-80d1-16c6bafeddcd\",\n  \"to_department_id\": \"1002cdd1-d777-4d00-80d1-16c6bafeddcd\",\n  \"reason\": \"Relokasi untuk smoke test\",\n  \"items\": [\n    {\n      \"asset_id\": \"2b696fe1-bc19-4c01-b54b-36a2dfd3066b\",\n      \"previous_custodian_id\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n      \"new_custodian_id\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n      \"handover_condition\": \"FAIR\",\n      \"item_status\": \"PENDING\",\n      \"notes\": \"Transfer smoke test\"\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1402,7 +1634,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/asset-transfers/b74dc942-8e1a-4b43-8584-e84c13da26bf",
+              "raw": "{{base_url}}/api/v1/asset-transfers/1ff6b45f-3c18-4d86-bfb6-db9bd35289d1",
               "host": [
                 "{{base_url}}"
               ],
@@ -1410,7 +1642,7 @@
                 "api",
                 "v1",
                 "asset-transfers",
-                "b74dc942-8e1a-4b43-8584-e84c13da26bf"
+                "1ff6b45f-3c18-4d86-bfb6-db9bd35289d1"
               ],
               "query": []
             }
@@ -1431,7 +1663,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/asset-transfers/b74dc942-8e1a-4b43-8584-e84c13da26bf/submit",
+              "raw": "{{base_url}}/api/v1/asset-transfers/1ff6b45f-3c18-4d86-bfb6-db9bd35289d1/submit",
               "host": [
                 "{{base_url}}"
               ],
@@ -1439,7 +1671,7 @@
                 "api",
                 "v1",
                 "asset-transfers",
-                "b74dc942-8e1a-4b43-8584-e84c13da26bf",
+                "1ff6b45f-3c18-4d86-bfb6-db9bd35289d1",
                 "submit"
               ],
               "query": []
@@ -1470,7 +1702,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/asset-transfers/b74dc942-8e1a-4b43-8584-e84c13da26bf/approve",
+              "raw": "{{base_url}}/api/v1/asset-transfers/1ff6b45f-3c18-4d86-bfb6-db9bd35289d1/approve",
               "host": [
                 "{{base_url}}"
               ],
@@ -1478,7 +1710,7 @@
                 "api",
                 "v1",
                 "asset-transfers",
-                "b74dc942-8e1a-4b43-8584-e84c13da26bf",
+                "1ff6b45f-3c18-4d86-bfb6-db9bd35289d1",
                 "approve"
               ],
               "query": []
@@ -1509,7 +1741,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/asset-transfers/b74dc942-8e1a-4b43-8584-e84c13da26bf/complete",
+              "raw": "{{base_url}}/api/v1/asset-transfers/1ff6b45f-3c18-4d86-bfb6-db9bd35289d1/complete",
               "host": [
                 "{{base_url}}"
               ],
@@ -1517,7 +1749,7 @@
                 "api",
                 "v1",
                 "asset-transfers",
-                "b74dc942-8e1a-4b43-8584-e84c13da26bf",
+                "1ff6b45f-3c18-4d86-bfb6-db9bd35289d1",
                 "complete"
               ],
               "query": []
@@ -1567,7 +1799,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"event_uid\": \"02cd990f-054f-47fb-ae8d-f1a374311d47\",\n  \"raw_tag_uid\": \"TAG-20260727223545-3D6BDA\",\n  \"scan_type\": \"VERIFY\",\n  \"scan_source\": \"API\",\n  \"scanned_location_id\": \"3ef35a10-96f0-4e76-ba1c-7de278667db9\",\n  \"scanned_at\": \"2026-07-27T10:00:00Z\",\n  \"received_at\": \"2026-07-27T10:00:10Z\",\n  \"metadata\": {\n    \"batch\": false\n  }\n}",
+              "raw": "{\n  \"event_uid\": \"346f1841-b77c-45dc-94a2-639545ade74a\",\n  \"raw_tag_uid\": \"TAG-20260727235601-0C8841\",\n  \"scan_type\": \"VERIFY\",\n  \"scan_source\": \"API\",\n  \"scanned_location_id\": \"44934d4b-cd06-4f55-9946-e1618e6b641e\",\n  \"scanned_at\": \"2026-07-27T10:00:00Z\",\n  \"received_at\": \"2026-07-27T10:00:10Z\",\n  \"metadata\": {\n    \"batch\": false\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1606,7 +1838,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "[\n  {\n    \"event_uid\": \"241423fb-c781-4558-ae2a-bff949290dc8\",\n    \"raw_tag_uid\": \"TAG-20260727223545-3D6BDA\",\n    \"scan_type\": \"CHECK_IN\",\n    \"scan_source\": \"API\",\n    \"scanned_location_id\": \"3ef35a10-96f0-4e76-ba1c-7de278667db9\",\n    \"scanned_at\": \"2026-07-27T10:05:00Z\",\n    \"received_at\": \"2026-07-27T10:05:05Z\",\n    \"metadata\": {\n      \"batch\": true\n    }\n  }\n]",
+              "raw": "[\n  {\n    \"event_uid\": \"08436caa-a7ee-4b4d-a1b8-4d880b492603\",\n    \"raw_tag_uid\": \"TAG-20260727235601-0C8841\",\n    \"scan_type\": \"CHECK_IN\",\n    \"scan_source\": \"API\",\n    \"scanned_location_id\": \"44934d4b-cd06-4f55-9946-e1618e6b641e\",\n    \"scanned_at\": \"2026-07-27T10:05:00Z\",\n    \"received_at\": \"2026-07-27T10:05:05Z\",\n    \"metadata\": {\n      \"batch\": true\n    }\n  }\n]",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1648,7 +1880,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"session_number\": \"STK-20260727223545-3D6BDA\",\n  \"location_id\": \"3ef35a10-96f0-4e76-ba1c-7de278667db9\",\n  \"scope_type\": \"LOCATION\",\n  \"planned_start_at\": \"2026-07-27T10:30:00Z\",\n  \"planned_end_at\": \"2026-07-27T11:30:00Z\",\n  \"notes\": \"Stocktake smoke test\"\n}",
+              "raw": "{\n  \"session_number\": \"STK-20260727235601-0C8841\",\n  \"location_id\": \"44934d4b-cd06-4f55-9946-e1618e6b641e\",\n  \"scope_type\": \"LOCATION\",\n  \"planned_start_at\": \"2026-07-27T10:30:00Z\",\n  \"planned_end_at\": \"2026-07-27T11:30:00Z\",\n  \"notes\": \"Stocktake smoke test\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1700,7 +1932,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/stocktakes/2a3fe3bc-fbea-46f5-9e7d-eddac2d591ae",
+              "raw": "{{base_url}}/api/v1/stocktakes/ac3fc878-b28a-48f9-9f3b-e58e4a73faba",
               "host": [
                 "{{base_url}}"
               ],
@@ -1708,7 +1940,7 @@
                 "api",
                 "v1",
                 "stocktakes",
-                "2a3fe3bc-fbea-46f5-9e7d-eddac2d591ae"
+                "ac3fc878-b28a-48f9-9f3b-e58e4a73faba"
               ],
               "query": []
             }
@@ -1729,7 +1961,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/stocktakes/2a3fe3bc-fbea-46f5-9e7d-eddac2d591ae/start",
+              "raw": "{{base_url}}/api/v1/stocktakes/ac3fc878-b28a-48f9-9f3b-e58e4a73faba/start",
               "host": [
                 "{{base_url}}"
               ],
@@ -1737,7 +1969,7 @@
                 "api",
                 "v1",
                 "stocktakes",
-                "2a3fe3bc-fbea-46f5-9e7d-eddac2d591ae",
+                "ac3fc878-b28a-48f9-9f3b-e58e4a73faba",
                 "start"
               ],
               "query": []
@@ -1768,7 +2000,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/stocktakes/2a3fe3bc-fbea-46f5-9e7d-eddac2d591ae/scan",
+              "raw": "{{base_url}}/api/v1/stocktakes/ac3fc878-b28a-48f9-9f3b-e58e4a73faba/scan",
               "host": [
                 "{{base_url}}"
               ],
@@ -1776,14 +2008,14 @@
                 "api",
                 "v1",
                 "stocktakes",
-                "2a3fe3bc-fbea-46f5-9e7d-eddac2d591ae",
+                "ac3fc878-b28a-48f9-9f3b-e58e4a73faba",
                 "scan"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"event_uid\": \"ea98e025-1e38-4770-8bba-002185922476\",\n  \"raw_tag_uid\": \"TAG-20260727223545-3D6BDA\",\n  \"scan_type\": \"STOCKTAKE\",\n  \"scan_source\": \"API\",\n  \"scanned_location_id\": \"3ef35a10-96f0-4e76-ba1c-7de278667db9\",\n  \"scanned_at\": \"2026-07-27T10:40:00Z\",\n  \"received_at\": \"2026-07-27T10:40:05Z\",\n  \"metadata\": {\n    \"stocktake\": true\n  }\n}",
+              "raw": "{\n  \"event_uid\": \"afc61fbb-f71e-4873-8703-ab703c5cc049\",\n  \"raw_tag_uid\": \"TAG-20260727235601-0C8841\",\n  \"scan_type\": \"STOCKTAKE\",\n  \"scan_source\": \"API\",\n  \"scanned_location_id\": \"44934d4b-cd06-4f55-9946-e1618e6b641e\",\n  \"scanned_at\": \"2026-07-27T10:40:00Z\",\n  \"received_at\": \"2026-07-27T10:40:05Z\",\n  \"metadata\": {\n    \"stocktake\": true\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1807,7 +2039,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/stocktakes/2a3fe3bc-fbea-46f5-9e7d-eddac2d591ae/complete",
+              "raw": "{{base_url}}/api/v1/stocktakes/ac3fc878-b28a-48f9-9f3b-e58e4a73faba/complete",
               "host": [
                 "{{base_url}}"
               ],
@@ -1815,7 +2047,7 @@
                 "api",
                 "v1",
                 "stocktakes",
-                "2a3fe3bc-fbea-46f5-9e7d-eddac2d591ae",
+                "ac3fc878-b28a-48f9-9f3b-e58e4a73faba",
                 "complete"
               ],
               "query": []
@@ -1846,7 +2078,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/stocktakes/2a3fe3bc-fbea-46f5-9e7d-eddac2d591ae/approve",
+              "raw": "{{base_url}}/api/v1/stocktakes/ac3fc878-b28a-48f9-9f3b-e58e4a73faba/approve",
               "host": [
                 "{{base_url}}"
               ],
@@ -1854,7 +2086,7 @@
                 "api",
                 "v1",
                 "stocktakes",
-                "2a3fe3bc-fbea-46f5-9e7d-eddac2d591ae",
+                "ac3fc878-b28a-48f9-9f3b-e58e4a73faba",
                 "approve"
               ],
               "query": []
@@ -2001,7 +2233,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"HIGH-20260727223545-3D6BDA\",\n  \"name\": \"High 20260727223545-3D6BDA\",\n  \"severity_level\": 4,\n  \"default_response_minutes\": 60,\n  \"default_resolution_minutes\": 240,\n  \"color_code\": \"#F59E0B\",\n  \"is_emergency\": false,\n  \"is_active\": true\n}",
+              "raw": "{\n  \"code\": \"HIGH-20260727235601-0C8841\",\n  \"name\": \"High 20260727235601-0C8841\",\n  \"severity_level\": 4,\n  \"default_response_minutes\": 60,\n  \"default_resolution_minutes\": 240,\n  \"color_code\": \"#F59E0B\",\n  \"is_emergency\": false,\n  \"is_active\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2068,7 +2300,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"SYM-20260727223545-3D6BDA\",\n  \"name\": \"Getaran Tinggi\",\n  \"description\": \"Gejala awal smoke test\",\n  \"is_active\": true\n}",
+              "raw": "{\n  \"code\": \"SYM-20260727235601-0C8841\",\n  \"name\": \"Getaran Tinggi\",\n  \"description\": \"Gejala awal smoke test\",\n  \"is_active\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2135,7 +2367,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"FM-20260727223545-3D6BDA\",\n  \"name\": \"Bearing Failure\",\n  \"description\": \"Failure mode smoke test\",\n  \"is_active\": true\n}",
+              "raw": "{\n  \"code\": \"FM-20260727235601-0C8841\",\n  \"name\": \"Bearing Failure\",\n  \"description\": \"Failure mode smoke test\",\n  \"is_active\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2202,7 +2434,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"RCA-20260727223545-3D6BDA\",\n  \"name\": \"Poor Lubrication\",\n  \"description\": \"Root cause smoke test\",\n  \"is_active\": true\n}",
+              "raw": "{\n  \"code\": \"RCA-20260727235601-0C8841\",\n  \"name\": \"Poor Lubrication\",\n  \"description\": \"Root cause smoke test\",\n  \"is_active\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2269,7 +2501,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"template_code\": \"CHK-20260727223545-3D6BDA\",\n  \"template_name\": \"Checklist Smoke 20260727223545-3D6BDA\",\n  \"asset_category_id\": \"f01e079e-713b-4e9a-9c1f-ba1acf149746\",\n  \"maintenance_type\": \"PREVENTIVE\",\n  \"version_number\": 1,\n  \"effective_from\": \"2026-07-27\",\n  \"is_active\": true,\n  \"items\": [\n    {\n      \"sequence_no\": 1,\n      \"item_code\": \"ITEM-20260727223545-3D6BDA\",\n      \"instruction\": \"Periksa kondisi bearing\",\n      \"response_type\": \"PASS_FAIL\",\n      \"is_required\": true,\n      \"failure_response_rule\": \"CREATE_FINDING\"\n    }\n  ]\n}",
+              "raw": "{\n  \"template_code\": \"CHK-20260727235601-0C8841\",\n  \"template_name\": \"Checklist Smoke 20260727235601-0C8841\",\n  \"asset_category_id\": \"7340ce9b-894b-42bf-8539-720461c1929d\",\n  \"maintenance_type\": \"PREVENTIVE\",\n  \"version_number\": 1,\n  \"effective_from\": \"2026-07-27\",\n  \"is_active\": true,\n  \"items\": [\n    {\n      \"sequence_no\": 1,\n      \"item_code\": \"ITEM-20260727235601-0C8841\",\n      \"instruction\": \"Periksa kondisi bearing\",\n      \"response_type\": \"PASS_FAIL\",\n      \"is_required\": true,\n      \"failure_response_rule\": \"CREATE_FINDING\"\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2293,7 +2525,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/checklist-templates/9680344c-4ad9-4d22-b20b-7564560f3deb",
+              "raw": "{{base_url}}/api/v1/maintenance/checklist-templates/6bf66f41-0ef6-41a4-a009-4ae8952b5a5b",
               "host": [
                 "{{base_url}}"
               ],
@@ -2302,7 +2534,7 @@
                 "v1",
                 "maintenance",
                 "checklist-templates",
-                "9680344c-4ad9-4d22-b20b-7564560f3deb"
+                "6bf66f41-0ef6-41a4-a009-4ae8952b5a5b"
               ],
               "query": []
             }
@@ -2337,7 +2569,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"company_id\": \"00e049ea-938d-462e-90ea-2adb311c3550\",\n  \"team_code\": \"TEAM-20260727223545-3D6BDA\",\n  \"team_name\": \"Team Smoke 20260727223545-3D6BDA\",\n  \"team_type\": \"MECHANICAL\",\n  \"department_id\": \"cfeb89db-9bb9-4e5a-86ff-6cd5ddef2f2d\",\n  \"supervisor_employee_id\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"default_location_id\": \"3ef35a10-96f0-4e76-ba1c-7de278667db9\",\n  \"is_active\": true\n}",
+              "raw": "{\n  \"company_id\": \"e5dc04dc-0519-4a7c-ae63-eb0045b34909\",\n  \"team_code\": \"TEAM-20260727235601-0C8841\",\n  \"team_name\": \"Team Smoke 20260727235601-0C8841\",\n  \"team_type\": \"MECHANICAL\",\n  \"department_id\": \"1002cdd1-d777-4d00-80d1-16c6bafeddcd\",\n  \"supervisor_employee_id\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"default_location_id\": \"44934d4b-cd06-4f55-9946-e1618e6b641e\",\n  \"is_active\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2390,7 +2622,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/teams/a1b88fce-4ba8-4721-bff6-d5b9044c2ee6",
+              "raw": "{{base_url}}/api/v1/maintenance/teams/94c0a421-2111-4400-92e2-70bf08aa9f63",
               "host": [
                 "{{base_url}}"
               ],
@@ -2399,7 +2631,7 @@
                 "v1",
                 "maintenance",
                 "teams",
-                "a1b88fce-4ba8-4721-bff6-d5b9044c2ee6"
+                "94c0a421-2111-4400-92e2-70bf08aa9f63"
               ],
               "query": []
             }
@@ -2420,7 +2652,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/teams/a1b88fce-4ba8-4721-bff6-d5b9044c2ee6/members",
+              "raw": "{{base_url}}/api/v1/maintenance/teams/94c0a421-2111-4400-92e2-70bf08aa9f63/members",
               "host": [
                 "{{base_url}}"
               ],
@@ -2429,7 +2661,7 @@
                 "v1",
                 "maintenance",
                 "teams",
-                "a1b88fce-4ba8-4721-bff6-d5b9044c2ee6",
+                "94c0a421-2111-4400-92e2-70bf08aa9f63",
                 "members"
               ],
               "query": []
@@ -2474,7 +2706,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"contract_number\": \"AMC-20260727223545-3D6BDA\",\n  \"contract_name\": \"AMC Smoke 20260727223545-3D6BDA\",\n  \"vendor_partner_id\": \"43ce9475-6cd3-46c4-b036-51b713a9d310\",\n  \"contract_type\": \"AMC\",\n  \"start_date\": \"2026-07-01\",\n  \"end_date\": \"2026-12-31\",\n  \"response_time_hours\": \"2\",\n  \"resolution_time_hours\": \"8\",\n  \"preventive_maintenance_included\": true,\n  \"corrective_maintenance_included\": true,\n  \"spare_parts_included\": true,\n  \"labor_included\": true,\n  \"onsite_support_included\": true,\n  \"remote_support_included\": true,\n  \"contract_value\": \"15000000\",\n  \"currency_code\": \"IDR\",\n  \"billing_frequency\": \"MONTHLY\",\n  \"auto_renewal\": false,\n  \"notice_period_days\": 30,\n  \"status\": \"ACTIVE\"\n}",
+              "raw": "{\n  \"contract_number\": \"AMC-20260727235601-0C8841\",\n  \"contract_name\": \"AMC Smoke 20260727235601-0C8841\",\n  \"vendor_partner_id\": \"7472da85-ec58-4b87-a5f3-17a94634be1d\",\n  \"contract_type\": \"AMC\",\n  \"start_date\": \"2026-07-01\",\n  \"end_date\": \"2026-12-31\",\n  \"response_time_hours\": \"2\",\n  \"resolution_time_hours\": \"8\",\n  \"preventive_maintenance_included\": true,\n  \"corrective_maintenance_included\": true,\n  \"spare_parts_included\": true,\n  \"labor_included\": true,\n  \"onsite_support_included\": true,\n  \"remote_support_included\": true,\n  \"contract_value\": \"15000000\",\n  \"currency_code\": \"IDR\",\n  \"billing_frequency\": \"MONTHLY\",\n  \"auto_renewal\": false,\n  \"notice_period_days\": 30,\n  \"status\": \"ACTIVE\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2527,7 +2759,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/contracts/ef412f90-9221-42ef-a04f-523ad670f278",
+              "raw": "{{base_url}}/api/v1/maintenance/contracts/02685c1f-7fd6-4f4f-840c-6975f290a673",
               "host": [
                 "{{base_url}}"
               ],
@@ -2536,7 +2768,7 @@
                 "v1",
                 "maintenance",
                 "contracts",
-                "ef412f90-9221-42ef-a04f-523ad670f278"
+                "02685c1f-7fd6-4f4f-840c-6975f290a673"
               ],
               "query": []
             }
@@ -2557,7 +2789,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/contracts/ef412f90-9221-42ef-a04f-523ad670f278/assets",
+              "raw": "{{base_url}}/api/v1/maintenance/contracts/02685c1f-7fd6-4f4f-840c-6975f290a673/assets",
               "host": [
                 "{{base_url}}"
               ],
@@ -2566,14 +2798,14 @@
                 "v1",
                 "maintenance",
                 "contracts",
-                "ef412f90-9221-42ef-a04f-523ad670f278",
+                "02685c1f-7fd6-4f4f-840c-6975f290a673",
                 "assets"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"asset_id\": \"52c6e820-3270-4972-b698-0e3bb81d001e\",\n  \"coverage_start_date\": \"2026-07-01\",\n  \"coverage_end_date\": \"2026-12-31\",\n  \"coverage_level\": \"FULL\",\n  \"annual_allocation_amount\": \"5000000\",\n  \"specific_exclusions\": \"Tidak termasuk modifikasi design.\"\n}",
+              "raw": "{\n  \"asset_id\": \"2b696fe1-bc19-4c01-b54b-36a2dfd3066b\",\n  \"coverage_start_date\": \"2026-07-01\",\n  \"coverage_end_date\": \"2026-12-31\",\n  \"coverage_level\": \"FULL\",\n  \"annual_allocation_amount\": \"5000000\",\n  \"specific_exclusions\": \"Tidak termasuk modifikasi design.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2611,7 +2843,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"asset_id\": \"52c6e820-3270-4972-b698-0e3bb81d001e\",\n  \"warranty_provider_partner_id\": \"43ce9475-6cd3-46c4-b036-51b713a9d310\",\n  \"warranty_type\": \"MANUFACTURER\",\n  \"warranty_number\": \"WAR-20260727223545-3D6BDA\",\n  \"coverage_start_date\": \"2026-07-01\",\n  \"coverage_end_date\": \"2026-09-30\",\n  \"claim_deadline_date\": \"2026-10-15\",\n  \"coverage_scope\": \"Bearing dan motor assembly\",\n  \"status\": \"ACTIVE\",\n  \"notes\": \"Warranty smoke test\"\n}",
+              "raw": "{\n  \"asset_id\": \"2b696fe1-bc19-4c01-b54b-36a2dfd3066b\",\n  \"warranty_provider_partner_id\": \"7472da85-ec58-4b87-a5f3-17a94634be1d\",\n  \"warranty_type\": \"MANUFACTURER\",\n  \"warranty_number\": \"WAR-20260727235601-0C8841\",\n  \"coverage_start_date\": \"2026-07-01\",\n  \"coverage_end_date\": \"2026-09-30\",\n  \"claim_deadline_date\": \"2026-10-15\",\n  \"coverage_scope\": \"Bearing dan motor assembly\",\n  \"status\": \"ACTIVE\",\n  \"notes\": \"Warranty smoke test\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2635,7 +2867,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/assets/52c6e820-3270-4972-b698-0e3bb81d001e/warranties",
+              "raw": "{{base_url}}/api/v1/maintenance/assets/2b696fe1-bc19-4c01-b54b-36a2dfd3066b/warranties",
               "host": [
                 "{{base_url}}"
               ],
@@ -2644,7 +2876,7 @@
                 "v1",
                 "maintenance",
                 "assets",
-                "52c6e820-3270-4972-b698-0e3bb81d001e",
+                "2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
                 "warranties"
               ],
               "query": []
@@ -2666,7 +2898,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/warranties/fbfbbfff-47b1-4b17-9fb7-948e2a1f61b5",
+              "raw": "{{base_url}}/api/v1/maintenance/warranties/5b16b0be-d2c8-4c76-a973-0af61d042c69",
               "host": [
                 "{{base_url}}"
               ],
@@ -2675,7 +2907,7 @@
                 "v1",
                 "maintenance",
                 "warranties",
-                "fbfbbfff-47b1-4b17-9fb7-948e2a1f61b5"
+                "5b16b0be-d2c8-4c76-a973-0af61d042c69"
               ],
               "query": []
             }
@@ -2710,7 +2942,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"plan_code\": \"PLAN-20260727223545-3D6BDA\",\n  \"plan_name\": \"Plan Smoke 20260727223545-3D6BDA\",\n  \"asset_category_id\": \"f01e079e-713b-4e9a-9c1f-ba1acf149746\",\n  \"maintenance_type\": \"PREVENTIVE\",\n  \"trigger_type\": \"CALENDAR\",\n  \"calendar_interval_value\": 30,\n  \"calendar_interval_unit\": \"DAY\",\n  \"default_priority_id\": \"2c7f9f2b-5df7-4277-b7fe-66b0fcb50fd2\",\n  \"default_team_id\": \"a1b88fce-4ba8-4721-bff6-d5b9044c2ee6\",\n  \"checklist_template_id\": \"9680344c-4ad9-4d22-b20b-7564560f3deb\",\n  \"estimated_duration_minutes\": 120,\n  \"lead_time_days\": 3,\n  \"auto_create_request\": false,\n  \"auto_create_work_order\": false,\n  \"requires_approval\": false,\n  \"effective_from\": \"2026-07-27\",\n  \"next_due_date\": \"2026-08-26\",\n  \"is_active\": true\n}",
+              "raw": "{\n  \"plan_code\": \"PLAN-20260727235601-0C8841\",\n  \"plan_name\": \"Plan Smoke 20260727235601-0C8841\",\n  \"asset_category_id\": \"7340ce9b-894b-42bf-8539-720461c1929d\",\n  \"maintenance_type\": \"PREVENTIVE\",\n  \"trigger_type\": \"CALENDAR\",\n  \"calendar_interval_value\": 30,\n  \"calendar_interval_unit\": \"DAY\",\n  \"default_priority_id\": \"8a50fa75-cd2b-40dc-96b6-546323b1bb74\",\n  \"default_team_id\": \"94c0a421-2111-4400-92e2-70bf08aa9f63\",\n  \"checklist_template_id\": \"6bf66f41-0ef6-41a4-a009-4ae8952b5a5b\",\n  \"estimated_duration_minutes\": 120,\n  \"lead_time_days\": 3,\n  \"auto_create_request\": false,\n  \"auto_create_work_order\": false,\n  \"requires_approval\": false,\n  \"effective_from\": \"2026-07-27\",\n  \"next_due_date\": \"2026-08-26\",\n  \"is_active\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2763,7 +2995,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/plans/b23e0448-1f2b-4c76-bbe7-f3a450492c2b",
+              "raw": "{{base_url}}/api/v1/maintenance/plans/32acb2ca-87c2-495d-b75e-05fc8343c9f5",
               "host": [
                 "{{base_url}}"
               ],
@@ -2772,7 +3004,7 @@
                 "v1",
                 "maintenance",
                 "plans",
-                "b23e0448-1f2b-4c76-bbe7-f3a450492c2b"
+                "32acb2ca-87c2-495d-b75e-05fc8343c9f5"
               ],
               "query": []
             }
@@ -2793,7 +3025,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/plans/b23e0448-1f2b-4c76-bbe7-f3a450492c2b/assets",
+              "raw": "{{base_url}}/api/v1/maintenance/plans/32acb2ca-87c2-495d-b75e-05fc8343c9f5/assets",
               "host": [
                 "{{base_url}}"
               ],
@@ -2802,14 +3034,14 @@
                 "v1",
                 "maintenance",
                 "plans",
-                "b23e0448-1f2b-4c76-bbe7-f3a450492c2b",
+                "32acb2ca-87c2-495d-b75e-05fc8343c9f5",
                 "assets"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"asset_id\": \"52c6e820-3270-4972-b698-0e3bb81d001e\",\n  \"effective_from\": \"2026-07-27\",\n  \"is_active\": true\n}",
+              "raw": "{\n  \"asset_id\": \"2b696fe1-bc19-4c01-b54b-36a2dfd3066b\",\n  \"effective_from\": \"2026-07-27\",\n  \"is_active\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2833,7 +3065,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/plans/b23e0448-1f2b-4c76-bbe7-f3a450492c2b/generate",
+              "raw": "{{base_url}}/api/v1/maintenance/plans/32acb2ca-87c2-495d-b75e-05fc8343c9f5/generate",
               "host": [
                 "{{base_url}}"
               ],
@@ -2842,14 +3074,14 @@
                 "v1",
                 "maintenance",
                 "plans",
-                "b23e0448-1f2b-4c76-bbe7-f3a450492c2b",
+                "32acb2ca-87c2-495d-b75e-05fc8343c9f5",
                 "generate"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"scheduled_start_at\": \"2026-08-26T01:00:00Z\",\n  \"schedule_prefix\": \"SCH6BDA\",\n  \"created_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"create_work_orders\": false\n}",
+              "raw": "{\n  \"scheduled_start_at\": \"2026-08-26T01:00:00Z\",\n  \"schedule_prefix\": \"SCH8841\",\n  \"created_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"create_work_orders\": false\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2902,7 +3134,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/schedules/9b2d87bc-d66d-411f-882d-5007be2dd4eb",
+              "raw": "{{base_url}}/api/v1/maintenance/schedules/6a9d412b-ddff-4985-b452-66230bfa805e",
               "host": [
                 "{{base_url}}"
               ],
@@ -2911,7 +3143,7 @@
                 "v1",
                 "maintenance",
                 "schedules",
-                "9b2d87bc-d66d-411f-882d-5007be2dd4eb"
+                "6a9d412b-ddff-4985-b452-66230bfa805e"
               ],
               "query": []
             }
@@ -2932,7 +3164,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/schedules/9b2d87bc-d66d-411f-882d-5007be2dd4eb/confirm",
+              "raw": "{{base_url}}/api/v1/maintenance/schedules/6a9d412b-ddff-4985-b452-66230bfa805e/confirm",
               "host": [
                 "{{base_url}}"
               ],
@@ -2941,7 +3173,7 @@
                 "v1",
                 "maintenance",
                 "schedules",
-                "9b2d87bc-d66d-411f-882d-5007be2dd4eb",
+                "6a9d412b-ddff-4985-b452-66230bfa805e",
                 "confirm"
               ],
               "query": []
@@ -2972,7 +3204,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/schedules/9b2d87bc-d66d-411f-882d-5007be2dd4eb/reschedule",
+              "raw": "{{base_url}}/api/v1/maintenance/schedules/6a9d412b-ddff-4985-b452-66230bfa805e/reschedule",
               "host": [
                 "{{base_url}}"
               ],
@@ -2981,7 +3213,7 @@
                 "v1",
                 "maintenance",
                 "schedules",
-                "9b2d87bc-d66d-411f-882d-5007be2dd4eb",
+                "6a9d412b-ddff-4985-b452-66230bfa805e",
                 "reschedule"
               ],
               "query": []
@@ -3026,7 +3258,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"request_number\": \"MR-20260727223545-3D6BDA\",\n  \"company_id\": \"00e049ea-938d-462e-90ea-2adb311c3550\",\n  \"asset_id\": \"52c6e820-3270-4972-b698-0e3bb81d001e\",\n  \"request_type\": \"BREAKDOWN\",\n  \"source_type\": \"MANUAL\",\n  \"requested_by_employee_id\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"reported_by_name\": \"Smoke Operator\",\n  \"reported_at\": \"2026-07-27T12:30:00Z\",\n  \"title\": \"Pompa bergetar tinggi\",\n  \"problem_description\": \"Pompa menunjukkan getaran tinggi dan noise.\",\n  \"priority_id\": \"2c7f9f2b-5df7-4277-b7fe-66b0fcb50fd2\",\n  \"asset_location_id\": \"3ef35a10-96f0-4e76-ba1c-7de278667db9\",\n  \"operating_condition\": \"RUNNING\",\n  \"is_asset_stopped\": false,\n  \"production_impact\": true,\n  \"created_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"updated_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\"\n}",
+              "raw": "{\n  \"request_number\": \"MR-20260727235601-0C8841\",\n  \"company_id\": \"e5dc04dc-0519-4a7c-ae63-eb0045b34909\",\n  \"asset_id\": \"2b696fe1-bc19-4c01-b54b-36a2dfd3066b\",\n  \"request_type\": \"BREAKDOWN\",\n  \"source_type\": \"MANUAL\",\n  \"requested_by_employee_id\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"reported_by_name\": \"Smoke Operator\",\n  \"reported_at\": \"2026-07-27T12:30:00Z\",\n  \"title\": \"Pompa bergetar tinggi\",\n  \"problem_description\": \"Pompa menunjukkan getaran tinggi dan noise.\",\n  \"priority_id\": \"8a50fa75-cd2b-40dc-96b6-546323b1bb74\",\n  \"asset_location_id\": \"44934d4b-cd06-4f55-9946-e1618e6b641e\",\n  \"operating_condition\": \"RUNNING\",\n  \"is_asset_stopped\": false,\n  \"production_impact\": true,\n  \"created_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"updated_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3079,7 +3311,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/requests/ffdb3861-76a7-4e41-8ca6-e416aa890e94",
+              "raw": "{{base_url}}/api/v1/maintenance/requests/80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a",
               "host": [
                 "{{base_url}}"
               ],
@@ -3088,7 +3320,7 @@
                 "v1",
                 "maintenance",
                 "requests",
-                "ffdb3861-76a7-4e41-8ca6-e416aa890e94"
+                "80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a"
               ],
               "query": []
             }
@@ -3109,7 +3341,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/requests/ffdb3861-76a7-4e41-8ca6-e416aa890e94/attachments",
+              "raw": "{{base_url}}/api/v1/maintenance/requests/80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a/attachments",
               "host": [
                 "{{base_url}}"
               ],
@@ -3118,14 +3350,14 @@
                 "v1",
                 "maintenance",
                 "requests",
-                "ffdb3861-76a7-4e41-8ca6-e416aa890e94",
+                "80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a",
                 "attachments"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"entity_type\": \"MAINTENANCE_REQUEST\",\n  \"entity_id\": \"ffdb3861-76a7-4e41-8ca6-e416aa890e94\",\n  \"attachment_category\": \"OTHER\",\n  \"title\": \"Request Smoke Attachment\",\n  \"description\": \"Attachment smoke test untuk Request Smoke Attachment\",\n  \"captured_at\": \"2026-07-27T12:31:00Z\",\n  \"sequence_no\": 1,\n  \"is_primary\": false,\n  \"visibility\": \"INTERNAL\",\n  \"source\": \"UPLOAD\",\n  \"created_at\": \"2026-07-27T12:31:00Z\",\n  \"file\": {\n    \"original_filename\": \"smoke-test.txt\",\n    \"display_name\": \"Request Smoke Attachment\",\n    \"file_kind\": \"DOCUMENT\",\n    \"mime_type\": \"text/plain\",\n    \"extension\": \"txt\",\n    \"size_bytes\": 61,\n    \"checksum_sha256\": \"c0e874cacdc8a3fa77a65295ecceae0d4f2d708a778c19509ae92a8638ccd3a2\",\n    \"storage_provider\": \"local\",\n    \"storage_bucket\": \"smoke-tests\",\n    \"storage_object_key\": \"smoke/maintenance_request/ffdb3861-76a7-4e41-8ca6-e416aa890e94.txt\",\n    \"scan_status\": \"CLEAN\",\n    \"is_encrypted\": false,\n    \"is_active\": true,\n    \"uploaded_at\": \"2026-07-27T12:31:00Z\",\n    \"metadata\": {\n      \"source\": \"smoke-seed-api\"\n    }\n  }\n}",
+              "raw": "{\n  \"entity_type\": \"MAINTENANCE_REQUEST\",\n  \"entity_id\": \"80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a\",\n  \"attachment_category\": \"OTHER\",\n  \"title\": \"Request Smoke Attachment\",\n  \"description\": \"Attachment smoke test untuk Request Smoke Attachment\",\n  \"captured_at\": \"2026-07-27T12:31:00Z\",\n  \"sequence_no\": 1,\n  \"is_primary\": false,\n  \"visibility\": \"INTERNAL\",\n  \"source\": \"UPLOAD\",\n  \"created_at\": \"2026-07-27T12:31:00Z\",\n  \"file\": {\n    \"original_filename\": \"smoke-test.txt\",\n    \"display_name\": \"Request Smoke Attachment\",\n    \"file_kind\": \"DOCUMENT\",\n    \"mime_type\": \"text/plain\",\n    \"extension\": \"txt\",\n    \"size_bytes\": 61,\n    \"checksum_sha256\": \"f0d2d69b64cdd6679f6762a3b926fc34b1a0e506dfb93881409d885339849959\",\n    \"storage_provider\": \"local\",\n    \"storage_bucket\": \"smoke-tests\",\n    \"storage_object_key\": \"smoke/maintenance_request/80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a.txt\",\n    \"scan_status\": \"CLEAN\",\n    \"is_encrypted\": false,\n    \"is_active\": true,\n    \"uploaded_at\": \"2026-07-27T12:31:00Z\",\n    \"metadata\": {\n      \"source\": \"smoke-seed-api\"\n    }\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3149,7 +3381,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/requests/ffdb3861-76a7-4e41-8ca6-e416aa890e94/attachments",
+              "raw": "{{base_url}}/api/v1/maintenance/requests/80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a/attachments",
               "host": [
                 "{{base_url}}"
               ],
@@ -3158,7 +3390,7 @@
                 "v1",
                 "maintenance",
                 "requests",
-                "ffdb3861-76a7-4e41-8ca6-e416aa890e94",
+                "80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a",
                 "attachments"
               ],
               "query": []
@@ -3180,7 +3412,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/requests/ffdb3861-76a7-4e41-8ca6-e416aa890e94/submit",
+              "raw": "{{base_url}}/api/v1/maintenance/requests/80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a/submit",
               "host": [
                 "{{base_url}}"
               ],
@@ -3189,7 +3421,7 @@
                 "v1",
                 "maintenance",
                 "requests",
-                "ffdb3861-76a7-4e41-8ca6-e416aa890e94",
+                "80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a",
                 "submit"
               ],
               "query": []
@@ -3220,7 +3452,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/requests/ffdb3861-76a7-4e41-8ca6-e416aa890e94/triage",
+              "raw": "{{base_url}}/api/v1/maintenance/requests/80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a/triage",
               "host": [
                 "{{base_url}}"
               ],
@@ -3229,14 +3461,14 @@
                 "v1",
                 "maintenance",
                 "requests",
-                "ffdb3861-76a7-4e41-8ca6-e416aa890e94",
+                "80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a",
                 "triage"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"actor_id\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"acted_at\": \"2026-07-27T12:40:00Z\",\n  \"priority_id\": \"2c7f9f2b-5df7-4277-b7fe-66b0fcb50fd2\",\n  \"asset_location_id\": \"3ef35a10-96f0-4e76-ba1c-7de278667db9\",\n  \"operating_condition\": \"RUNNING_WITH_VIBRATION\",\n  \"maintenance_contract_id\": \"ef412f90-9221-42ef-a04f-523ad670f278\",\n  \"warranty_id\": \"fbfbbfff-47b1-4b17-9fb7-948e2a1f61b5\",\n  \"required_response_at\": \"2026-07-27T13:30:00Z\",\n  \"required_resolution_at\": \"2026-07-27T18:00:00Z\"\n}",
+              "raw": "{\n  \"actor_id\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"acted_at\": \"2026-07-27T12:40:00Z\",\n  \"priority_id\": \"8a50fa75-cd2b-40dc-96b6-546323b1bb74\",\n  \"asset_location_id\": \"44934d4b-cd06-4f55-9946-e1618e6b641e\",\n  \"operating_condition\": \"RUNNING_WITH_VIBRATION\",\n  \"maintenance_contract_id\": \"02685c1f-7fd6-4f4f-840c-6975f290a673\",\n  \"warranty_id\": \"5b16b0be-d2c8-4c76-a973-0af61d042c69\",\n  \"required_response_at\": \"2026-07-27T13:30:00Z\",\n  \"required_resolution_at\": \"2026-07-27T18:00:00Z\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3260,7 +3492,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/requests/ffdb3861-76a7-4e41-8ca6-e416aa890e94/sla-snapshots",
+              "raw": "{{base_url}}/api/v1/maintenance/requests/80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a/sla-snapshots",
               "host": [
                 "{{base_url}}"
               ],
@@ -3269,7 +3501,7 @@
                 "v1",
                 "maintenance",
                 "requests",
-                "ffdb3861-76a7-4e41-8ca6-e416aa890e94",
+                "80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a",
                 "sla-snapshots"
               ],
               "query": []
@@ -3291,7 +3523,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/requests/ffdb3861-76a7-4e41-8ca6-e416aa890e94/approve",
+              "raw": "{{base_url}}/api/v1/maintenance/requests/80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a/approve",
               "host": [
                 "{{base_url}}"
               ],
@@ -3300,7 +3532,7 @@
                 "v1",
                 "maintenance",
                 "requests",
-                "ffdb3861-76a7-4e41-8ca6-e416aa890e94",
+                "80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a",
                 "approve"
               ],
               "query": []
@@ -3313,6 +3545,144 @@
                   "language": "json"
                 }
               }
+            }
+          }
+        },
+        {
+          "name": "create maintenance skill",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/maintenance/skills",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "maintenance",
+                "skills"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"skill_code\": \"BRG-20260727235601-0C8841\",\n  \"skill_name\": \"Bearing Replacement\",\n  \"certification_required\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "list maintenance skills",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/maintenance/skills",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "maintenance",
+                "skills"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "add employee maintenance skill",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/maintenance/employees/e72ee24e-2f12-4152-8bbc-e956b56a674b/skills",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "maintenance",
+                "employees",
+                "e72ee24e-2f12-4152-8bbc-e956b56a674b",
+                "skills"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maintenance_skill_id\": \"68016449-17ca-404b-a669-9172a3dd92e9\",\n  \"proficiency_level\": \"ADVANCED\",\n  \"certificate_number\": \"CERT-20260727235601-0C8841\",\n  \"valid_from\": \"2026-01-01\",\n  \"valid_to\": \"2026-12-31\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "list employee maintenance skills",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/maintenance/employees/e72ee24e-2f12-4152-8bbc-e956b56a674b/skills",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "maintenance",
+                "employees",
+                "e72ee24e-2f12-4152-8bbc-e956b56a674b",
+                "skills"
+              ],
+              "query": []
             }
           }
         },
@@ -3331,7 +3701,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/requests/ffdb3861-76a7-4e41-8ca6-e416aa890e94/convert-to-work-order",
+              "raw": "{{base_url}}/api/v1/maintenance/requests/80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a/convert-to-work-order",
               "host": [
                 "{{base_url}}"
               ],
@@ -3340,14 +3710,14 @@
                 "v1",
                 "maintenance",
                 "requests",
-                "ffdb3861-76a7-4e41-8ca6-e416aa890e94",
+                "80fbaa8e-4ff3-40d4-bb68-8b7a9cc74a9a",
                 "convert-to-work-order"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"work_order_number\": \"WO-20260727223545-3D6BDA\",\n  \"maintenance_type\": \"BREAKDOWN\",\n  \"execution_mode\": \"INTERNAL\",\n  \"scope_of_work\": \"Investigasi dan perbaikan bearing pompa\",\n  \"planned_start_at\": \"2026-07-27T13:00:00Z\",\n  \"planned_end_at\": \"2026-07-27T17:00:00Z\",\n  \"vendor_partner_id\": \"43ce9475-6cd3-46c4-b036-51b713a9d310\",\n  \"requires_shutdown\": false,\n  \"requires_permit\": false,\n  \"requires_verification\": true,\n  \"created_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"updated_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\"\n}",
+              "raw": "{\n  \"work_order_number\": \"WO-20260727235601-0C8841\",\n  \"maintenance_type\": \"BREAKDOWN\",\n  \"execution_mode\": \"HYBRID\",\n  \"scope_of_work\": \"Investigasi dan perbaikan bearing pompa\",\n  \"planned_start_at\": \"2026-07-27T13:00:00Z\",\n  \"planned_end_at\": \"2026-07-27T17:00:00Z\",\n  \"vendor_partner_id\": \"7472da85-ec58-4b87-a5f3-17a94634be1d\",\n  \"requires_shutdown\": false,\n  \"requires_permit\": false,\n  \"requires_verification\": true,\n  \"created_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"updated_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3400,7 +3770,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca",
               "host": [
                 "{{base_url}}"
               ],
@@ -3409,7 +3779,7 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f"
+                "075099b4-67e7-4859-9506-f53a943b6fca"
               ],
               "query": []
             }
@@ -3430,7 +3800,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f/attachments",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/attachments",
               "host": [
                 "{{base_url}}"
               ],
@@ -3439,14 +3809,14 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
                 "attachments"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"entity_type\": \"MAINTENANCE_WORK_ORDER\",\n  \"entity_id\": \"a8288a34-426e-4707-8632-c03f204f194f\",\n  \"attachment_category\": \"BEFORE_MAINTENANCE_PHOTO\",\n  \"title\": \"WO Smoke Attachment\",\n  \"description\": \"Attachment smoke test untuk WO Smoke Attachment\",\n  \"captured_at\": \"2026-07-27T12:50:00Z\",\n  \"sequence_no\": 1,\n  \"is_primary\": false,\n  \"visibility\": \"INTERNAL\",\n  \"source\": \"UPLOAD\",\n  \"created_at\": \"2026-07-27T12:50:00Z\",\n  \"file\": {\n    \"original_filename\": \"smoke-test.txt\",\n    \"display_name\": \"WO Smoke Attachment\",\n    \"file_kind\": \"DOCUMENT\",\n    \"mime_type\": \"text/plain\",\n    \"extension\": \"txt\",\n    \"size_bytes\": 56,\n    \"checksum_sha256\": \"08079284e7a530488720ec48d70085b0a482103d4beeb22bad5534d4e9cf1f02\",\n    \"storage_provider\": \"local\",\n    \"storage_bucket\": \"smoke-tests\",\n    \"storage_object_key\": \"smoke/maintenance_work_order/a8288a34-426e-4707-8632-c03f204f194f.txt\",\n    \"scan_status\": \"CLEAN\",\n    \"is_encrypted\": false,\n    \"is_active\": true,\n    \"uploaded_at\": \"2026-07-27T12:50:00Z\",\n    \"metadata\": {\n      \"source\": \"smoke-seed-api\"\n    }\n  }\n}",
+              "raw": "{\n  \"entity_type\": \"MAINTENANCE_WORK_ORDER\",\n  \"entity_id\": \"075099b4-67e7-4859-9506-f53a943b6fca\",\n  \"attachment_category\": \"BEFORE_MAINTENANCE_PHOTO\",\n  \"title\": \"WO Smoke Attachment\",\n  \"description\": \"Attachment smoke test untuk WO Smoke Attachment\",\n  \"captured_at\": \"2026-07-27T12:50:00Z\",\n  \"sequence_no\": 1,\n  \"is_primary\": false,\n  \"visibility\": \"INTERNAL\",\n  \"source\": \"UPLOAD\",\n  \"created_at\": \"2026-07-27T12:50:00Z\",\n  \"file\": {\n    \"original_filename\": \"smoke-test.txt\",\n    \"display_name\": \"WO Smoke Attachment\",\n    \"file_kind\": \"DOCUMENT\",\n    \"mime_type\": \"text/plain\",\n    \"extension\": \"txt\",\n    \"size_bytes\": 56,\n    \"checksum_sha256\": \"f791463925e715d8fe1cf1c09d91c7a1b7f6646fc82223fd5c845f5f4212295e\",\n    \"storage_provider\": \"local\",\n    \"storage_bucket\": \"smoke-tests\",\n    \"storage_object_key\": \"smoke/maintenance_work_order/075099b4-67e7-4859-9506-f53a943b6fca.txt\",\n    \"scan_status\": \"CLEAN\",\n    \"is_encrypted\": false,\n    \"is_active\": true,\n    \"uploaded_at\": \"2026-07-27T12:50:00Z\",\n    \"metadata\": {\n      \"source\": \"smoke-seed-api\"\n    }\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3470,7 +3840,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f/attachments",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/attachments",
               "host": [
                 "{{base_url}}"
               ],
@@ -3479,7 +3849,7 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
                 "attachments"
               ],
               "query": []
@@ -3501,7 +3871,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f/approve",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/approve",
               "host": [
                 "{{base_url}}"
               ],
@@ -3510,7 +3880,7 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
                 "approve"
               ],
               "query": []
@@ -3523,6 +3893,77 @@
                   "language": "json"
                 }
               }
+            }
+          }
+        },
+        {
+          "name": "create maintenance work order required skill",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/required-skills",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "maintenance",
+                "work-orders",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
+                "required-skills"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maintenance_skill_id\": \"68016449-17ca-404b-a669-9172a3dd92e9\",\n  \"minimum_proficiency_level\": \"ADVANCED\",\n  \"certification_required\": true,\n  \"notes\": \"Skill wajib untuk penggantian bearing smoke test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "list maintenance work order required skills",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/required-skills",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "maintenance",
+                "work-orders",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
+                "required-skills"
+              ],
+              "query": []
             }
           }
         },
@@ -3541,7 +3982,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f/assign",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/assign",
               "host": [
                 "{{base_url}}"
               ],
@@ -3550,7 +3991,7 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
                 "assign"
               ],
               "query": []
@@ -3581,7 +4022,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f/start",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/start",
               "host": [
                 "{{base_url}}"
               ],
@@ -3590,7 +4031,7 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
                 "start"
               ],
               "query": []
@@ -3621,7 +4062,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f/hold",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/hold",
               "host": [
                 "{{base_url}}"
               ],
@@ -3630,7 +4071,7 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
                 "hold"
               ],
               "query": []
@@ -3661,7 +4102,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f/resume",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/resume",
               "host": [
                 "{{base_url}}"
               ],
@@ -3670,7 +4111,7 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
                 "resume"
               ],
               "query": []
@@ -3683,6 +4124,148 @@
                   "language": "json"
                 }
               }
+            }
+          }
+        },
+        {
+          "name": "create maintenance work order part requirement",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/part-requirements",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "maintenance",
+                "work-orders",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
+                "part-requirements"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"part_item_id\": \"8dafc2cf-e478-4827-8121-b10d7779acd0\",\n  \"required_quantity\": \"2\",\n  \"reserved_quantity\": \"1\",\n  \"unit_of_measure\": \"EA\",\n  \"requirement_status\": \"PLANNED\",\n  \"is_critical\": true,\n  \"notes\": \"Bearing replacement untuk corrective maintenance smoke test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "list maintenance work order part requirements",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/part-requirements",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "maintenance",
+                "work-orders",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
+                "part-requirements"
+              ],
+              "query": []
+            }
+          }
+        },
+        {
+          "name": "create maintenance work order vendor personnel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/vendor-personnel",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "maintenance",
+                "work-orders",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
+                "vendor-personnel"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vendor_partner_id\": \"7472da85-ec58-4b87-a5f3-17a94634be1d\",\n  \"person_name\": \"Budi Vendor\",\n  \"contact_phone\": \"0812-5555-0101\",\n  \"technician_reference\": \"VND-20260727235601-0C8841\",\n  \"check_in_at\": \"2026-07-27T13:18:00Z\",\n  \"check_out_at\": \"2026-07-27T15:05:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "list maintenance work order vendor personnel",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/vendor-personnel",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "maintenance",
+                "work-orders",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
+                "vendor-personnel"
+              ],
+              "query": []
             }
           }
         },
@@ -3701,7 +4284,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f/parts",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/parts",
               "host": [
                 "{{base_url}}"
               ],
@@ -3710,14 +4293,14 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
                 "parts"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"part_item_id\": \"42d8111d-f902-4386-9731-4ca520c2a241\",\n  \"quantity\": \"2\",\n  \"unit_cost\": \"150000\",\n  \"currency_code\": \"IDR\",\n  \"usage_type\": \"REPLACE\",\n  \"used_at\": \"2026-07-27T13:30:00Z\",\n  \"used_by_employee_id\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"serial_number\": \"PART-20260727223545-3D6BDA\"\n}",
+              "raw": "{\n  \"part_item_id\": \"8dafc2cf-e478-4827-8121-b10d7779acd0\",\n  \"quantity\": \"2\",\n  \"unit_cost\": \"150000\",\n  \"currency_code\": \"IDR\",\n  \"usage_type\": \"REPLACE\",\n  \"used_at\": \"2026-07-27T13:30:00Z\",\n  \"used_by_employee_id\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"serial_number\": \"PART-20260727235601-0C8841\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3741,7 +4324,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f/labor-logs",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/labor-logs",
               "host": [
                 "{{base_url}}"
               ],
@@ -3750,7 +4333,7 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
                 "labor-logs"
               ],
               "query": []
@@ -3781,7 +4364,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f/downtimes",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/downtimes",
               "host": [
                 "{{base_url}}"
               ],
@@ -3790,7 +4373,7 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
                 "downtimes"
               ],
               "query": []
@@ -3821,7 +4404,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f/downtimes",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/downtimes",
               "host": [
                 "{{base_url}}"
               ],
@@ -3830,7 +4413,7 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
                 "downtimes"
               ],
               "query": []
@@ -3852,7 +4435,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f/failures",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/failures",
               "host": [
                 "{{base_url}}"
               ],
@@ -3861,14 +4444,14 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
                 "failures"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"failure_number\": \"FLR-20260727223545-3D6BDA\",\n  \"detected_at\": \"2026-07-27T13:25:00Z\",\n  \"failure_mode_id\": \"5ec3b9d0-1608-4563-9017-d158dcd62319\",\n  \"symptom_code_id\": \"0e9d68a9-d59b-48b4-b303-caa6a1eb5198\",\n  \"failure_description\": \"Bearing macet dan menimbulkan getaran berat.\",\n  \"failure_severity\": \"HIGH\",\n  \"asset_condition_before\": \"FAIR\",\n  \"caused_shutdown\": true,\n  \"repeat_failure\": true,\n  \"temporary_action\": \"Shutdown sementara dan inspeksi cepat.\",\n  \"failure_started_at\": \"2026-07-27T13:20:00Z\",\n  \"failure_ended_at\": \"2026-07-27T14:50:00Z\",\n  \"status\": \"OPEN\"\n}",
+              "raw": "{\n  \"failure_number\": \"FLR-20260727235601-0C8841\",\n  \"detected_at\": \"2026-07-27T13:25:00Z\",\n  \"failure_mode_id\": \"338c1011-6edd-4824-aec5-b7e57c9c678a\",\n  \"symptom_code_id\": \"e6a23964-caeb-43ef-8690-4c7915cc64a9\",\n  \"failure_description\": \"Bearing macet dan menimbulkan getaran berat.\",\n  \"failure_severity\": \"HIGH\",\n  \"asset_condition_before\": \"FAIR\",\n  \"caused_shutdown\": true,\n  \"repeat_failure\": true,\n  \"temporary_action\": \"Shutdown sementara dan inspeksi cepat.\",\n  \"failure_started_at\": \"2026-07-27T13:20:00Z\",\n  \"failure_ended_at\": \"2026-07-27T14:50:00Z\",\n  \"status\": \"OPEN\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3892,7 +4475,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/failures?work_order_id=a8288a34-426e-4707-8632-c03f204f194f",
+              "raw": "{{base_url}}/api/v1/maintenance/failures?work_order_id=075099b4-67e7-4859-9506-f53a943b6fca",
               "host": [
                 "{{base_url}}"
               ],
@@ -3905,7 +4488,7 @@
               "query": [
                 {
                   "key": "work_order_id",
-                  "value": "a8288a34-426e-4707-8632-c03f204f194f"
+                  "value": "075099b4-67e7-4859-9506-f53a943b6fca"
                 }
               ]
             }
@@ -3926,7 +4509,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/failures/a0ac25ab-b517-4ec8-a602-919054552323",
+              "raw": "{{base_url}}/api/v1/maintenance/failures/091bbd19-51eb-404c-9b39-3fa456bc1480",
               "host": [
                 "{{base_url}}"
               ],
@@ -3935,7 +4518,7 @@
                 "v1",
                 "maintenance",
                 "failures",
-                "a0ac25ab-b517-4ec8-a602-919054552323"
+                "091bbd19-51eb-404c-9b39-3fa456bc1480"
               ],
               "query": []
             }
@@ -3956,7 +4539,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/failures/a0ac25ab-b517-4ec8-a602-919054552323",
+              "raw": "{{base_url}}/api/v1/maintenance/failures/091bbd19-51eb-404c-9b39-3fa456bc1480",
               "host": [
                 "{{base_url}}"
               ],
@@ -3965,13 +4548,13 @@
                 "v1",
                 "maintenance",
                 "failures",
-                "a0ac25ab-b517-4ec8-a602-919054552323"
+                "091bbd19-51eb-404c-9b39-3fa456bc1480"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"root_cause_code_id\": \"0df52a08-be90-4911-a771-a1d6de94f48d\",\n  \"root_cause_description\": \"Pelumasan bearing tidak memadai.\",\n  \"corrective_action\": \"Ganti bearing dan tambahkan grease baru.\",\n  \"preventive_action\": \"Buat inspeksi pelumasan mingguan.\",\n  \"asset_condition_after\": \"GOOD\",\n  \"status\": \"CLOSED\"\n}",
+              "raw": "{\n  \"root_cause_code_id\": \"d9e03335-3824-4c45-8dbb-04f1101a1ca5\",\n  \"root_cause_description\": \"Pelumasan bearing tidak memadai.\",\n  \"corrective_action\": \"Ganti bearing dan tambahkan grease baru.\",\n  \"preventive_action\": \"Buat inspeksi pelumasan mingguan.\",\n  \"asset_condition_after\": \"GOOD\",\n  \"status\": \"CLOSED\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3995,7 +4578,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/failures/a0ac25ab-b517-4ec8-a602-919054552323/attachments",
+              "raw": "{{base_url}}/api/v1/maintenance/failures/091bbd19-51eb-404c-9b39-3fa456bc1480/attachments",
               "host": [
                 "{{base_url}}"
               ],
@@ -4004,14 +4587,14 @@
                 "v1",
                 "maintenance",
                 "failures",
-                "a0ac25ab-b517-4ec8-a602-919054552323",
+                "091bbd19-51eb-404c-9b39-3fa456bc1480",
                 "attachments"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"entity_type\": \"ASSET_FAILURE\",\n  \"entity_id\": \"a0ac25ab-b517-4ec8-a602-919054552323\",\n  \"attachment_category\": \"ROOT_CAUSE_EVIDENCE\",\n  \"title\": \"Failure Smoke Attachment\",\n  \"description\": \"Attachment smoke test untuk Failure Smoke Attachment\",\n  \"captured_at\": \"2026-07-27T15:20:00Z\",\n  \"sequence_no\": 1,\n  \"is_primary\": false,\n  \"visibility\": \"INTERNAL\",\n  \"source\": \"UPLOAD\",\n  \"created_at\": \"2026-07-27T15:20:00Z\",\n  \"file\": {\n    \"original_filename\": \"smoke-test.txt\",\n    \"display_name\": \"Failure Smoke Attachment\",\n    \"file_kind\": \"DOCUMENT\",\n    \"mime_type\": \"text/plain\",\n    \"extension\": \"txt\",\n    \"size_bytes\": 61,\n    \"checksum_sha256\": \"92659eb0060194d7b626403672470cfa5f9d2387affcaacd0dfb391500595a50\",\n    \"storage_provider\": \"local\",\n    \"storage_bucket\": \"smoke-tests\",\n    \"storage_object_key\": \"smoke/asset_failure/a0ac25ab-b517-4ec8-a602-919054552323.txt\",\n    \"scan_status\": \"CLEAN\",\n    \"is_encrypted\": false,\n    \"is_active\": true,\n    \"uploaded_at\": \"2026-07-27T15:20:00Z\",\n    \"metadata\": {\n      \"source\": \"smoke-seed-api\"\n    }\n  }\n}",
+              "raw": "{\n  \"entity_type\": \"ASSET_FAILURE\",\n  \"entity_id\": \"091bbd19-51eb-404c-9b39-3fa456bc1480\",\n  \"attachment_category\": \"ROOT_CAUSE_EVIDENCE\",\n  \"title\": \"Failure Smoke Attachment\",\n  \"description\": \"Attachment smoke test untuk Failure Smoke Attachment\",\n  \"captured_at\": \"2026-07-27T15:20:00Z\",\n  \"sequence_no\": 1,\n  \"is_primary\": false,\n  \"visibility\": \"INTERNAL\",\n  \"source\": \"UPLOAD\",\n  \"created_at\": \"2026-07-27T15:20:00Z\",\n  \"file\": {\n    \"original_filename\": \"smoke-test.txt\",\n    \"display_name\": \"Failure Smoke Attachment\",\n    \"file_kind\": \"DOCUMENT\",\n    \"mime_type\": \"text/plain\",\n    \"extension\": \"txt\",\n    \"size_bytes\": 61,\n    \"checksum_sha256\": \"e5da453a5a52fbe35e6d98ac15359c2fa0bd62e63f2b034ef71f8d55a73b1fff\",\n    \"storage_provider\": \"local\",\n    \"storage_bucket\": \"smoke-tests\",\n    \"storage_object_key\": \"smoke/asset_failure/091bbd19-51eb-404c-9b39-3fa456bc1480.txt\",\n    \"scan_status\": \"CLEAN\",\n    \"is_encrypted\": false,\n    \"is_active\": true,\n    \"uploaded_at\": \"2026-07-27T15:20:00Z\",\n    \"metadata\": {\n      \"source\": \"smoke-seed-api\"\n    }\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -4035,7 +4618,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/failures/a0ac25ab-b517-4ec8-a602-919054552323/attachments",
+              "raw": "{{base_url}}/api/v1/maintenance/failures/091bbd19-51eb-404c-9b39-3fa456bc1480/attachments",
               "host": [
                 "{{base_url}}"
               ],
@@ -4044,7 +4627,7 @@
                 "v1",
                 "maintenance",
                 "failures",
-                "a0ac25ab-b517-4ec8-a602-919054552323",
+                "091bbd19-51eb-404c-9b39-3fa456bc1480",
                 "attachments"
               ],
               "query": []
@@ -4066,7 +4649,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f/events",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/events",
               "host": [
                 "{{base_url}}"
               ],
@@ -4075,7 +4658,7 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
                 "events"
               ],
               "query": []
@@ -4097,7 +4680,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f/checklists",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/checklists",
               "host": [
                 "{{base_url}}"
               ],
@@ -4106,14 +4689,14 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
                 "checklists"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"checklist_template_id\": \"9680344c-4ad9-4d22-b20b-7564560f3deb\",\n  \"performed_by_employee_id\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"started_at\": \"2026-07-27T15:30:00Z\"\n}",
+              "raw": "{\n  \"checklist_template_id\": \"6bf66f41-0ef6-41a4-a009-4ae8952b5a5b\",\n  \"performed_by_employee_id\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"started_at\": \"2026-07-27T15:30:00Z\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -4137,7 +4720,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/checklists/f2570dbb-8c0e-439d-8742-f6618871b1ed",
+              "raw": "{{base_url}}/api/v1/maintenance/checklists/ed2b2d9a-9c7d-4259-8e5f-bfccb90d2817",
               "host": [
                 "{{base_url}}"
               ],
@@ -4146,7 +4729,7 @@
                 "v1",
                 "maintenance",
                 "checklists",
-                "f2570dbb-8c0e-439d-8742-f6618871b1ed"
+                "ed2b2d9a-9c7d-4259-8e5f-bfccb90d2817"
               ],
               "query": []
             }
@@ -4167,7 +4750,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/checklists/f2570dbb-8c0e-439d-8742-f6618871b1ed/results",
+              "raw": "{{base_url}}/api/v1/maintenance/checklists/ed2b2d9a-9c7d-4259-8e5f-bfccb90d2817/results",
               "host": [
                 "{{base_url}}"
               ],
@@ -4176,14 +4759,14 @@
                 "v1",
                 "maintenance",
                 "checklists",
-                "f2570dbb-8c0e-439d-8742-f6618871b1ed",
+                "ed2b2d9a-9c7d-4259-8e5f-bfccb90d2817",
                 "results"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"completed_at\": \"2026-07-27T15:45:00Z\",\n  \"results\": [\n    {\n      \"template_item_id\": \"1e98bf4b-af55-4633-8803-b34169144d1f\",\n      \"boolean_value\": false,\n      \"performed_at\": \"2026-07-27T15:40:00Z\",\n      \"finding_type\": \"DEFECT\",\n      \"finding_severity\": \"HIGH\",\n      \"finding_description\": \"Grease housing perlu perbaikan lanjutan.\",\n      \"recommended_action\": \"Ganti seal housing.\",\n      \"requires_follow_up\": true,\n      \"requires_asset_shutdown\": false\n    }\n  ]\n}",
+              "raw": "{\n  \"completed_at\": \"2026-07-27T15:45:00Z\",\n  \"results\": [\n    {\n      \"template_item_id\": \"ebb00029-7a4c-46f6-a4a3-2214409c36b1\",\n      \"boolean_value\": false,\n      \"performed_at\": \"2026-07-27T15:40:00Z\",\n      \"finding_type\": \"DEFECT\",\n      \"finding_severity\": \"HIGH\",\n      \"finding_description\": \"Grease housing perlu perbaikan lanjutan.\",\n      \"recommended_action\": \"Ganti seal housing.\",\n      \"requires_follow_up\": true,\n      \"requires_asset_shutdown\": false\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -4207,7 +4790,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/checklists/f2570dbb-8c0e-439d-8742-f6618871b1ed",
+              "raw": "{{base_url}}/api/v1/maintenance/checklists/ed2b2d9a-9c7d-4259-8e5f-bfccb90d2817",
               "host": [
                 "{{base_url}}"
               ],
@@ -4216,7 +4799,7 @@
                 "v1",
                 "maintenance",
                 "checklists",
-                "f2570dbb-8c0e-439d-8742-f6618871b1ed"
+                "ed2b2d9a-9c7d-4259-8e5f-bfccb90d2817"
               ],
               "query": []
             }
@@ -4237,7 +4820,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/findings/09e783b2-4314-40a4-bfef-30dcb40d7674",
+              "raw": "{{base_url}}/api/v1/maintenance/findings/e0c5fd5d-1637-4a9a-9a2d-8a8eda6ea9dd",
               "host": [
                 "{{base_url}}"
               ],
@@ -4246,7 +4829,7 @@
                 "v1",
                 "maintenance",
                 "findings",
-                "09e783b2-4314-40a4-bfef-30dcb40d7674"
+                "e0c5fd5d-1637-4a9a-9a2d-8a8eda6ea9dd"
               ],
               "query": []
             }
@@ -4267,7 +4850,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/findings/09e783b2-4314-40a4-bfef-30dcb40d7674/attachments",
+              "raw": "{{base_url}}/api/v1/maintenance/findings/e0c5fd5d-1637-4a9a-9a2d-8a8eda6ea9dd/attachments",
               "host": [
                 "{{base_url}}"
               ],
@@ -4276,14 +4859,14 @@
                 "v1",
                 "maintenance",
                 "findings",
-                "09e783b2-4314-40a4-bfef-30dcb40d7674",
+                "e0c5fd5d-1637-4a9a-9a2d-8a8eda6ea9dd",
                 "attachments"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"entity_type\": \"MAINTENANCE_FINDING\",\n  \"entity_id\": \"09e783b2-4314-40a4-bfef-30dcb40d7674\",\n  \"attachment_category\": \"FINDING_PHOTO\",\n  \"title\": \"Finding Smoke Attachment\",\n  \"description\": \"Attachment smoke test untuk Finding Smoke Attachment\",\n  \"captured_at\": \"2026-07-27T15:46:00Z\",\n  \"sequence_no\": 1,\n  \"is_primary\": false,\n  \"visibility\": \"INTERNAL\",\n  \"source\": \"UPLOAD\",\n  \"created_at\": \"2026-07-27T15:46:00Z\",\n  \"file\": {\n    \"original_filename\": \"smoke-test.txt\",\n    \"display_name\": \"Finding Smoke Attachment\",\n    \"file_kind\": \"DOCUMENT\",\n    \"mime_type\": \"text/plain\",\n    \"extension\": \"txt\",\n    \"size_bytes\": 61,\n    \"checksum_sha256\": \"621dd1af6fbd74267e8e7c6be14434194cc77e297f48bace6d8165a3258c997a\",\n    \"storage_provider\": \"local\",\n    \"storage_bucket\": \"smoke-tests\",\n    \"storage_object_key\": \"smoke/maintenance_finding/09e783b2-4314-40a4-bfef-30dcb40d7674.txt\",\n    \"scan_status\": \"CLEAN\",\n    \"is_encrypted\": false,\n    \"is_active\": true,\n    \"uploaded_at\": \"2026-07-27T15:46:00Z\",\n    \"metadata\": {\n      \"source\": \"smoke-seed-api\"\n    }\n  }\n}",
+              "raw": "{\n  \"entity_type\": \"MAINTENANCE_FINDING\",\n  \"entity_id\": \"e0c5fd5d-1637-4a9a-9a2d-8a8eda6ea9dd\",\n  \"attachment_category\": \"FINDING_PHOTO\",\n  \"title\": \"Finding Smoke Attachment\",\n  \"description\": \"Attachment smoke test untuk Finding Smoke Attachment\",\n  \"captured_at\": \"2026-07-27T15:46:00Z\",\n  \"sequence_no\": 1,\n  \"is_primary\": false,\n  \"visibility\": \"INTERNAL\",\n  \"source\": \"UPLOAD\",\n  \"created_at\": \"2026-07-27T15:46:00Z\",\n  \"file\": {\n    \"original_filename\": \"smoke-test.txt\",\n    \"display_name\": \"Finding Smoke Attachment\",\n    \"file_kind\": \"DOCUMENT\",\n    \"mime_type\": \"text/plain\",\n    \"extension\": \"txt\",\n    \"size_bytes\": 61,\n    \"checksum_sha256\": \"4c7b11044d299363a4a48b705185b36915747bb4102fc9a40d45ac978aa02d87\",\n    \"storage_provider\": \"local\",\n    \"storage_bucket\": \"smoke-tests\",\n    \"storage_object_key\": \"smoke/maintenance_finding/e0c5fd5d-1637-4a9a-9a2d-8a8eda6ea9dd.txt\",\n    \"scan_status\": \"CLEAN\",\n    \"is_encrypted\": false,\n    \"is_active\": true,\n    \"uploaded_at\": \"2026-07-27T15:46:00Z\",\n    \"metadata\": {\n      \"source\": \"smoke-seed-api\"\n    }\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -4307,7 +4890,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/findings/09e783b2-4314-40a4-bfef-30dcb40d7674/attachments",
+              "raw": "{{base_url}}/api/v1/maintenance/findings/e0c5fd5d-1637-4a9a-9a2d-8a8eda6ea9dd/attachments",
               "host": [
                 "{{base_url}}"
               ],
@@ -4316,7 +4899,7 @@
                 "v1",
                 "maintenance",
                 "findings",
-                "09e783b2-4314-40a4-bfef-30dcb40d7674",
+                "e0c5fd5d-1637-4a9a-9a2d-8a8eda6ea9dd",
                 "attachments"
               ],
               "query": []
@@ -4338,7 +4921,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/findings/09e783b2-4314-40a4-bfef-30dcb40d7674/create-request",
+              "raw": "{{base_url}}/api/v1/maintenance/findings/e0c5fd5d-1637-4a9a-9a2d-8a8eda6ea9dd/create-request",
               "host": [
                 "{{base_url}}"
               ],
@@ -4347,14 +4930,14 @@
                 "v1",
                 "maintenance",
                 "findings",
-                "09e783b2-4314-40a4-bfef-30dcb40d7674",
+                "e0c5fd5d-1637-4a9a-9a2d-8a8eda6ea9dd",
                 "create-request"
               ],
               "query": []
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"request_number\": \"MRF-20260727223545-3D6BDA\",\n  \"priority_id\": \"2c7f9f2b-5df7-4277-b7fe-66b0fcb50fd2\",\n  \"reported_at\": \"2026-07-27T15:50:00Z\",\n  \"title\": \"Follow-up dari finding smoke test\",\n  \"problem_description\": \"Tindak lanjut grease housing dan seal.\",\n  \"requested_vendor_partner_id\": \"43ce9475-6cd3-46c4-b036-51b713a9d310\",\n  \"created_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"updated_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"submit\": true\n}",
+              "raw": "{\n  \"request_number\": \"MRF-20260727235601-0C8841\",\n  \"priority_id\": \"8a50fa75-cd2b-40dc-96b6-546323b1bb74\",\n  \"reported_at\": \"2026-07-27T15:50:00Z\",\n  \"title\": \"Follow-up dari finding smoke test\",\n  \"problem_description\": \"Tindak lanjut grease housing dan seal.\",\n  \"requested_vendor_partner_id\": \"7472da85-ec58-4b87-a5f3-17a94634be1d\",\n  \"created_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"updated_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"submit\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -4408,7 +4991,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/reports/cost?asset_id=52c6e820-3270-4972-b698-0e3bb81d001e",
+              "raw": "{{base_url}}/api/v1/maintenance/reports/cost?asset_id=2b696fe1-bc19-4c01-b54b-36a2dfd3066b",
               "host": [
                 "{{base_url}}"
               ],
@@ -4422,7 +5005,7 @@
               "query": [
                 {
                   "key": "asset_id",
-                  "value": "52c6e820-3270-4972-b698-0e3bb81d001e"
+                  "value": "2b696fe1-bc19-4c01-b54b-36a2dfd3066b"
                 }
               ]
             }
@@ -4521,7 +5104,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/reports/failure-analysis?asset_id=52c6e820-3270-4972-b698-0e3bb81d001e&date_from=2026-07-01T00:00:00+00:00&date_to=2026-07-27T23:59:59+00:00",
+              "raw": "{{base_url}}/api/v1/maintenance/reports/failure-analysis?asset_id=2b696fe1-bc19-4c01-b54b-36a2dfd3066b&date_from=2026-07-01T00:00:00+00:00&date_to=2026-07-27T23:59:59+00:00",
               "host": [
                 "{{base_url}}"
               ],
@@ -4535,7 +5118,7 @@
               "query": [
                 {
                   "key": "asset_id",
-                  "value": "52c6e820-3270-4972-b698-0e3bb81d001e"
+                  "value": "2b696fe1-bc19-4c01-b54b-36a2dfd3066b"
                 },
                 {
                   "key": "date_from",
@@ -4564,7 +5147,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f/complete",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/complete",
               "host": [
                 "{{base_url}}"
               ],
@@ -4573,7 +5156,7 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
                 "complete"
               ],
               "query": []
@@ -4604,7 +5187,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f/verify",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/verify",
               "host": [
                 "{{base_url}}"
               ],
@@ -4613,7 +5196,7 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
                 "verify"
               ],
               "query": []
@@ -4644,7 +5227,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f/close",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca/close",
               "host": [
                 "{{base_url}}"
               ],
@@ -4653,7 +5236,7 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f",
+                "075099b4-67e7-4859-9506-f53a943b6fca",
                 "close"
               ],
               "query": []
@@ -4684,7 +5267,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/a8288a34-426e-4707-8632-c03f204f194f",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/075099b4-67e7-4859-9506-f53a943b6fca",
               "host": [
                 "{{base_url}}"
               ],
@@ -4693,7 +5276,7 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "a8288a34-426e-4707-8632-c03f204f194f"
+                "075099b4-67e7-4859-9506-f53a943b6fca"
               ],
               "query": []
             }
@@ -4728,7 +5311,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"work_order_number\": \"WOC-20260727223545-3D6BDA\",\n  \"company_id\": \"00e049ea-938d-462e-90ea-2adb311c3550\",\n  \"asset_id\": \"52c6e820-3270-4972-b698-0e3bb81d001e\",\n  \"maintenance_type\": \"CORRECTIVE\",\n  \"priority_id\": \"2c7f9f2b-5df7-4277-b7fe-66b0fcb50fd2\",\n  \"title\": \"WO cancel smoke test\",\n  \"scope_of_work\": \"Pekerjaan dibatalkan untuk validasi endpoint cancel\",\n  \"execution_mode\": \"INTERNAL\",\n  \"planned_start_at\": \"2026-07-28T09:00:00Z\",\n  \"planned_end_at\": \"2026-07-28T11:00:00Z\",\n  \"requires_shutdown\": false,\n  \"requires_permit\": false,\n  \"requires_verification\": false,\n  \"created_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"updated_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\"\n}",
+              "raw": "{\n  \"work_order_number\": \"WOC-20260727235601-0C8841\",\n  \"company_id\": \"e5dc04dc-0519-4a7c-ae63-eb0045b34909\",\n  \"asset_id\": \"2b696fe1-bc19-4c01-b54b-36a2dfd3066b\",\n  \"maintenance_type\": \"CORRECTIVE\",\n  \"priority_id\": \"8a50fa75-cd2b-40dc-96b6-546323b1bb74\",\n  \"title\": \"WO cancel smoke test\",\n  \"scope_of_work\": \"Pekerjaan dibatalkan untuk validasi endpoint cancel\",\n  \"execution_mode\": \"INTERNAL\",\n  \"planned_start_at\": \"2026-07-28T09:00:00Z\",\n  \"planned_end_at\": \"2026-07-28T11:00:00Z\",\n  \"requires_shutdown\": false,\n  \"requires_permit\": false,\n  \"requires_verification\": false,\n  \"created_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\",\n  \"updated_by\": \"e72ee24e-2f12-4152-8bbc-e956b56a674b\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -4752,7 +5335,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/705a999a-56e9-4f50-bfa0-d31525d9404e/cancel",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/84b43579-a616-40fb-9336-1776d7045796/cancel",
               "host": [
                 "{{base_url}}"
               ],
@@ -4761,7 +5344,7 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "705a999a-56e9-4f50-bfa0-d31525d9404e",
+                "84b43579-a616-40fb-9336-1776d7045796",
                 "cancel"
               ],
               "query": []
@@ -4792,7 +5375,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/maintenance/work-orders/705a999a-56e9-4f50-bfa0-d31525d9404e",
+              "raw": "{{base_url}}/api/v1/maintenance/work-orders/84b43579-a616-40fb-9336-1776d7045796",
               "host": [
                 "{{base_url}}"
               ],
@@ -4801,7 +5384,7 @@
                 "v1",
                 "maintenance",
                 "work-orders",
-                "705a999a-56e9-4f50-bfa0-d31525d9404e"
+                "84b43579-a616-40fb-9336-1776d7045796"
               ],
               "query": []
             }

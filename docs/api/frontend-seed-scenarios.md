@@ -123,7 +123,31 @@ Output penting:
 - `asset_id`
 - `asset_tag_number`
 
-### 5. Asset Transfer
+### 5. Lease Contract Flow
+
+Tujuan:
+
+- menampilkan contoh kontrak lease aktif pada Monday, July 27, 2026;
+- memberi sample item aset yang dilease dan payment bulan berjalan.
+
+Endpoint:
+
+- `POST /api/v1/lease-contracts`
+- `GET /api/v1/lease-contracts`
+- `GET /api/v1/lease-contracts/{lease_contract_id}`
+- `POST /api/v1/lease-contracts/{lease_contract_id}/assets`
+- `GET /api/v1/lease-contracts/{lease_contract_id}/assets`
+- `POST /api/v1/lease-contracts/{lease_contract_id}/payments`
+- `GET /api/v1/lease-contracts/{lease_contract_id}/payments`
+
+Output penting:
+
+- `lease_contract_id`
+- contract aktif periode `2026-07-01` sampai `2026-12-31`
+- asset item lease untuk aset smoke utama
+- payment periode `2026-07-01` sampai `2026-07-31`
+
+### 6. Asset Transfer
 
 Tujuan:
 
@@ -142,7 +166,7 @@ Output penting:
 
 - `asset_transfer_id`
 
-### 6. Tracking dan Stocktake
+### 7. Tracking dan Stocktake
 
 Tujuan:
 
@@ -267,8 +291,16 @@ Endpoint:
 - `POST /api/v1/maintenance/work-orders/{work_order_id}/attachments`
 - `GET /api/v1/maintenance/work-orders/{work_order_id}/attachments`
 - `POST /api/v1/maintenance/work-orders/{work_order_id}/approve`
+- `POST /api/v1/maintenance/skills`
+- `GET /api/v1/maintenance/skills`
+- `POST /api/v1/maintenance/employees/{employee_id}/skills`
+- `GET /api/v1/maintenance/employees/{employee_id}/skills`
+- `POST /api/v1/maintenance/work-orders/{work_order_id}/required-skills`
+- `GET /api/v1/maintenance/work-orders/{work_order_id}/required-skills`
 - `POST /api/v1/maintenance/work-orders/{work_order_id}/assign`
 - `POST /api/v1/maintenance/work-orders/{work_order_id}/start`
+- `POST /api/v1/maintenance/work-orders/{work_order_id}/part-requirements`
+- `POST /api/v1/maintenance/work-orders/{work_order_id}/vendor-personnel`
 - `POST /api/v1/maintenance/work-orders/{work_order_id}/parts`
 - `POST /api/v1/maintenance/work-orders/{work_order_id}/labor-logs`
 - `POST /api/v1/maintenance/work-orders/{work_order_id}/downtimes`
@@ -430,16 +462,23 @@ Urutan call:
 
 1. `GET /api/v1/maintenance/work-orders/{work_order_id}`
 2. `GET /api/v1/maintenance/work-orders/{work_order_id}/attachments`
-3. `GET /api/v1/maintenance/work-orders/{work_order_id}/downtimes`
-4. `GET /api/v1/maintenance/work-orders/{work_order_id}/events`
-5. `GET /api/v1/maintenance/failures?work_order_id={work_order_id}`
+3. `GET /api/v1/maintenance/work-orders/{work_order_id}/required-skills`
+4. `GET /api/v1/maintenance/work-orders/{work_order_id}/part-requirements`
+5. `GET /api/v1/maintenance/work-orders/{work_order_id}/vendor-personnel`
+6. `GET /api/v1/maintenance/work-orders/{work_order_id}/downtimes`
+7. `GET /api/v1/maintenance/work-orders/{work_order_id}/events`
+8. `GET /api/v1/maintenance/failures?work_order_id={work_order_id}`
 
 Lifecycle yang sudah tersedia di seed:
 
 - waiting approval
 - approved
+- required skill defined
 - assigned
+- employee skill validated during assignment
 - in progress
+- vendor personnel checked in and checked out
+- planned part created and synchronized after part usage
 - completed
 - verification
 - closed

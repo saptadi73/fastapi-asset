@@ -265,6 +265,15 @@ class MaintenanceWorkOrder(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     assignments: Mapped[list[MaintenanceWorkOrderAssignment]] = relationship(
         back_populates="work_order"
     )
+    required_skills: Mapped[list[MaintenanceWorkOrderRequiredSkill]] = relationship(
+        back_populates="work_order"
+    )
+    part_requirements: Mapped[list[MaintenancePartRequirement]] = relationship(
+        back_populates="work_order"
+    )
+    vendor_personnel: Mapped[list[MaintenanceVendorPersonnel]] = relationship(
+        back_populates="work_order"
+    )
     failures: Mapped[list[AssetFailure]] = relationship(back_populates="work_order")
     part_usages: Mapped[list[MaintenancePartUsage]] = relationship(back_populates="work_order")
     labor_logs: Mapped[list[MaintenanceLaborLog]] = relationship(back_populates="work_order")
@@ -348,6 +357,63 @@ class MaintenanceWorkOrderAssignment(UUIDPrimaryKeyMixin, Base):
     work_order: Mapped[MaintenanceWorkOrder] = relationship(back_populates="assignments")
 
 
+class MaintenancePartRequirement(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_part_requirements"
+
+    work_order_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_work_orders.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    part_item_id: Mapped[UUID] = mapped_column(nullable=False)
+    required_quantity: Mapped[Decimal] = mapped_column(Numeric(20, 4), nullable=False)
+    reserved_quantity: Mapped[Decimal] = mapped_column(
+        Numeric(20, 4),
+        default=0,
+        nullable=False,
+    )
+    issued_quantity: Mapped[Decimal] = mapped_column(
+        Numeric(20, 4),
+        default=0,
+        nullable=False,
+    )
+    returned_quantity: Mapped[Decimal] = mapped_column(
+        Numeric(20, 4),
+        default=0,
+        nullable=False,
+    )
+    unit_of_measure: Mapped[str] = mapped_column(String(20), nullable=False)
+    requirement_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    is_critical: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    work_order: Mapped[MaintenanceWorkOrder] = relationship(
+        back_populates="part_requirements"
+    )
+
+
+class MaintenanceVendorPersonnel(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_vendor_personnel"
+
+    work_order_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_work_orders.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    vendor_partner_id: Mapped[UUID] = mapped_column(
+        ForeignKey("business_partners.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    person_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    contact_phone: Mapped[str | None] = mapped_column(String(50))
+    technician_reference: Mapped[str | None] = mapped_column(String(100))
+    check_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    check_out_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    work_order: Mapped[MaintenanceWorkOrder] = relationship(
+        back_populates="vendor_personnel"
+    )
+    vendor_partner = relationship("BusinessPartner")
+
+
 class MaintenanceTeam(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "maintenance_teams"
     __table_args__ = (
@@ -392,6 +458,74 @@ class MaintenanceTeamMember(UUIDPrimaryKeyMixin, Base):
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     team: Mapped[MaintenanceTeam] = relationship(back_populates="members")
+
+
+class MaintenanceSkill(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_skills"
+
+    skill_code: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
+    skill_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    certification_required: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+
+
+class EmployeeMaintenanceSkill(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "employee_maintenance_skills"
+    __table_args__ = (
+        UniqueConstraint(
+            "employee_id",
+            "maintenance_skill_id",
+            "valid_from",
+            name="uq_employee_maintenance_skills_employee_skill_from",
+        ),
+    )
+
+    employee_id: Mapped[UUID] = mapped_column(nullable=False)
+    maintenance_skill_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_skills.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    proficiency_level: Mapped[str | None] = mapped_column(String(20))
+    certificate_number: Mapped[str | None] = mapped_column(String(100))
+    valid_from: Mapped[date | None] = mapped_column(nullable=True)
+    valid_to: Mapped[date | None] = mapped_column(nullable=True)
+
+    maintenance_skill: Mapped[MaintenanceSkill] = relationship()
+
+
+class MaintenanceWorkOrderRequiredSkill(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_work_order_required_skills"
+    __table_args__ = (
+        UniqueConstraint(
+            "work_order_id",
+            "maintenance_skill_id",
+            name="uq_maintenance_work_order_required_skills_unique",
+        ),
+    )
+
+    work_order_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_work_orders.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    maintenance_skill_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_skills.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    minimum_proficiency_level: Mapped[str | None] = mapped_column(String(20))
+    certification_required: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    work_order: Mapped[MaintenanceWorkOrder] = relationship(
+        back_populates="required_skills"
+    )
+    maintenance_skill: Mapped[MaintenanceSkill] = relationship()
 
 
 class MaintenanceSchedule(UUIDPrimaryKeyMixin, Base):
