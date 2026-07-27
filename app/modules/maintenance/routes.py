@@ -20,6 +20,7 @@ from app.modules.maintenance.schemas import (
     AssetFailureCreate,
     AssetFailureListItemRead,
     AssetFailureRead,
+    AssetFailureUpdate,
     MaintenanceChecklistExecutionRead,
     MaintenanceChecklistExecutionStartPayload,
     MaintenanceChecklistResultSubmitPayload,
@@ -1075,6 +1076,30 @@ async def get_maintenance_failure(
     return success_response(
         request=request,
         message="Detail asset failure berhasil diambil.",
+        data=AssetFailureRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.patch(
+    "/failures/{failure_id}",
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def update_maintenance_failure(
+    request: Request,
+    failure_id: UUID,
+    payload: AssetFailureUpdate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.update_failure(
+        failure_id,
+        payload,
+        actor_id=current_user.id,
+    )
+    return success_response(
+        request=request,
+        message="Asset failure berhasil diperbarui.",
         data=AssetFailureRead.model_validate(item).model_dump(mode="json"),
     )
 

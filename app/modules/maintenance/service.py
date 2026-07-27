@@ -99,6 +99,7 @@ from app.modules.maintenance.repository import (
 )
 from app.modules.maintenance.schemas import (
     AssetFailureCreate,
+    AssetFailureUpdate,
     AssetMaintenanceHistoryItemRead,
     MaintenanceBacklogReportRead,
     MaintenanceChecklistExecutionStartPayload,
@@ -304,14 +305,18 @@ class MaintenanceService:
             is_active=payload.is_active,
         )
         try:
-            async with self.session.begin():
-                await self.plans.create(item)
+            await self.plans.create(item)
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="MAINTENANCE_PLAN_CONFLICT",
                 message="Plan code sudah digunakan.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_plan(item.id)
 
     async def list_plans(self, pagination: PaginationParams) -> tuple[list[MaintenancePlan], int]:
@@ -352,14 +357,18 @@ class MaintenanceService:
             is_active=payload.is_active,
         )
         try:
-            async with self.session.begin():
-                await self.plan_assets.create(item)
+            await self.plan_assets.create(item)
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="MAINTENANCE_PLAN_ASSET_CONFLICT",
                 message="Asset sudah terdaftar pada plan dengan periode efektif yang sama.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_plan(plan_id)
 
     async def generate_schedules_from_plan(
@@ -397,86 +406,90 @@ class MaintenanceService:
 
         created_ids: list[UUID] = []
         try:
-            async with self.session.begin():
-                for index, (asset_id, _, _) in enumerate(normalized_targets, start=1):
-                    asset = await self._get_asset_or_raise(asset_id)
-                    start_at = payload.scheduled_start_at
-                    duration_minutes = plan.estimated_duration_minutes or 60
-                    end_at = start_at + timedelta(minutes=duration_minutes)
-                    await self._ensure_schedule_no_conflict(
+            for index, (asset_id, _, _) in enumerate(normalized_targets, start=1):
+                asset = await self._get_asset_or_raise(asset_id)
+                start_at = payload.scheduled_start_at
+                duration_minutes = plan.estimated_duration_minutes or 60
+                end_at = start_at + timedelta(minutes=duration_minutes)
+                await self._ensure_schedule_no_conflict(
+                    asset_id=asset_id,
+                    scheduled_start_at=start_at,
+                    scheduled_end_at=end_at,
+                    maintenance_team_id=plan.default_team_id,
+                    vendor_partner_id=plan.default_vendor_partner_id,
+                    error_code="MAINTENANCE_PLAN_GENERATION_CONFLICT",
+                )
+                schedule = MaintenanceSchedule(
+                    schedule_number=f"{payload.schedule_prefix}-{plan.plan_code}-{index:03d}",
+                    maintenance_plan_id=plan.id,
+                    maintenance_request_id=None,
+                    work_order_id=None,
+                    asset_id=asset_id,
+                    schedule_source="PREVENTIVE_PLAN",
+                    scheduled_start_at=start_at,
+                    scheduled_end_at=end_at,
+                    maintenance_team_id=plan.default_team_id,
+                    vendor_partner_id=plan.default_vendor_partner_id,
+                    maintenance_contract_id=plan.maintenance_contract_id,
+                    status=MaintenanceScheduleStatus.PLANNED.value,
+                    created_by=payload.created_by,
+                    created_at=datetime.now(UTC if start_at.tzinfo else None),
+                )
+                created = await self.schedules.create(schedule)
+                created_ids.append(created.id)
+
+                if payload.create_work_orders is True or (
+                    payload.create_work_orders is None and plan.auto_create_work_order
+                ):
+                    work_order = MaintenanceWorkOrder(
+                        work_order_number=f"WO-{plan.plan_code}-{index:03d}",
+                        company_id=asset.company_id,
                         asset_id=asset_id,
-                        scheduled_start_at=start_at,
-                        scheduled_end_at=end_at,
-                        maintenance_team_id=plan.default_team_id,
-                        vendor_partner_id=plan.default_vendor_partner_id,
-                        error_code="MAINTENANCE_PLAN_GENERATION_CONFLICT",
-                    )
-                    schedule = MaintenanceSchedule(
-                        schedule_number=f"{payload.schedule_prefix}-{plan.plan_code}-{index:03d}",
+                        maintenance_type=plan.maintenance_type,
+                        priority_id=plan.default_priority_id,
+                        title=plan.plan_name,
+                        scope_of_work=f"Generated from plan {plan.plan_code}.",
                         maintenance_plan_id=plan.id,
-                        maintenance_request_id=None,
-                        work_order_id=None,
-                        asset_id=asset_id,
-                        schedule_source="PREVENTIVE_PLAN",
-                        scheduled_start_at=start_at,
-                        scheduled_end_at=end_at,
                         maintenance_team_id=plan.default_team_id,
+                        execution_mode="INTERNAL"
+                        if plan.default_vendor_partner_id is None
+                        else "VENDOR",
                         vendor_partner_id=plan.default_vendor_partner_id,
                         maintenance_contract_id=plan.maintenance_contract_id,
-                        status=MaintenanceScheduleStatus.PLANNED.value,
+                        planned_start_at=start_at,
+                        planned_end_at=end_at,
+                        requires_verification=True,
+                        status=(
+                            MaintenanceWorkOrderStatus.WAITING_APPROVAL.value
+                            if plan.requires_approval
+                            else MaintenanceWorkOrderStatus.APPROVED.value
+                        ),
                         created_by=payload.created_by,
-                        created_at=datetime.now(UTC if start_at.tzinfo else None),
+                        updated_by=payload.created_by,
                     )
-                    created = await self.schedules.create(schedule)
-                    created_ids.append(created.id)
+                    created_wo = await self.work_orders.create(work_order)
+                    await self.schedules.update(created, work_order_id=created_wo.id)
 
-                    if payload.create_work_orders is True or (
-                        payload.create_work_orders is None and plan.auto_create_work_order
-                    ):
-                        work_order = MaintenanceWorkOrder(
-                            work_order_number=f"WO-{plan.plan_code}-{index:03d}",
-                            company_id=asset.company_id,
-                            asset_id=asset_id,
-                            maintenance_type=plan.maintenance_type,
-                            priority_id=plan.default_priority_id,
-                            title=plan.plan_name,
-                            scope_of_work=f"Generated from plan {plan.plan_code}.",
-                            maintenance_plan_id=plan.id,
-                            maintenance_team_id=plan.default_team_id,
-                            execution_mode="INTERNAL"
-                            if plan.default_vendor_partner_id is None
-                            else "VENDOR",
-                            vendor_partner_id=plan.default_vendor_partner_id,
-                            maintenance_contract_id=plan.maintenance_contract_id,
-                            planned_start_at=start_at,
-                            planned_end_at=end_at,
-                            requires_verification=True,
-                            status=(
-                                MaintenanceWorkOrderStatus.WAITING_APPROVAL.value
-                                if plan.requires_approval
-                                else MaintenanceWorkOrderStatus.APPROVED.value
-                            ),
-                            created_by=payload.created_by,
-                            updated_by=payload.created_by,
-                        )
-                        created_wo = await self.work_orders.create(work_order)
-                        await self.schedules.update(created, work_order_id=created_wo.id)
-
-                if plan.trigger_type.startswith("CALENDAR") and plan.next_due_date is not None:
-                    next_due_date = plan.next_due_date
-                    if plan.calendar_interval_value and plan.calendar_interval_unit:
-                        next_due_date = self._increment_due_date(
-                            plan.next_due_date,
-                            plan.calendar_interval_value,
-                            plan.calendar_interval_unit,
-                        )
-                    await self.plans.update(plan, next_due_date=next_due_date)
+            if plan.trigger_type.startswith("CALENDAR") and plan.next_due_date is not None:
+                next_due_date = plan.next_due_date
+                if plan.calendar_interval_value and plan.calendar_interval_unit:
+                    next_due_date = self._increment_due_date(
+                        plan.next_due_date,
+                        plan.calendar_interval_value,
+                        plan.calendar_interval_unit,
+                    )
+                await self.plans.update(plan, next_due_date=next_due_date)
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="MAINTENANCE_PLAN_GENERATION_CONFLICT",
                 message="Generate schedule dari plan menimbulkan konflik data.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
 
         items = [await self.get_schedule(schedule_id) for schedule_id in created_ids]
         return items
@@ -495,14 +508,18 @@ class MaintenanceService:
             is_active=payload.is_active,
         )
         try:
-            async with self.session.begin():
-                await self.teams.create(item)
+            await self.teams.create(item)
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="MAINTENANCE_TEAM_CONFLICT",
                 message="Team code sudah digunakan pada company yang sama.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_team(item.id)
 
     async def list_teams(self, pagination: PaginationParams) -> tuple[list[MaintenanceTeam], int]:
@@ -537,14 +554,18 @@ class MaintenanceService:
             is_primary=payload.is_primary,
         )
         try:
-            async with self.session.begin():
-                await self.team_members.create(item)
+            await self.team_members.create(item)
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="MAINTENANCE_TEAM_MEMBER_CONFLICT",
                 message="Member tim dengan periode efektif yang sama sudah ada.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_team(team_id)
 
     async def create_schedule(self, payload: MaintenanceScheduleCreate) -> MaintenanceSchedule:
@@ -582,14 +603,18 @@ class MaintenanceService:
             created_at=payload.created_at,
         )
         try:
-            async with self.session.begin():
-                await self.schedules.create(item)
+            await self.schedules.create(item)
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="MAINTENANCE_SCHEDULE_CONFLICT",
                 message="Schedule number sudah digunakan.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_schedule(item.id)
 
     async def list_schedules(
@@ -617,12 +642,16 @@ class MaintenanceService:
                 message="Hanya schedule PLANNED yang dapat dikonfirmasi.",
                 status_code=409,
             )
-        async with self.session.begin():
+        try:
             await self.schedules.update(
                 item,
                 status=MaintenanceScheduleStatus.CONFIRMED.value,
                 confirmed_at=payload.acted_at,
             )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_schedule(schedule_id)
 
     async def reschedule(
@@ -649,7 +678,7 @@ class MaintenanceService:
             vendor_partner_id=item.vendor_partner_id,
             exclude_schedule_id=item.id,
         )
-        async with self.session.begin():
+        try:
             await self.schedules.update(
                 item,
                 scheduled_start_at=payload.scheduled_start_at,
@@ -658,19 +687,27 @@ class MaintenanceService:
                 reschedule_count=item.reschedule_count + 1,
                 reschedule_reason=payload.reschedule_reason,
             )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_schedule(schedule_id)
 
     async def create_priority(self, payload: MaintenancePriorityCreate) -> MaintenancePriority:
         item = MaintenancePriority(**payload.model_dump())
         try:
-            async with self.session.begin():
-                await self.priorities.create(item)
+            await self.priorities.create(item)
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="MAINTENANCE_PRIORITY_CONFLICT",
                 message="Code maintenance priority sudah digunakan.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
         return item
 
     async def list_priorities(self) -> list[MaintenancePriority]:
@@ -705,33 +742,37 @@ class MaintenanceService:
             is_active=payload.is_active,
         )
         try:
-            async with self.session.begin():
-                await self.checklist_templates.create(template)
-                for item_payload in payload.items:
-                    await self.checklist_template_items.create(
-                        MaintenanceChecklistTemplateItem(
-                            checklist_template_id=template.id,
-                            sequence_no=item_payload.sequence_no,
-                            item_code=item_payload.item_code,
-                            instruction=item_payload.instruction,
-                            response_type=item_payload.response_type.value,
-                            is_required=item_payload.is_required,
-                            normal_min_value=item_payload.normal_min_value,
-                            normal_max_value=item_payload.normal_max_value,
-                            unit_of_measure=item_payload.unit_of_measure,
-                            failure_response_rule=(
-                                item_payload.failure_response_rule.value
-                                if item_payload.failure_response_rule is not None
-                                else None
-                            ),
-                        )
+            await self.checklist_templates.create(template)
+            for item_payload in payload.items:
+                await self.checklist_template_items.create(
+                    MaintenanceChecklistTemplateItem(
+                        checklist_template_id=template.id,
+                        sequence_no=item_payload.sequence_no,
+                        item_code=item_payload.item_code,
+                        instruction=item_payload.instruction,
+                        response_type=item_payload.response_type.value,
+                        is_required=item_payload.is_required,
+                        normal_min_value=item_payload.normal_min_value,
+                        normal_max_value=item_payload.normal_max_value,
+                        unit_of_measure=item_payload.unit_of_measure,
+                        failure_response_rule=(
+                            item_payload.failure_response_rule.value
+                            if item_payload.failure_response_rule is not None
+                            else None
+                        ),
                     )
+                )
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="MAINTENANCE_CHECKLIST_TEMPLATE_CONFLICT",
                 message="Checklist template atau sequence item menimbulkan konflik.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_checklist_template(template.id)
 
     async def get_checklist_template(self, template_id) -> MaintenanceChecklistTemplate:
@@ -783,8 +824,12 @@ class MaintenanceService:
             started_at=payload.started_at,
             status=ChecklistExecutionStatus.IN_PROGRESS.value,
         )
-        async with self.session.begin():
+        try:
             await self.checklist_executions.create(execution)
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_checklist_execution(execution.id)
 
     async def get_checklist_execution(self, checklist_id) -> MaintenanceChecklistExecution:
@@ -833,113 +878,117 @@ class MaintenanceService:
 
         has_abnormal = False
         try:
-            async with self.session.begin():
-                for index, entry in enumerate(payload.results, start=1):
-                    template_item = template_items.get(entry.template_item_id)
-                    if template_item is None:
-                        raise AppError(
-                            code="MAINTENANCE_CHECKLIST_RESULT_INVALID",
-                            message="Template item tidak termasuk dalam checklist execution.",
-                            status_code=422,
-                        )
-                    self._validate_checklist_result_entry(template_item, entry)
-                    result_status, is_abnormal = self._derive_result_status(template_item, entry)
-                    has_abnormal = has_abnormal or is_abnormal
-                    result = await self.checklist_results.create(
-                        MaintenanceChecklistResult(
-                            checklist_execution_id=execution.id,
-                            template_item_id=template_item.id,
-                            result_status=result_status,
-                            boolean_value=entry.boolean_value,
-                            numeric_value=entry.numeric_value,
-                            text_value=entry.text_value,
-                            meter_reading_id=entry.meter_reading_id,
-                            notes=entry.notes,
-                            performed_at=entry.performed_at,
-                        )
+            for index, entry in enumerate(payload.results, start=1):
+                template_item = template_items.get(entry.template_item_id)
+                if template_item is None:
+                    raise AppError(
+                        code="MAINTENANCE_CHECKLIST_RESULT_INVALID",
+                        message="Template item tidak termasuk dalam checklist execution.",
+                        status_code=422,
                     )
-                    if is_abnormal:
-                        created_finding = await self.findings.create(
-                            MaintenanceFinding(
-                                finding_number=self._generate_finding_number(
-                                    execution.id,
-                                    index,
-                                ),
-                                checklist_result_id=result.id,
-                                work_order_id=execution.work_order_id,
-                                asset_id=execution.asset_id,
-                                finding_type=(
-                                    entry.finding_type.value
-                                    if entry.finding_type is not None
-                                    else MaintenanceFindingType.ABNORMAL_CONDITION.value
-                                ),
-                                severity=(
-                                    entry.finding_severity.value
-                                    if entry.finding_severity is not None
-                                    else MaintenanceFindingSeverity.MEDIUM.value
-                                ),
-                                description=(
-                                    entry.finding_description
-                                    or f"Hasil abnormal pada item {template_item.item_code}."
-                                ),
-                                recommended_action=entry.recommended_action,
-                                requires_follow_up=(
-                                    entry.requires_follow_up
-                                    or template_item.failure_response_rule
-                                    == ChecklistFailureResponseRule.REQUIRES_FOLLOW_UP.value
-                                ),
-                                requires_asset_shutdown=(
-                                    entry.requires_asset_shutdown
-                                    or template_item.failure_response_rule
-                                    == ChecklistFailureResponseRule.REQUIRES_ASSET_SHUTDOWN.value
-                                ),
-                                follow_up_due_date=entry.follow_up_due_date,
-                                status=MaintenanceFindingStatus.OPEN.value,
-                                reported_by_employee_id=execution.performed_by_employee_id,
-                                reported_at=entry.performed_at,
-                            )
-                        )
-                        if execution.work_order_id is not None:
-                            await self._record_work_order_event(
-                                work_order_id=execution.work_order_id,
-                                event_type=MaintenanceWorkOrderEventType.FINDING_CREATED.value,
-                                previous_status=None,
-                                new_status=None,
-                                event_at=entry.performed_at,
-                                performed_by=execution.performed_by_employee_id,
-                                employee_id=execution.performed_by_employee_id,
-                                reason=created_finding.description,
-                                event_payload={"finding_id": str(created_finding.id)},
-                            )
-
-                await self.checklist_executions.update(
-                    execution,
-                    completed_at=payload.completed_at,
-                    overall_result=(
-                        ChecklistOverallResult.FAIL.value
-                        if has_abnormal
-                        else ChecklistOverallResult.PASS.value
-                    ),
-                    status=ChecklistExecutionStatus.COMPLETED.value,
+                self._validate_checklist_result_entry(template_item, entry)
+                result_status, is_abnormal = self._derive_result_status(template_item, entry)
+                has_abnormal = has_abnormal or is_abnormal
+                result = await self.checklist_results.create(
+                    MaintenanceChecklistResult(
+                        checklist_execution_id=execution.id,
+                        template_item_id=template_item.id,
+                        result_status=result_status,
+                        boolean_value=entry.boolean_value,
+                        numeric_value=entry.numeric_value,
+                        text_value=entry.text_value,
+                        meter_reading_id=entry.meter_reading_id,
+                        notes=entry.notes,
+                        performed_at=entry.performed_at,
+                    )
                 )
-                if execution.work_order_id is not None:
-                    await self._record_work_order_event(
-                        work_order_id=execution.work_order_id,
-                        event_type=MaintenanceWorkOrderEventType.CHECKLIST_COMPLETED.value,
-                        previous_status=None,
-                        new_status=None,
-                        event_at=payload.completed_at,
-                        performed_by=execution.performed_by_employee_id,
-                        employee_id=execution.performed_by_employee_id,
-                        reason="Checklist execution selesai.",
-                        event_payload={"checklist_execution_id": str(execution.id)},
+                if is_abnormal:
+                    created_finding = await self.findings.create(
+                        MaintenanceFinding(
+                            finding_number=self._generate_finding_number(
+                                execution.id,
+                                index,
+                            ),
+                            checklist_result_id=result.id,
+                            work_order_id=execution.work_order_id,
+                            asset_id=execution.asset_id,
+                            finding_type=(
+                                entry.finding_type.value
+                                if entry.finding_type is not None
+                                else MaintenanceFindingType.ABNORMAL_CONDITION.value
+                            ),
+                            severity=(
+                                entry.finding_severity.value
+                                if entry.finding_severity is not None
+                                else MaintenanceFindingSeverity.MEDIUM.value
+                            ),
+                            description=(
+                                entry.finding_description
+                                or f"Hasil abnormal pada item {template_item.item_code}."
+                            ),
+                            recommended_action=entry.recommended_action,
+                            requires_follow_up=(
+                                entry.requires_follow_up
+                                or template_item.failure_response_rule
+                                == ChecklistFailureResponseRule.REQUIRES_FOLLOW_UP.value
+                            ),
+                            requires_asset_shutdown=(
+                                entry.requires_asset_shutdown
+                                or template_item.failure_response_rule
+                                == ChecklistFailureResponseRule.REQUIRES_ASSET_SHUTDOWN.value
+                            ),
+                            follow_up_due_date=entry.follow_up_due_date,
+                            status=MaintenanceFindingStatus.OPEN.value,
+                            reported_by_employee_id=execution.performed_by_employee_id,
+                            reported_at=entry.performed_at,
+                        )
                     )
+                    if execution.work_order_id is not None:
+                        await self._record_work_order_event(
+                            work_order_id=execution.work_order_id,
+                            event_type=MaintenanceWorkOrderEventType.FINDING_CREATED.value,
+                            previous_status=None,
+                            new_status=None,
+                            event_at=entry.performed_at,
+                            performed_by=execution.performed_by_employee_id,
+                            employee_id=execution.performed_by_employee_id,
+                            reason=created_finding.description,
+                            event_payload={"finding_id": str(created_finding.id)},
+                        )
+
+            await self.checklist_executions.update(
+                execution,
+                completed_at=payload.completed_at,
+                overall_result=(
+                    ChecklistOverallResult.FAIL.value
+                    if has_abnormal
+                    else ChecklistOverallResult.PASS.value
+                ),
+                status=ChecklistExecutionStatus.COMPLETED.value,
+            )
+            if execution.work_order_id is not None:
+                await self._record_work_order_event(
+                    work_order_id=execution.work_order_id,
+                    event_type=MaintenanceWorkOrderEventType.CHECKLIST_COMPLETED.value,
+                    previous_status=None,
+                    new_status=None,
+                    event_at=payload.completed_at,
+                    performed_by=execution.performed_by_employee_id,
+                    employee_id=execution.performed_by_employee_id,
+                    reason="Checklist execution selesai.",
+                    event_payload={"checklist_execution_id": str(execution.id)},
+                )
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="MAINTENANCE_CHECKLIST_EXECUTION_CONFLICT",
                 message="Checklist result atau finding menimbulkan konflik data.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_checklist_execution(checklist_id)
 
     async def get_finding(self, finding_id) -> MaintenanceFinding:
@@ -1000,19 +1049,23 @@ class MaintenanceService:
             updated_by=payload.updated_by or payload.created_by,
         )
         try:
-            async with self.session.begin():
-                await self.requests.create(request_item)
-                await self.findings.update(
-                    finding,
-                    generated_request_id=request_item.id,
-                    status=MaintenanceFindingStatus.FOLLOW_UP_CREATED.value,
-                )
+            await self.requests.create(request_item)
+            await self.findings.update(
+                finding,
+                generated_request_id=request_item.id,
+                status=MaintenanceFindingStatus.FOLLOW_UP_CREATED.value,
+            )
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="MAINTENANCE_FINDING_REQUEST_CONFLICT",
                 message="Follow-up request dari finding menimbulkan konflik data.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_request(request_item.id)
 
     async def create_failure(
@@ -1110,6 +1163,121 @@ class MaintenanceService:
             raise
         return await self.get_work_order(work_order_id)
 
+    async def update_failure(
+        self,
+        failure_id: UUID,
+        payload: AssetFailureUpdate,
+        *,
+        actor_id: UUID,
+    ) -> AssetFailure:
+        failure = await self.get_failure(failure_id)
+        changes = payload.model_dump(exclude_unset=True)
+        if not changes:
+            return failure
+
+        if "failure_mode_id" in changes and changes["failure_mode_id"] is not None:
+            await self._get_failure_mode_or_raise(changes["failure_mode_id"])
+        if "symptom_code_id" in changes and changes["symptom_code_id"] is not None:
+            await self._get_symptom_code_or_raise(changes["symptom_code_id"])
+        if "root_cause_code_id" in changes and changes["root_cause_code_id"] is not None:
+            await self._get_root_cause_code_or_raise(changes["root_cause_code_id"])
+
+        started_at = changes.get("failure_started_at", failure.failure_started_at)
+        ended_at = changes.get("failure_ended_at", failure.failure_ended_at)
+        if started_at is not None and ended_at is not None and ended_at < started_at:
+            raise AppError(
+                code="MAINTENANCE_ASSET_FAILURE_TIME_INVALID",
+                message="failure_ended_at tidak boleh lebih kecil dari failure_started_at.",
+                status_code=422,
+            )
+
+        if (
+            "downtime_minutes" not in changes
+            and started_at is not None
+            and ended_at is not None
+            and (
+                "failure_started_at" in changes
+                or "failure_ended_at" in changes
+                or failure.downtime_minutes is None
+            )
+        ):
+            changes["downtime_minutes"] = int((ended_at - started_at).total_seconds() // 60)
+
+        if "failure_severity" in changes and changes["failure_severity"] is not None:
+            changes["failure_severity"] = changes["failure_severity"].value
+        if "status" in changes and changes["status"] is not None:
+            changes["status"] = changes["status"].value
+
+        previous_status = failure.status
+        next_status = changes.get("status", failure.status)
+        changes["updated_at"] = datetime.now(UTC)
+        rca_finalized = (
+            (
+                "root_cause_code_id" in changes and changes["root_cause_code_id"] is not None
+            )
+            or (
+                "root_cause_description" in changes
+                and bool(changes["root_cause_description"])
+            )
+            or ("corrective_action" in changes and bool(changes["corrective_action"]))
+            or ("preventive_action" in changes and bool(changes["preventive_action"]))
+        )
+
+        try:
+            await self.failures.update(failure, **changes)
+            if failure.work_order_id is not None:
+                await self._record_work_order_event(
+                    work_order_id=failure.work_order_id,
+                    event_type=(
+                        MaintenanceWorkOrderEventType.RCA_FINALIZED.value
+                        if rca_finalized
+                        else MaintenanceWorkOrderEventType.FAILURE_UPDATED.value
+                    ),
+                    previous_status=previous_status,
+                    new_status=next_status,
+                    event_at=changes.get("detected_at", datetime.now(UTC)),
+                    performed_by=actor_id,
+                    employee_id=changes.get(
+                        "detected_by_employee_id",
+                        failure.detected_by_employee_id,
+                    ),
+                    reason=changes.get("root_cause_description")
+                    or changes.get("corrective_action")
+                    or changes.get("failure_description"),
+                    event_payload={
+                        "failure_id": str(failure.id),
+                        "failure_number": failure.failure_number,
+                        "status": next_status,
+                        "root_cause_code_id": (
+                            str(changes["root_cause_code_id"])
+                            if changes.get("root_cause_code_id") is not None
+                            else None
+                        ),
+                        "repeat_failure": changes.get("repeat_failure", failure.repeat_failure),
+                        "caused_shutdown": changes.get(
+                            "caused_shutdown",
+                            failure.caused_shutdown,
+                        ),
+                        "downtime_minutes": changes.get(
+                            "downtime_minutes",
+                            failure.downtime_minutes,
+                        ),
+                    },
+                )
+            await self.session.commit()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise AppError(
+                code="MAINTENANCE_ASSET_FAILURE_CONFLICT",
+                message="Perubahan asset failure menimbulkan konflik data.",
+                status_code=409,
+            ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
+
+        return await self.get_failure(failure_id)
+
     async def get_failure(self, failure_id: UUID) -> AssetFailure:
         item = await self.failures.get(failure_id)
         if item is None:
@@ -1169,7 +1337,7 @@ class MaintenanceService:
             unit_of_measure=payload.unit_of_measure,
             reason=payload.reason,
         )
-        async with self.session.begin():
+        try:
             await self.downtimes.create(downtime)
             await self._record_work_order_event(
                 work_order_id=work_order.id,
@@ -1183,6 +1351,10 @@ class MaintenanceService:
                     "duration_minutes": duration_minutes,
                 },
             )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_work_order(work_order_id)
 
     async def list_work_order_events(self, work_order_id) -> list[MaintenanceWorkOrderEvent]:
@@ -1228,35 +1400,39 @@ class MaintenanceService:
             serial_number=payload.serial_number,
         )
         try:
-            async with self.session.begin():
-                await self.part_usages.create(part_usage)
-                actual_part_cost = await self._calculate_actual_part_cost(work_order.id)
-                await self.work_orders.update(
-                    work_order,
-                    actual_part_cost=actual_part_cost,
-                    updated_by=payload.used_by_employee_id or work_order.updated_by,
-                )
-                await self._record_work_order_event(
-                    work_order_id=work_order.id,
-                    event_type=MaintenanceWorkOrderEventType.PART_ISSUED.value,
-                    previous_status=None,
-                    new_status=work_order.status,
-                    event_at=payload.used_at,
-                    performed_by=payload.used_by_employee_id,
-                    employee_id=payload.used_by_employee_id,
-                    reason=None,
-                    event_payload={
-                        "part_item_id": str(payload.part_item_id),
-                        "quantity": str(payload.quantity),
-                        "usage_type": payload.usage_type.value,
-                    },
-                )
+            await self.part_usages.create(part_usage)
+            actual_part_cost = await self._calculate_actual_part_cost(work_order.id)
+            await self.work_orders.update(
+                work_order,
+                actual_part_cost=actual_part_cost,
+                updated_by=payload.used_by_employee_id or work_order.updated_by,
+            )
+            await self._record_work_order_event(
+                work_order_id=work_order.id,
+                event_type=MaintenanceWorkOrderEventType.PART_ISSUED.value,
+                previous_status=None,
+                new_status=work_order.status,
+                event_at=payload.used_at,
+                performed_by=payload.used_by_employee_id,
+                employee_id=payload.used_by_employee_id,
+                reason=None,
+                event_payload={
+                    "part_item_id": str(payload.part_item_id),
+                    "quantity": str(payload.quantity),
+                    "usage_type": payload.usage_type.value,
+                },
+            )
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="MAINTENANCE_PART_USAGE_CONFLICT",
                 message="Part usage menimbulkan konflik data.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_work_order(work_order_id)
 
     async def create_labor_log(
@@ -1301,35 +1477,39 @@ class MaintenanceService:
             notes=payload.notes,
         )
         try:
-            async with self.session.begin():
-                await self.labor_logs.create(labor_log)
-                actual_labor_cost = await self._calculate_actual_labor_cost(work_order.id)
-                await self.work_orders.update(
-                    work_order,
-                    actual_labor_cost=actual_labor_cost,
-                    updated_by=payload.employee_id,
-                )
-                await self._record_work_order_event(
-                    work_order_id=work_order.id,
-                    event_type=MaintenanceWorkOrderEventType.LABOR_LOGGED.value,
-                    previous_status=None,
-                    new_status=work_order.status,
-                    event_at=payload.ended_at or payload.started_at,
-                    performed_by=payload.employee_id,
-                    employee_id=payload.employee_id,
-                    reason=payload.notes,
-                    event_payload={
-                        "activity_type": payload.activity_type.value,
-                        "duration_minutes": duration_minutes,
-                        "labor_cost": str(labor_cost) if labor_cost is not None else None,
-                    },
-                )
+            await self.labor_logs.create(labor_log)
+            actual_labor_cost = await self._calculate_actual_labor_cost(work_order.id)
+            await self.work_orders.update(
+                work_order,
+                actual_labor_cost=actual_labor_cost,
+                updated_by=payload.employee_id,
+            )
+            await self._record_work_order_event(
+                work_order_id=work_order.id,
+                event_type=MaintenanceWorkOrderEventType.LABOR_LOGGED.value,
+                previous_status=None,
+                new_status=work_order.status,
+                event_at=payload.ended_at or payload.started_at,
+                performed_by=payload.employee_id,
+                employee_id=payload.employee_id,
+                reason=payload.notes,
+                event_payload={
+                    "activity_type": payload.activity_type.value,
+                    "duration_minutes": duration_minutes,
+                    "labor_cost": str(labor_cost) if labor_cost is not None else None,
+                },
+            )
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="MAINTENANCE_LABOR_LOG_CONFLICT",
                 message="Labor log menimbulkan konflik data.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_work_order(work_order_id)
 
     async def create_request(self, payload: MaintenanceRequestCreate) -> MaintenanceRequest:
@@ -1372,14 +1552,18 @@ class MaintenanceService:
             updated_by=payload.updated_by or payload.created_by,
         )
         try:
-            async with self.session.begin():
-                await self.requests.create(item)
+            await self.requests.create(item)
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="MAINTENANCE_REQUEST_CONFLICT",
                 message="Request number maintenance sudah digunakan.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_request(item.id)
 
     async def list_requests(
@@ -1407,12 +1591,16 @@ class MaintenanceService:
                 message="Hanya request DRAFT yang dapat disubmit.",
                 status_code=409,
             )
-        async with self.session.begin():
+        try:
             await self.requests.update(
                 item,
                 status=MaintenanceRequestStatus.SUBMITTED.value,
                 updated_by=payload.actor_id,
             )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_request(request_id)
 
     async def triage_request(
@@ -1451,8 +1639,12 @@ class MaintenanceService:
             changes["required_response_at"] = payload.required_response_at
         if payload.required_resolution_at is not None:
             changes["required_resolution_at"] = payload.required_resolution_at
-        async with self.session.begin():
+        try:
             await self.requests.update(item, **changes)
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_request(request_id)
 
     async def approve_request(
@@ -1467,12 +1659,16 @@ class MaintenanceService:
                 message="Hanya request TRIAGE yang dapat diapprove.",
                 status_code=409,
             )
-        async with self.session.begin():
+        try:
             await self.requests.update(
                 item,
                 status=MaintenanceRequestStatus.APPROVED.value,
                 updated_by=payload.actor_id,
             )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_request(request_id)
 
     async def reject_request(
@@ -1490,13 +1686,17 @@ class MaintenanceService:
                 message="Hanya request SUBMITTED atau TRIAGE yang dapat direject.",
                 status_code=409,
             )
-        async with self.session.begin():
+        try:
             await self.requests.update(
                 item,
                 status=MaintenanceRequestStatus.REJECTED.value,
                 rejection_reason=payload.rejection_reason,
                 updated_by=payload.actor_id,
             )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_request(request_id)
 
     async def convert_request_to_work_order(
@@ -1541,31 +1741,35 @@ class MaintenanceService:
             relationship_type=payload.relationship_type.value,
         )
         try:
-            async with self.session.begin():
-                created = await self.work_orders.create(work_order)
-                link.work_order_id = created.id
-                await self.request_work_orders.create(link)
-                await self.requests.update(
-                    request,
-                    status=MaintenanceRequestStatus.CONVERTED_TO_WORK_ORDER.value,
-                    updated_by=payload.created_by,
-                )
-                await self._record_work_order_event(
-                    work_order_id=created.id,
-                    event_type=MaintenanceWorkOrderEventType.CREATED.value,
-                    previous_status=None,
-                    new_status=work_order.status,
-                    event_at=request.reported_at,
-                    performed_by=payload.created_by,
-                    reason="Work order dibuat dari maintenance request.",
-                    event_payload={"request_id": str(request.id)},
-                )
+            created = await self.work_orders.create(work_order)
+            link.work_order_id = created.id
+            await self.request_work_orders.create(link)
+            await self.requests.update(
+                request,
+                status=MaintenanceRequestStatus.CONVERTED_TO_WORK_ORDER.value,
+                updated_by=payload.created_by,
+            )
+            await self._record_work_order_event(
+                work_order_id=created.id,
+                event_type=MaintenanceWorkOrderEventType.CREATED.value,
+                previous_status=None,
+                new_status=work_order.status,
+                event_at=request.reported_at,
+                performed_by=payload.created_by,
+                reason="Work order dibuat dari maintenance request.",
+                event_payload={"request_id": str(request.id)},
+            )
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="MAINTENANCE_WORK_ORDER_CONFLICT",
                 message="Work order number sudah digunakan atau terjadi konflik konversi.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_work_order(work_order.id)
 
     async def create_work_order(self, payload: MaintenanceWorkOrderCreate) -> MaintenanceWorkOrder:
@@ -1598,23 +1802,27 @@ class MaintenanceService:
             updated_by=payload.updated_by or payload.created_by,
         )
         try:
-            async with self.session.begin():
-                await self.work_orders.create(item)
-                await self._record_work_order_event(
-                    work_order_id=item.id,
-                    event_type=MaintenanceWorkOrderEventType.CREATED.value,
-                    previous_status=None,
-                    new_status=item.status,
-                    event_at=datetime.now(UTC),
-                    performed_by=payload.created_by,
-                    reason="Work order dibuat manual.",
-                )
+            await self.work_orders.create(item)
+            await self._record_work_order_event(
+                work_order_id=item.id,
+                event_type=MaintenanceWorkOrderEventType.CREATED.value,
+                previous_status=None,
+                new_status=item.status,
+                event_at=datetime.now(UTC),
+                performed_by=payload.created_by,
+                reason="Work order dibuat manual.",
+            )
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="MAINTENANCE_WORK_ORDER_CONFLICT",
                 message="Work order number sudah digunakan.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_work_order(item.id)
 
     async def list_work_orders(
@@ -1645,7 +1853,7 @@ class MaintenanceService:
                 message="Work order harus DRAFT atau WAITING_APPROVAL untuk diapprove.",
                 status_code=409,
             )
-        async with self.session.begin():
+        try:
             previous_status = item.status
             await self.work_orders.update(
                 item,
@@ -1663,6 +1871,10 @@ class MaintenanceService:
                 performed_by=payload.actor_id,
                 reason=payload.notes,
             )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_work_order(work_order_id)
 
     async def assign_work_order(
@@ -1690,33 +1902,37 @@ class MaintenanceService:
             accepted_at=payload.accepted_at,
         )
         try:
-            async with self.session.begin():
-                previous_status = item.status
-                await self.assignments.create(assignment)
-                await self.work_orders.update(
-                    item,
-                    status=MaintenanceWorkOrderStatus.ASSIGNED.value,
-                    lead_technician_id=payload.employee_id
-                    if payload.assignment_role.value == "LEAD_TECHNICIAN"
-                    else item.lead_technician_id,
-                    updated_by=payload.actor_id,
-                )
-                await self._record_work_order_event(
-                    work_order_id=item.id,
-                    event_type=MaintenanceWorkOrderEventType.ASSIGNED.value,
-                    previous_status=previous_status,
-                    new_status=MaintenanceWorkOrderStatus.ASSIGNED.value,
-                    event_at=payload.acted_at,
-                    performed_by=payload.actor_id,
-                    employee_id=payload.employee_id,
-                    event_payload={"assignment_role": payload.assignment_role.value},
-                )
+            previous_status = item.status
+            await self.assignments.create(assignment)
+            await self.work_orders.update(
+                item,
+                status=MaintenanceWorkOrderStatus.ASSIGNED.value,
+                lead_technician_id=payload.employee_id
+                if payload.assignment_role.value == "LEAD_TECHNICIAN"
+                else item.lead_technician_id,
+                updated_by=payload.actor_id,
+            )
+            await self._record_work_order_event(
+                work_order_id=item.id,
+                event_type=MaintenanceWorkOrderEventType.ASSIGNED.value,
+                previous_status=previous_status,
+                new_status=MaintenanceWorkOrderStatus.ASSIGNED.value,
+                event_at=payload.acted_at,
+                performed_by=payload.actor_id,
+                employee_id=payload.employee_id,
+                event_payload={"assignment_role": payload.assignment_role.value},
+            )
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="MAINTENANCE_WORK_ORDER_ASSIGNMENT_CONFLICT",
                 message="Assignment teknisi work order sudah ada.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_work_order(work_order_id)
 
     async def start_work_order(
@@ -1735,7 +1951,7 @@ class MaintenanceService:
                 status_code=409,
             )
         asset = await self._get_asset_or_raise(item.asset_id)
-        async with self.session.begin():
+        try:
             previous_status = item.status
             await self.work_orders.update(
                 item,
@@ -1771,6 +1987,10 @@ class MaintenanceService:
                 performed_by=payload.actor_id,
                 reason=payload.notes,
             )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_work_order(work_order_id)
 
     async def complete_work_order(
@@ -1791,7 +2011,7 @@ class MaintenanceService:
                 message="actual_end_at tidak boleh lebih kecil dari actual_start_at.",
                 status_code=422,
             )
-        async with self.session.begin():
+        try:
             previous_status = item.status
             await self.work_orders.update(
                 item,
@@ -1815,6 +2035,10 @@ class MaintenanceService:
                 reason=payload.completion_summary,
                 event_payload={"resolution_code": payload.resolution_code},
             )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_work_order(work_order_id)
 
     async def verify_work_order(
@@ -1829,7 +2053,7 @@ class MaintenanceService:
                 message="Hanya work order COMPLETED yang dapat diverifikasi.",
                 status_code=409,
             )
-        async with self.session.begin():
+        try:
             previous_status = item.status
             await self.work_orders.update(
                 item,
@@ -1847,6 +2071,10 @@ class MaintenanceService:
                 performed_by=payload.actor_id,
                 employee_id=payload.actor_id,
             )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_work_order(work_order_id)
 
     async def close_work_order(
@@ -1904,7 +2132,7 @@ class MaintenanceService:
         new_condition = item.asset_condition_after or asset.condition_status
         actual_part_cost = await self._calculate_actual_part_cost(item.id)
         actual_labor_cost = await self._calculate_actual_labor_cost(item.id)
-        async with self.session.begin():
+        try:
             previous_status = item.status
             await self.work_orders.update(
                 item,
@@ -1958,6 +2186,10 @@ class MaintenanceService:
                     "actual_labor_cost": str(actual_labor_cost),
                 },
             )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_work_order(work_order_id)
 
     async def get_asset_maintenance_history(
@@ -2097,18 +2329,28 @@ class MaintenanceService:
             date_to=date_to,
         )
         failure_count = int(summary["failure_count"])
+        open_failure_count = int(summary["open_failure_count"])
+        under_analysis_count = int(summary["under_analysis_count"])
+        resolved_failure_count = int(summary["resolved_failure_count"])
+        closed_failure_count = int(summary["closed_failure_count"])
         repeat_failure_count = int(summary["repeat_failure_count"])
+        rca_completed_count = int(summary["rca_completed_count"])
+        rca_pending_count = int(summary["rca_pending_count"])
         total_downtime_minutes = int(summary["total_downtime_minutes"])
         caused_shutdown_count = int(summary["caused_shutdown_count"])
         safety_incident_count = int(summary["safety_incident_count"])
         intervals_in_hours = list(summary["intervals_in_hours"])
 
         repeat_failure_rate_pct = Decimal("0")
+        rca_completion_rate_pct = Decimal("0")
         average_downtime_minutes = Decimal("0")
         mtbf_hours = Decimal("0")
         if failure_count > 0:
             repeat_failure_rate_pct = (
                 Decimal(repeat_failure_count) * Decimal("100") / Decimal(failure_count)
+            ).quantize(Decimal("0.01"))
+            rca_completion_rate_pct = (
+                Decimal(rca_completed_count) * Decimal("100") / Decimal(failure_count)
             ).quantize(Decimal("0.01"))
             average_downtime_minutes = (
                 Decimal(total_downtime_minutes) / Decimal(failure_count)
@@ -2121,8 +2363,15 @@ class MaintenanceService:
         return MaintenanceFailureAnalysisReportRead(
             generated_at=generated_at,
             failure_count=failure_count,
+            open_failure_count=open_failure_count,
+            under_analysis_count=under_analysis_count,
+            resolved_failure_count=resolved_failure_count,
+            closed_failure_count=closed_failure_count,
             repeat_failure_count=repeat_failure_count,
             repeat_failure_rate_pct=repeat_failure_rate_pct,
+            rca_completed_count=rca_completed_count,
+            rca_pending_count=rca_pending_count,
+            rca_completion_rate_pct=rca_completion_rate_pct,
             caused_shutdown_count=caused_shutdown_count,
             safety_incident_count=safety_incident_count,
             total_downtime_minutes=total_downtime_minutes,

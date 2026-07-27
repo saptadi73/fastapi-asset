@@ -60,7 +60,10 @@ class AssetScanEventRead(BaseModel):
     stocktake_session_id: UUID | None
     match_status: str
     processing_status: str
-    metadata_json: dict | None = Field(alias="metadata")
+    metadata_json: dict | None = Field(
+        validation_alias="metadata_json",
+        serialization_alias="metadata",
+    )
     asset: TrackingAssetReferenceRead | None = None
     scanned_location: AssetLocationRead | None = None
 

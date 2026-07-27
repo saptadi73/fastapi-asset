@@ -61,7 +61,10 @@ class FileRead(BaseModel):
     uploaded_by: UUID | None
     uploaded_at: datetime
     retention_until: date | None
-    metadata_json: dict | None = Field(alias="metadata")
+    metadata_json: dict | None = Field(
+        validation_alias="metadata_json",
+        serialization_alias="metadata",
+    )
 
 
 class AttachmentCreate(BaseModel):

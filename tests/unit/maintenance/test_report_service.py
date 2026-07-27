@@ -57,7 +57,13 @@ def service() -> MaintenanceService:
         get_failure_analysis_summary=AsyncMock(
             return_value={
                 "failure_count": 4,
+                "open_failure_count": 1,
+                "under_analysis_count": 1,
+                "resolved_failure_count": 1,
+                "closed_failure_count": 1,
                 "repeat_failure_count": 1,
+                "rca_completed_count": 3,
+                "rca_pending_count": 1,
                 "caused_shutdown_count": 2,
                 "safety_incident_count": 1,
                 "total_downtime_minutes": 360,
@@ -155,6 +161,9 @@ async def test_get_failure_analysis_report_calculates_metrics(
     )
 
     assert item.repeat_failure_rate_pct == 25
+    assert item.rca_completion_rate_pct == 75
     assert item.average_downtime_minutes == 90
     assert item.mtbf_hours == 36
+    assert item.open_failure_count == 1
+    assert item.closed_failure_count == 1
     assert item.top_failure_modes[0].name == "Bearing Failure"

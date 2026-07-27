@@ -82,38 +82,42 @@ class AttachmentService:
         )
 
         try:
-            async with self.session.begin():
-                created_file = await self.files.create(file_record)
-                await self.file_versions.create(
-                    FileVersion(
-                        file_id=created_file.id,
-                        version_no=1,
-                        storage_bucket=created_file.storage_bucket,
-                        storage_object_key=created_file.storage_object_key,
-                        mime_type=created_file.mime_type,
-                        size_bytes=created_file.size_bytes,
-                        checksum_sha256=created_file.checksum_sha256,
-                        uploaded_by=created_file.uploaded_by,
-                        uploaded_at=created_file.uploaded_at,
-                        is_current=True,
-                    )
+            created_file = await self.files.create(file_record)
+            await self.file_versions.create(
+                FileVersion(
+                    file_id=created_file.id,
+                    version_no=1,
+                    storage_bucket=created_file.storage_bucket,
+                    storage_object_key=created_file.storage_object_key,
+                    mime_type=created_file.mime_type,
+                    size_bytes=created_file.size_bytes,
+                    checksum_sha256=created_file.checksum_sha256,
+                    uploaded_by=created_file.uploaded_by,
+                    uploaded_at=created_file.uploaded_at,
+                    is_current=True,
                 )
+            )
 
-                if (
-                    payload.entity_type == AttachmentEntityType.ASSET
-                    and payload.attachment_category == AttachmentCategory.ASSET_PROFILE_PHOTO
-                    and payload.is_primary
-                ):
-                    await self.attachments.unset_primary_asset_photo(asset_id=payload.entity_id)
+            if (
+                payload.entity_type == AttachmentEntityType.ASSET
+                and payload.attachment_category == AttachmentCategory.ASSET_PROFILE_PHOTO
+                and payload.is_primary
+            ):
+                await self.attachments.unset_primary_asset_photo(asset_id=payload.entity_id)
 
-                attachment.file_id = created_file.id
-                await self.attachments.create(attachment)
+            attachment.file_id = created_file.id
+            await self.attachments.create(attachment)
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="ATTACHMENT_CONFLICT",
                 message="Attachment atau file metadata menimbulkan konflik.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
 
         result = await self.get_attachment(attachment.id)
         return result
@@ -132,7 +136,7 @@ class AttachmentService:
         attachment = await self.get_attachment(attachment_id)
         changes = payload.model_dump(exclude_unset=True, mode="python")
 
-        async with self.session.begin():
+        try:
             if (
                 changes.get("is_primary") is True
                 and attachment.entity_type == AttachmentEntityType.ASSET.value
@@ -143,6 +147,10 @@ class AttachmentService:
             for key, value in changes.items():
                 setattr(attachment, key, value)
             await self.session.flush()
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
 
         return await self.get_attachment(attachment_id)
 

@@ -150,19 +150,25 @@ class AssetRegistryService:
         if category is None:
             raise AssetCategoryNotFoundError(str(payload.asset_category_id))
 
+        definition_data = payload.model_dump(mode="python")
+        definition_data["data_type"] = payload.data_type.value
         definition = AssetAttributeDefinition(
-            **payload.model_dump(mode="python"),
-            data_type=payload.data_type.value,
+            **definition_data,
         )
         try:
-            async with self.session.begin():
-                return await self.attribute_definitions.create(definition)
+            await self.attribute_definitions.create(definition)
+            await self.session.commit()
+            return definition
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="ASSET_ATTRIBUTE_DEFINITION_CONFLICT",
                 message="Attribute code sudah digunakan pada kategori ini.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
 
     async def list_attribute_definitions(
         self,
@@ -181,21 +187,27 @@ class AssetRegistryService:
             payload.parent_asset_id,
         )
 
+        asset_data = payload.model_dump(mode="python")
+        asset_data["asset_type"] = payload.asset_type.value
+        asset_data["asset_status"] = payload.asset_status.value
+        asset_data["condition_status"] = payload.condition_status.value
         asset = Asset(
-            **payload.model_dump(mode="python"),
-            asset_type=payload.asset_type.value,
-            asset_status=payload.asset_status.value,
-            condition_status=payload.condition_status.value,
+            **asset_data,
         )
         try:
-            async with self.session.begin():
-                return await self.assets.create(asset)
+            await self.assets.create(asset)
+            await self.session.commit()
+            return await self.get_asset(asset.id)
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="ASSET_CONFLICT",
                 message="Asset code sudah digunakan atau relasi tidak valid.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
 
     async def list_assets(self, pagination: PaginationParams) -> tuple[list[Asset], int]:
         items, total_items = await self.assets.list(pagination)
@@ -233,14 +245,19 @@ class AssetRegistryService:
             changes["condition_status"] = payload.condition_status.value
 
         try:
-            async with self.session.begin():
-                return await self.assets.update(asset, **changes)
+            await self.assets.update(asset, **changes)
+            await self.session.commit()
+            return await self.get_asset(asset.id)
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="ASSET_UPDATE_CONFLICT",
                 message="Perubahan asset menimbulkan konflik data.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
 
     async def upsert_attribute_value(
         self,
@@ -275,9 +292,13 @@ class AssetRegistryService:
             value_json=payload.value_json,
         )
 
-        async with self.session.begin():
+        try:
             await self.attribute_values.upsert(existing=existing, new_value=new_value)
             await self.assets.update(asset, updated_by=asset.updated_by)
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
 
         values = await self.attribute_values.list_by_asset(asset_id)
         return next(item for item in values if item.attribute_definition_id == definition.id)
@@ -310,8 +331,12 @@ class AssetRegistryService:
         existing_ownerships = await self.ownerships.list_by_asset(asset_id)
         self._validate_ownership_overlap(existing_ownerships, ownership)
 
-        async with self.session.begin():
+        try:
             await self.ownerships.create(ownership)
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
 
         items = await self.ownerships.list_by_asset(asset_id)
         return items[0]
@@ -368,17 +393,21 @@ class AssetRegistryService:
         ]
 
         try:
-            async with self.session.begin():
-                created_transfer = await self.transfers.create(transfer)
-                for item in items:
-                    item.asset_transfer_id = created_transfer.id
-                await self.transfer_items.create_many(items)
+            created_transfer = await self.transfers.create(transfer)
+            for item in items:
+                item.asset_transfer_id = created_transfer.id
+            await self.transfer_items.create_many(items)
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="ASSET_TRANSFER_CONFLICT",
                 message="Transfer number sudah digunakan atau item asset duplikat.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
 
         result = await self.get_transfer(created_transfer.id)
         return result
@@ -418,12 +447,16 @@ class AssetRegistryService:
                 status_code=409,
             )
 
-        async with self.session.begin():
+        try:
             await self.transfers.update(
                 transfer,
                 status=AssetTransferStatus.SUBMITTED.value,
                 requested_by=payload.actor_id or transfer.requested_by,
             )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_transfer(transfer_id)
 
     async def approve_transfer(
@@ -439,13 +472,17 @@ class AssetRegistryService:
                 status_code=409,
             )
 
-        async with self.session.begin():
+        try:
             await self.transfers.update(
                 transfer,
                 status=AssetTransferStatus.APPROVED.value,
                 approved_by=payload.actor_id,
                 approved_at=payload.acted_at,
             )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_transfer(transfer_id)
 
     async def complete_transfer(
@@ -461,7 +498,7 @@ class AssetRegistryService:
                 status_code=409,
             )
 
-        async with self.session.begin():
+        try:
             locked_assets: list[Asset] = []
             for item in transfer.items:
                 asset = await self.assets.get_for_update(item.asset_id)
@@ -546,6 +583,10 @@ class AssetRegistryService:
                 received_by=payload.actor_id,
                 received_at=payload.acted_at,
             )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
 
         return await self.get_transfer(transfer_id)
 
@@ -569,7 +610,7 @@ class AssetRegistryService:
             recorded_by=payload.recorded_by,
         )
 
-        async with self.session.begin():
+        try:
             if active_history is not None:
                 await self.location_histories.close_active(
                     active_history,
@@ -582,6 +623,10 @@ class AssetRegistryService:
                 current_location_id=payload.to_location_id,
                 updated_by=payload.recorded_by,
             )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
 
         items = await self.location_histories.list_by_asset(asset_id)
         return items[0]
@@ -618,7 +663,7 @@ class AssetRegistryService:
             notes=payload.notes,
         )
 
-        async with self.session.begin():
+        try:
             if payload.assignment_type == AssignmentType.PRIMARY_CUSTODIAN:
                 active_assignment = await self.assignments.get_active_primary_custodian(asset_id)
                 if active_assignment is not None:
@@ -634,6 +679,10 @@ class AssetRegistryService:
                     asset,
                     current_primary_custodian_id=payload.employee_id,
                 )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
 
         items = await self.assignments.list_by_asset(asset_id)
         return items[0]
@@ -665,7 +714,7 @@ class AssetRegistryService:
             changed_by=payload.changed_by,
         )
 
-        async with self.session.begin():
+        try:
             await self.status_histories.create(history)
             await self.assets.update(
                 asset,
@@ -673,6 +722,10 @@ class AssetRegistryService:
                 condition_status=new_condition,
                 updated_by=payload.changed_by,
             )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
 
         items = await self.status_histories.list_by_asset(asset_id)
         return items[0]

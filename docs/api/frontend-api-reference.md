@@ -4,6 +4,29 @@ Dokumen ini merangkum endpoint yang sudah diimplementasikan pada tahap awal
 Asset Registry MVP. Seluruh endpoint berada di bawah prefix `/api/v1` dan
 menggunakan response envelope yang sama agar integrasi frontend konsisten.
 
+## Live Seed Reference
+
+Untuk kebutuhan frontend, backend sekarang juga menghasilkan artefak sample
+response dari live seed run pada **Monday, July 27, 2026**.
+
+File yang bisa dijadikan rujukan:
+
+- `artifacts/seed_smoke_results.json`
+- `artifacts/frontend_endpoint_samples.json`
+
+Isi penting:
+
+- `seed_entities`: kumpulan ID hasil seed seperti `asset_id`, `request_id`,
+  `work_order_id`, `schedule_id`, `finding_id`
+- `endpoint_samples`: contoh `request_json`, `query_params`, dan
+  `response_json` nyata untuk endpoint yang sudah diuji
+
+Rekomendasi pemakaian untuk frontend:
+
+- mulai dari dokumen ini untuk memahami kontrak endpoint
+- buka `frontend_endpoint_samples.json` untuk melihat response riil
+- gunakan `seed_entities` saat perlu mengetes endpoint detail secara manual
+
 ## Response Envelope
 
 ### Sukses
@@ -1041,6 +1064,40 @@ Query:
 Mengambil detail satu failure, termasuk symptom code, failure mode, root cause,
 dan tindakan korektif/preventif.
 
+### `PATCH /maintenance/failures/{failure_id}`
+
+Memperbarui failure, melengkapi RCA, atau menutup failure setelah analisis.
+
+Field yang umum dipakai frontend:
+
+- `failure_mode_id`
+- `symptom_code_id`
+- `failure_description`
+- `failure_severity`
+- `asset_condition_before`
+- `asset_condition_after`
+- `caused_shutdown`
+- `safety_incident`
+- `repeat_failure`
+- `temporary_action`
+- `root_cause_code_id`
+- `root_cause_description`
+- `corrective_action`
+- `preventive_action`
+- `failure_started_at`
+- `failure_ended_at`
+- `downtime_minutes`
+- `status`: `OPEN`, `UNDER_ANALYSIS`, `RESOLVED`, `CLOSED`
+
+Perilaku backend:
+
+- bila `failure_started_at` dan `failure_ended_at` tersedia, `downtime_minutes`
+  akan dihitung otomatis jika tidak dikirim;
+- jika payload sudah berisi root cause atau action RCA, backend akan membuat
+  event work order `RCA_FINALIZED`;
+- perubahan umum tanpa finalisasi RCA akan tercatat sebagai event
+  `FAILURE_UPDATED`.
+
 ### `GET /maintenance/checklists/{checklist_id}`
 
 Mengambil detail checklist execution, hasil tiap item, dan finding yang
@@ -1204,8 +1261,15 @@ Query:
 Field utama pada response:
 
 - `failure_count`
+- `open_failure_count`
+- `under_analysis_count`
+- `resolved_failure_count`
+- `closed_failure_count`
 - `repeat_failure_count`
 - `repeat_failure_rate_pct`
+- `rca_completed_count`
+- `rca_pending_count`
+- `rca_completion_rate_pct`
 - `caused_shutdown_count`
 - `safety_incident_count`
 - `total_downtime_minutes`

@@ -85,7 +85,12 @@ class MaintenancePlanRepository:
                 selectinload(MaintenancePlan.asset),
                 selectinload(MaintenancePlan.asset_category),
                 selectinload(MaintenancePlan.default_priority),
-                selectinload(MaintenancePlan.default_team),
+                selectinload(MaintenancePlan.default_team).selectinload(
+                    MaintenanceTeam.default_location
+                ),
+                selectinload(MaintenancePlan.default_team).selectinload(
+                    MaintenanceTeam.members
+                ),
                 selectinload(MaintenancePlan.default_vendor_partner),
                 selectinload(MaintenancePlan.plan_assets).selectinload(
                     MaintenancePlanAsset.asset
@@ -100,7 +105,12 @@ class MaintenancePlanRepository:
             selectinload(MaintenancePlan.asset),
             selectinload(MaintenancePlan.asset_category),
             selectinload(MaintenancePlan.default_priority),
-            selectinload(MaintenancePlan.default_team),
+            selectinload(MaintenancePlan.default_team).selectinload(
+                MaintenanceTeam.default_location
+            ),
+            selectinload(MaintenancePlan.default_team).selectinload(
+                MaintenanceTeam.members
+            ),
             selectinload(MaintenancePlan.default_vendor_partner),
             selectinload(MaintenancePlan.plan_assets),
         )
@@ -412,6 +422,7 @@ class AssetFailureRepository:
     async def get(self, failure_id: UUID) -> AssetFailure | None:
         stmt = (
             select(AssetFailure)
+            .execution_options(populate_existing=True)
             .options(
                 selectinload(AssetFailure.asset),
                 selectinload(AssetFailure.maintenance_request),
@@ -423,6 +434,23 @@ class AssetFailureRepository:
             .where(AssetFailure.id == failure_id)
         )
         return await self.session.scalar(stmt)
+
+    async def update(self, item: AssetFailure, **changes: object) -> AssetFailure:
+        for key, value in changes.items():
+            setattr(item, key, value)
+        await self.session.flush()
+        await self.session.refresh(
+            item,
+            attribute_names=[
+                "asset",
+                "maintenance_request",
+                "work_order",
+                "failure_mode",
+                "symptom_code",
+                "root_cause_code",
+            ],
+        )
+        return item
 
     async def list(
         self,
@@ -600,6 +628,7 @@ class MaintenanceWorkOrderRepository:
     async def get(self, work_order_id: UUID) -> MaintenanceWorkOrder | None:
         stmt = (
             select(MaintenanceWorkOrder)
+            .execution_options(populate_existing=True)
             .options(
                 selectinload(MaintenanceWorkOrder.asset),
                 selectinload(MaintenanceWorkOrder.priority),
@@ -1027,10 +1056,22 @@ class MaintenanceReportRepository:
 
         failures = list((await self.session.scalars(stmt)).all())
         failure_count = len(failures)
+        open_failure_count = sum(1 for item in failures if item.status == "OPEN")
+        under_analysis_count = sum(1 for item in failures if item.status == "UNDER_ANALYSIS")
+        resolved_failure_count = sum(1 for item in failures if item.status == "RESOLVED")
+        closed_failure_count = sum(1 for item in failures if item.status == "CLOSED")
         repeat_failure_count = sum(1 for item in failures if item.repeat_failure)
         caused_shutdown_count = sum(1 for item in failures if item.caused_shutdown)
         safety_incident_count = sum(1 for item in failures if item.safety_incident)
         total_downtime_minutes = sum(item.downtime_minutes or 0 for item in failures)
+        rca_completed_count = sum(
+            1
+            for item in failures
+            if item.root_cause_code_id is not None
+            or bool(item.root_cause_description)
+            or bool(item.corrective_action)
+            or bool(item.preventive_action)
+        )
 
         intervals_in_hours: list[Decimal] = []
         failures_by_asset: dict[UUID, list[AssetFailure]] = {}
@@ -1094,7 +1135,13 @@ class MaintenanceReportRepository:
 
         return {
             "failure_count": failure_count,
+            "open_failure_count": open_failure_count,
+            "under_analysis_count": under_analysis_count,
+            "resolved_failure_count": resolved_failure_count,
+            "closed_failure_count": closed_failure_count,
             "repeat_failure_count": repeat_failure_count,
+            "rca_completed_count": rca_completed_count,
+            "rca_pending_count": failure_count - rca_completed_count,
             "caused_shutdown_count": caused_shutdown_count,
             "safety_incident_count": safety_incident_count,
             "total_downtime_minutes": total_downtime_minutes,
@@ -1269,7 +1316,12 @@ class MaintenanceScheduleRepository:
                 selectinload(MaintenanceSchedule.asset),
                 selectinload(MaintenanceSchedule.request),
                 selectinload(MaintenanceSchedule.work_order),
-                selectinload(MaintenanceSchedule.maintenance_team),
+                selectinload(MaintenanceSchedule.maintenance_team).selectinload(
+                    MaintenanceTeam.default_location
+                ),
+                selectinload(MaintenanceSchedule.maintenance_team).selectinload(
+                    MaintenanceTeam.members
+                ),
                 selectinload(MaintenanceSchedule.vendor_partner),
             )
             .where(MaintenanceSchedule.id == schedule_id)
@@ -1281,7 +1333,12 @@ class MaintenanceScheduleRepository:
             selectinload(MaintenanceSchedule.asset),
             selectinload(MaintenanceSchedule.request),
             selectinload(MaintenanceSchedule.work_order),
-            selectinload(MaintenanceSchedule.maintenance_team),
+            selectinload(MaintenanceSchedule.maintenance_team).selectinload(
+                MaintenanceTeam.default_location
+            ),
+            selectinload(MaintenanceSchedule.maintenance_team).selectinload(
+                MaintenanceTeam.members
+            ),
             selectinload(MaintenanceSchedule.vendor_partner),
         )
         count_stmt = select(func.count()).select_from(MaintenanceSchedule)

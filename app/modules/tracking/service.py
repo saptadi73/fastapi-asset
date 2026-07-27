@@ -106,25 +106,29 @@ class AssetTrackingService:
         )
 
         try:
-            async with self.session.begin():
-                created = await self.scan_events.create(scan_event)
-                if asset is not None:
-                    await self.assets.update(
-                        asset,
-                        last_verified_at=payload.scanned_at,
-                        last_verified_location_id=payload.scanned_location_id,
-                    )
-                    await self.verifications.create(
-                        self._build_verification(asset, created, payload.scanned_location_id)
-                    )
-                if session is not None:
-                    await self._upsert_stocktake_result(session, created, asset)
+            created = await self.scan_events.create(scan_event)
+            if asset is not None:
+                await self.assets.update(
+                    asset,
+                    last_verified_at=payload.scanned_at,
+                    last_verified_location_id=payload.scanned_location_id,
+                )
+                await self.verifications.create(
+                    self._build_verification(asset, created, payload.scanned_location_id)
+                )
+            if session is not None:
+                await self._upsert_stocktake_result(session, created, asset)
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="ASSET_SCAN_EVENT_CONFLICT",
                 message="Scan event menimbulkan konflik data.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
 
         return await self._get_scan_event_or_raise(scan_event.id)
 
@@ -165,14 +169,18 @@ class AssetTrackingService:
             notes=payload.notes,
         )
         try:
-            async with self.session.begin():
-                await self.stocktakes.create(item)
+            await self.stocktakes.create(item)
+            await self.session.commit()
         except IntegrityError as exc:
+            await self.session.rollback()
             raise AppError(
                 code="STOCKTAKE_SESSION_CONFLICT",
                 message="Session number stocktake sudah digunakan.",
                 status_code=409,
             ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
         return await self.get_stocktake_session(item.id)
 
     async def list_stocktake_sessions(
@@ -220,7 +228,7 @@ class AssetTrackingService:
             for asset in assets_in_scope
         ]
 
-        async with self.session.begin():
+        try:
             await self.stocktakes.update(
                 session,
                 status=StocktakeStatus.IN_PROGRESS.value,
@@ -229,6 +237,10 @@ class AssetTrackingService:
             )
             if expected_items:
                 await self.stocktake_expected_items.create_many(expected_items)
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
 
         return await self.get_stocktake_session(stocktake_session_id)
 
@@ -268,7 +280,7 @@ class AssetTrackingService:
             }
         }
 
-        async with self.session.begin():
+        try:
             for expected_item in expected_items:
                 if expected_item.asset_id not in captured_asset_ids:
                     await self.stocktake_results.create(
@@ -290,6 +302,10 @@ class AssetTrackingService:
                 completed_at=payload.acted_at,
                 notes=payload.notes or session.notes,
             )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
 
         return await self.get_stocktake_session(stocktake_session_id)
 
@@ -306,7 +322,7 @@ class AssetTrackingService:
                 status_code=409,
             )
 
-        async with self.session.begin():
+        try:
             await self.stocktakes.update(
                 session,
                 status=StocktakeStatus.APPROVED.value,
@@ -320,6 +336,10 @@ class AssetTrackingService:
                 result.resolution_status = ResolutionStatus.APPROVED.value
                 if not result.notes:
                     result.notes = "Hasil stocktake telah disetujui."
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
 
         return await self.get_stocktake_session(stocktake_session_id)
 

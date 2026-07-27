@@ -356,6 +356,29 @@ class AssetFailureCreate(BaseModel):
     created_by: UUID | None = None
 
 
+class AssetFailureUpdate(BaseModel):
+    detected_at: datetime | None = None
+    detected_by_employee_id: UUID | None = None
+    failure_mode_id: UUID | None = None
+    symptom_code_id: UUID | None = None
+    failure_description: str | None = None
+    failure_severity: MaintenanceFailureSeverity | None = None
+    asset_condition_before: str | None = Field(default=None, max_length=30)
+    asset_condition_after: str | None = Field(default=None, max_length=30)
+    caused_shutdown: bool | None = None
+    safety_incident: bool | None = None
+    repeat_failure: bool | None = None
+    temporary_action: str | None = None
+    root_cause_code_id: UUID | None = None
+    root_cause_description: str | None = None
+    corrective_action: str | None = None
+    preventive_action: str | None = None
+    failure_started_at: datetime | None = None
+    failure_ended_at: datetime | None = None
+    downtime_minutes: int | None = Field(default=None, ge=0)
+    status: MaintenanceFailureStatus | None = None
+
+
 class AssetFailureRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -542,8 +565,15 @@ class MaintenanceFailureAnalysisAssetRead(BaseModel):
 class MaintenanceFailureAnalysisReportRead(BaseModel):
     generated_at: datetime
     failure_count: int
+    open_failure_count: int
+    under_analysis_count: int
+    resolved_failure_count: int
+    closed_failure_count: int
     repeat_failure_count: int
     repeat_failure_rate_pct: Decimal
+    rca_completed_count: int
+    rca_pending_count: int
+    rca_completion_rate_pct: Decimal
     caused_shutdown_count: int
     safety_incident_count: int
     total_downtime_minutes: int
