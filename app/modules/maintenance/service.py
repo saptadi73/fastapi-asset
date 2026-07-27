@@ -14,12 +14,25 @@ from app.modules.assets.repository import (
     AssetStatusHistoryRepository,
 )
 from app.modules.maintenance.constants import (
+    ChecklistExecutionStatus,
+    ChecklistFailureResponseRule,
+    ChecklistOverallResult,
+    ChecklistResponseType,
+    ChecklistResultStatus,
+    MaintenanceFindingSeverity,
+    MaintenanceFindingStatus,
+    MaintenanceFindingType,
     MaintenancePlanTriggerType,
+    MaintenanceRequestSourceType,
     MaintenanceRequestStatus,
+    MaintenanceRequestType,
     MaintenanceScheduleStatus,
     MaintenanceWorkOrderStatus,
 )
 from app.modules.maintenance.exceptions import (
+    MaintenanceChecklistExecutionNotFoundError,
+    MaintenanceChecklistTemplateNotFoundError,
+    MaintenanceFindingNotFoundError,
     MaintenancePriorityNotFoundError,
     MaintenanceRequestNotFoundError,
     MaintenanceScheduleNotFoundError,
@@ -27,6 +40,11 @@ from app.modules.maintenance.exceptions import (
     MaintenanceWorkOrderNotFoundError,
 )
 from app.modules.maintenance.models import (
+    MaintenanceChecklistExecution,
+    MaintenanceChecklistResult,
+    MaintenanceChecklistTemplate,
+    MaintenanceChecklistTemplateItem,
+    MaintenanceFinding,
     MaintenancePlan,
     MaintenancePlanAsset,
     MaintenancePriority,
@@ -39,6 +57,11 @@ from app.modules.maintenance.models import (
     MaintenanceWorkOrderAssignment,
 )
 from app.modules.maintenance.repository import (
+    MaintenanceChecklistExecutionRepository,
+    MaintenanceChecklistResultRepository,
+    MaintenanceChecklistTemplateItemRepository,
+    MaintenanceChecklistTemplateRepository,
+    MaintenanceFindingRepository,
     MaintenancePlanAssetRepository,
     MaintenancePlanRepository,
     MaintenancePriorityRepository,
@@ -52,7 +75,12 @@ from app.modules.maintenance.repository import (
 )
 from app.modules.maintenance.schemas import (
     AssetMaintenanceHistoryItemRead,
+    MaintenanceChecklistExecutionStartPayload,
+    MaintenanceChecklistResultEntryCreate,
+    MaintenanceChecklistResultSubmitPayload,
+    MaintenanceChecklistTemplateCreate,
     MaintenanceConvertToWorkOrderPayload,
+    MaintenanceFindingCreateRequestPayload,
     MaintenancePlanAssetCreate,
     MaintenancePlanCreate,
     MaintenancePlanGeneratePayload,
@@ -82,6 +110,11 @@ class MaintenanceService:
         self.priorities = MaintenancePriorityRepository(session)
         self.plans = MaintenancePlanRepository(session)
         self.plan_assets = MaintenancePlanAssetRepository(session)
+        self.checklist_templates = MaintenanceChecklistTemplateRepository(session)
+        self.checklist_template_items = MaintenanceChecklistTemplateItemRepository(session)
+        self.checklist_executions = MaintenanceChecklistExecutionRepository(session)
+        self.checklist_results = MaintenanceChecklistResultRepository(session)
+        self.findings = MaintenanceFindingRepository(session)
         self.requests = MaintenanceRequestRepository(session)
         self.work_orders = MaintenanceWorkOrderRepository(session)
         self.request_work_orders = MaintenanceRequestWorkOrderRepository(session)
@@ -525,6 +558,321 @@ class MaintenanceService:
 
     async def list_priorities(self) -> list[MaintenancePriority]:
         return list(await self.priorities.list())
+
+    async def create_checklist_template(
+        self,
+        payload: MaintenanceChecklistTemplateCreate,
+    ) -> MaintenanceChecklistTemplate:
+        if not payload.items:
+            raise AppError(
+                code="MAINTENANCE_CHECKLIST_TEMPLATE_ITEMS_REQUIRED",
+                message="Checklist template harus memiliki minimal satu item.",
+                status_code=422,
+            )
+        if payload.effective_to is not None and payload.effective_to < payload.effective_from:
+            raise AppError(
+                code="MAINTENANCE_CHECKLIST_TEMPLATE_PERIOD_INVALID",
+                message="effective_to tidak boleh lebih kecil dari effective_from.",
+                status_code=422,
+            )
+        template = MaintenanceChecklistTemplate(
+            template_code=payload.template_code,
+            template_name=payload.template_name,
+            asset_category_id=payload.asset_category_id,
+            maintenance_type=(
+                payload.maintenance_type.value if payload.maintenance_type is not None else None
+            ),
+            version_number=payload.version_number,
+            effective_from=payload.effective_from,
+            effective_to=payload.effective_to,
+            is_active=payload.is_active,
+        )
+        try:
+            async with self.session.begin():
+                await self.checklist_templates.create(template)
+                for item_payload in payload.items:
+                    await self.checklist_template_items.create(
+                        MaintenanceChecklistTemplateItem(
+                            checklist_template_id=template.id,
+                            sequence_no=item_payload.sequence_no,
+                            item_code=item_payload.item_code,
+                            instruction=item_payload.instruction,
+                            response_type=item_payload.response_type.value,
+                            is_required=item_payload.is_required,
+                            normal_min_value=item_payload.normal_min_value,
+                            normal_max_value=item_payload.normal_max_value,
+                            unit_of_measure=item_payload.unit_of_measure,
+                            failure_response_rule=(
+                                item_payload.failure_response_rule.value
+                                if item_payload.failure_response_rule is not None
+                                else None
+                            ),
+                        )
+                    )
+        except IntegrityError as exc:
+            raise AppError(
+                code="MAINTENANCE_CHECKLIST_TEMPLATE_CONFLICT",
+                message="Checklist template atau sequence item menimbulkan konflik.",
+                status_code=409,
+            ) from exc
+        return await self.get_checklist_template(template.id)
+
+    async def get_checklist_template(self, template_id) -> MaintenanceChecklistTemplate:
+        item = await self.checklist_templates.get(template_id)
+        if item is None:
+            raise MaintenanceChecklistTemplateNotFoundError(str(template_id))
+        return item
+
+    async def start_work_order_checklist(
+        self,
+        work_order_id,
+        payload: MaintenanceChecklistExecutionStartPayload,
+    ) -> MaintenanceChecklistExecution:
+        work_order = await self.get_work_order(work_order_id)
+        if work_order.status not in {
+            MaintenanceWorkOrderStatus.APPROVED.value,
+            MaintenanceWorkOrderStatus.ASSIGNED.value,
+            MaintenanceWorkOrderStatus.IN_PROGRESS.value,
+            MaintenanceWorkOrderStatus.COMPLETED.value,
+        }:
+            raise AppError(
+                code="MAINTENANCE_CHECKLIST_EXECUTION_INVALID_STATUS",
+                message="Work order belum berada pada status yang mengizinkan checklist.",
+                status_code=409,
+            )
+        checklist_template_id = payload.checklist_template_id
+        if checklist_template_id is None and work_order.maintenance_plan_id is not None:
+            plan = await self.get_plan(work_order.maintenance_plan_id)
+            checklist_template_id = plan.checklist_template_id
+        if checklist_template_id is None:
+            raise AppError(
+                code="MAINTENANCE_CHECKLIST_TEMPLATE_REQUIRED",
+                message="Checklist template wajib ditentukan untuk memulai checklist.",
+                status_code=422,
+            )
+        template = await self.get_checklist_template(checklist_template_id)
+        if not template.items:
+            raise AppError(
+                code="MAINTENANCE_CHECKLIST_TEMPLATE_ITEMS_REQUIRED",
+                message="Checklist template belum memiliki item.",
+                status_code=422,
+            )
+        execution = MaintenanceChecklistExecution(
+            checklist_template_id=template.id,
+            work_order_id=work_order.id,
+            maintenance_schedule_id=None,
+            asset_id=work_order.asset_id,
+            performed_by_employee_id=payload.performed_by_employee_id,
+            started_at=payload.started_at,
+            status=ChecklistExecutionStatus.IN_PROGRESS.value,
+        )
+        async with self.session.begin():
+            await self.checklist_executions.create(execution)
+        return await self.get_checklist_execution(execution.id)
+
+    async def get_checklist_execution(self, checklist_id) -> MaintenanceChecklistExecution:
+        item = await self.checklist_executions.get(checklist_id)
+        if item is None:
+            raise MaintenanceChecklistExecutionNotFoundError(str(checklist_id))
+        return item
+
+    async def submit_checklist_results(
+        self,
+        checklist_id,
+        payload: MaintenanceChecklistResultSubmitPayload,
+    ) -> MaintenanceChecklistExecution:
+        execution = await self.get_checklist_execution(checklist_id)
+        if execution.status != ChecklistExecutionStatus.IN_PROGRESS.value:
+            raise AppError(
+                code="MAINTENANCE_CHECKLIST_EXECUTION_INVALID_STATUS",
+                message="Checklist execution harus IN_PROGRESS untuk menyimpan hasil.",
+                status_code=409,
+            )
+        if execution.work_order_id is not None:
+            work_order = await self.get_work_order(execution.work_order_id)
+            if work_order.status == MaintenanceWorkOrderStatus.CLOSED.value:
+                raise AppError(
+                    code="MAINTENANCE_CHECKLIST_EXECUTION_INVALID_STATUS",
+                    message="Checklist tidak dapat diubah setelah work order ditutup.",
+                    status_code=409,
+                )
+        template_items = {item.id: item for item in execution.template.items}
+        submitted_item_ids = {item.template_item_id for item in payload.results}
+        required_item_ids = {
+            item.id for item in execution.template.items if item.is_required is True
+        }
+        missing_required_ids = required_item_ids - submitted_item_ids
+        if missing_required_ids:
+            raise AppError(
+                code="MAINTENANCE_CHECKLIST_RESULT_REQUIRED",
+                message="Masih ada item checklist wajib yang belum diisi.",
+                status_code=422,
+                details={
+                    "missing_template_item_ids": [
+                        str(item_id) for item_id in missing_required_ids
+                    ]
+                },
+            )
+
+        has_abnormal = False
+        try:
+            async with self.session.begin():
+                for index, entry in enumerate(payload.results, start=1):
+                    template_item = template_items.get(entry.template_item_id)
+                    if template_item is None:
+                        raise AppError(
+                            code="MAINTENANCE_CHECKLIST_RESULT_INVALID",
+                            message="Template item tidak termasuk dalam checklist execution.",
+                            status_code=422,
+                        )
+                    self._validate_checklist_result_entry(template_item, entry)
+                    result_status, is_abnormal = self._derive_result_status(template_item, entry)
+                    has_abnormal = has_abnormal or is_abnormal
+                    result = await self.checklist_results.create(
+                        MaintenanceChecklistResult(
+                            checklist_execution_id=execution.id,
+                            template_item_id=template_item.id,
+                            result_status=result_status,
+                            boolean_value=entry.boolean_value,
+                            numeric_value=entry.numeric_value,
+                            text_value=entry.text_value,
+                            meter_reading_id=entry.meter_reading_id,
+                            notes=entry.notes,
+                            performed_at=entry.performed_at,
+                        )
+                    )
+                    if is_abnormal:
+                        await self.findings.create(
+                            MaintenanceFinding(
+                                finding_number=self._generate_finding_number(
+                                    execution.id,
+                                    index,
+                                ),
+                                checklist_result_id=result.id,
+                                work_order_id=execution.work_order_id,
+                                asset_id=execution.asset_id,
+                                finding_type=(
+                                    entry.finding_type.value
+                                    if entry.finding_type is not None
+                                    else MaintenanceFindingType.ABNORMAL_CONDITION.value
+                                ),
+                                severity=(
+                                    entry.finding_severity.value
+                                    if entry.finding_severity is not None
+                                    else MaintenanceFindingSeverity.MEDIUM.value
+                                ),
+                                description=(
+                                    entry.finding_description
+                                    or f"Hasil abnormal pada item {template_item.item_code}."
+                                ),
+                                recommended_action=entry.recommended_action,
+                                requires_follow_up=(
+                                    entry.requires_follow_up
+                                    or template_item.failure_response_rule
+                                    == ChecklistFailureResponseRule.REQUIRES_FOLLOW_UP.value
+                                ),
+                                requires_asset_shutdown=(
+                                    entry.requires_asset_shutdown
+                                    or template_item.failure_response_rule
+                                    == ChecklistFailureResponseRule.REQUIRES_ASSET_SHUTDOWN.value
+                                ),
+                                follow_up_due_date=entry.follow_up_due_date,
+                                status=MaintenanceFindingStatus.OPEN.value,
+                                reported_by_employee_id=execution.performed_by_employee_id,
+                                reported_at=entry.performed_at,
+                            )
+                        )
+
+                await self.checklist_executions.update(
+                    execution,
+                    completed_at=payload.completed_at,
+                    overall_result=(
+                        ChecklistOverallResult.FAIL.value
+                        if has_abnormal
+                        else ChecklistOverallResult.PASS.value
+                    ),
+                    status=ChecklistExecutionStatus.COMPLETED.value,
+                )
+        except IntegrityError as exc:
+            raise AppError(
+                code="MAINTENANCE_CHECKLIST_EXECUTION_CONFLICT",
+                message="Checklist result atau finding menimbulkan konflik data.",
+                status_code=409,
+            ) from exc
+        return await self.get_checklist_execution(checklist_id)
+
+    async def get_finding(self, finding_id) -> MaintenanceFinding:
+        item = await self.findings.get(finding_id)
+        if item is None:
+            raise MaintenanceFindingNotFoundError(str(finding_id))
+        return item
+
+    async def create_request_from_finding(
+        self,
+        finding_id,
+        payload: MaintenanceFindingCreateRequestPayload,
+    ) -> MaintenanceRequest:
+        finding = await self.get_finding(finding_id)
+        if finding.generated_request_id is not None:
+            raise AppError(
+                code="MAINTENANCE_FINDING_REQUEST_CONFLICT",
+                message="Finding sudah memiliki follow-up request.",
+                status_code=409,
+            )
+        await self._get_priority_or_raise(payload.priority_id)
+        if payload.requested_vendor_partner_id is not None:
+            await self._get_partner_or_raise(payload.requested_vendor_partner_id)
+        parent_request_id = None
+        if finding.work_order is not None and getattr(finding.work_order, "requests", None):
+            parent_request_id = finding.work_order.requests[0].maintenance_request_id
+        request_item = MaintenanceRequest(
+            request_number=payload.request_number,
+            company_id=finding.asset.company_id,
+            asset_id=finding.asset_id,
+            parent_request_id=parent_request_id,
+            request_type=MaintenanceRequestType.INSPECTION_FOLLOW_UP.value,
+            source_type=MaintenanceRequestSourceType.CHECKLIST_FINDING.value,
+            requested_by_employee_id=finding.reported_by_employee_id,
+            reported_by_name=None,
+            reported_at=payload.reported_at,
+            title=payload.title,
+            problem_description=payload.problem_description,
+            priority_id=payload.priority_id,
+            asset_location_id=finding.asset.current_location_id,
+            operating_condition=None,
+            is_asset_stopped=finding.requires_asset_shutdown,
+            downtime_started_at=None,
+            safety_impact=finding.finding_type == MaintenanceFindingType.SAFETY_RISK.value,
+            environmental_impact=False,
+            production_impact=finding.requires_asset_shutdown,
+            maintenance_contract_id=None,
+            warranty_id=None,
+            requested_vendor_partner_id=payload.requested_vendor_partner_id,
+            status=(
+                MaintenanceRequestStatus.SUBMITTED.value
+                if payload.submit
+                else MaintenanceRequestStatus.DRAFT.value
+            ),
+            required_response_at=payload.required_response_at,
+            required_resolution_at=payload.required_resolution_at,
+            created_by=payload.created_by,
+            updated_by=payload.updated_by or payload.created_by,
+        )
+        try:
+            async with self.session.begin():
+                await self.requests.create(request_item)
+                await self.findings.update(
+                    finding,
+                    generated_request_id=request_item.id,
+                    status=MaintenanceFindingStatus.FOLLOW_UP_CREATED.value,
+                )
+        except IntegrityError as exc:
+            raise AppError(
+                code="MAINTENANCE_FINDING_REQUEST_CONFLICT",
+                message="Follow-up request dari finding menimbulkan konflik data.",
+                status_code=409,
+            ) from exc
+        return await self.get_request(request_item.id)
 
     async def create_request(self, payload: MaintenanceRequestCreate) -> MaintenanceRequest:
         asset = await self._get_asset_or_raise(payload.asset_id)
@@ -1046,6 +1394,98 @@ class MaintenanceService:
         await self._get_asset_or_raise(asset_id)
         items = await self.work_orders.list_by_asset(asset_id)
         return [AssetMaintenanceHistoryItemRead.from_model(item) for item in items]
+
+    def _validate_checklist_result_entry(
+        self,
+        template_item: MaintenanceChecklistTemplateItem,
+        entry: MaintenanceChecklistResultEntryCreate,
+    ) -> None:
+        response_type = template_item.response_type
+        if response_type in {
+            ChecklistResponseType.PASS_FAIL.value,
+            ChecklistResponseType.YES_NO.value,
+        } and entry.boolean_value is None:
+            raise AppError(
+                code="MAINTENANCE_CHECKLIST_RESULT_INVALID",
+                message="Checklist item boolean wajib memiliki boolean_value.",
+                status_code=422,
+            )
+        if response_type == ChecklistResponseType.NUMERIC.value and entry.numeric_value is None:
+            raise AppError(
+                code="MAINTENANCE_CHECKLIST_RESULT_INVALID",
+                message="Checklist item numeric wajib memiliki numeric_value.",
+                status_code=422,
+            )
+        if response_type in {
+            ChecklistResponseType.TEXT.value,
+            ChecklistResponseType.MULTI_SELECT.value,
+        } and not entry.text_value:
+            raise AppError(
+                code="MAINTENANCE_CHECKLIST_RESULT_INVALID",
+                message="Checklist item text/multi_select wajib memiliki text_value.",
+                status_code=422,
+            )
+        if response_type == ChecklistResponseType.METER_READING.value and (
+            entry.numeric_value is None and entry.meter_reading_id is None
+        ):
+            raise AppError(
+                code="MAINTENANCE_CHECKLIST_RESULT_INVALID",
+                message=(
+                    "Checklist item meter reading wajib memiliki numeric_value "
+                    "atau meter_reading_id."
+                ),
+                status_code=422,
+            )
+
+    def _derive_result_status(
+        self,
+        template_item: MaintenanceChecklistTemplateItem,
+        entry: MaintenanceChecklistResultEntryCreate,
+    ) -> tuple[str, bool]:
+        response_type = template_item.response_type
+        if response_type == ChecklistResponseType.PASS_FAIL.value:
+            is_abnormal = entry.boolean_value is False
+            return (
+                ChecklistResultStatus.FAIL.value
+                if is_abnormal
+                else ChecklistResultStatus.PASS.value
+            ), is_abnormal
+        if response_type == ChecklistResponseType.YES_NO.value:
+            is_abnormal = entry.boolean_value is False
+            return (
+                ChecklistResultStatus.ABNORMAL.value
+                if is_abnormal
+                else ChecklistResultStatus.NORMAL.value
+            ), is_abnormal
+        if response_type in {
+            ChecklistResponseType.NUMERIC.value,
+            ChecklistResponseType.METER_READING.value,
+        }:
+            is_abnormal = False
+            if entry.numeric_value is not None:
+                if (
+                    template_item.normal_min_value is not None
+                    and entry.numeric_value < template_item.normal_min_value
+                ) or (
+                    template_item.normal_max_value is not None
+                    and entry.numeric_value > template_item.normal_max_value
+                ):
+                    is_abnormal = True
+            return (
+                ChecklistResultStatus.ABNORMAL.value
+                if is_abnormal
+                else ChecklistResultStatus.NORMAL.value
+            ), is_abnormal
+        if entry.result_status is not None:
+            is_abnormal = entry.result_status in {
+                ChecklistResultStatus.FAIL,
+                ChecklistResultStatus.ABNORMAL,
+            }
+            return entry.result_status.value, is_abnormal
+        return ChecklistResultStatus.NORMAL.value, False
+
+    def _generate_finding_number(self, execution_id: UUID, index: int) -> str:
+        return f"FD-{str(execution_id).split('-')[0].upper()}-{index:03d}"
 
     async def _get_asset_or_raise(self, asset_id):
         asset = await self.assets.get(asset_id)

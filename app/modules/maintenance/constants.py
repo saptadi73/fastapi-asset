@@ -18,6 +18,7 @@ class MaintenanceRequestSourceType(StrEnum):
     MOBILE = "MOBILE"
     SENSOR = "SENSOR"
     INSPECTION = "INSPECTION"
+    CHECKLIST_FINDING = "CHECKLIST_FINDING"
     SYSTEM = "SYSTEM"
 
 
@@ -134,3 +135,66 @@ class MaintenancePlanTriggerType(StrEnum):
     CALENDAR_AND_METER = "CALENDAR_AND_METER"
     CONDITION = "CONDITION"
     MANUAL = "MANUAL"
+
+
+class ChecklistResponseType(StrEnum):
+    PASS_FAIL = "PASS_FAIL"
+    YES_NO = "YES_NO"
+    NUMERIC = "NUMERIC"
+    TEXT = "TEXT"
+    PHOTO = "PHOTO"
+    MULTI_SELECT = "MULTI_SELECT"
+    METER_READING = "METER_READING"
+
+
+class ChecklistFailureResponseRule(StrEnum):
+    NONE = "NONE"
+    CREATE_FINDING = "CREATE_FINDING"
+    REQUIRES_FOLLOW_UP = "REQUIRES_FOLLOW_UP"
+    REQUIRES_ASSET_SHUTDOWN = "REQUIRES_ASSET_SHUTDOWN"
+
+
+class ChecklistExecutionStatus(StrEnum):
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
+
+class ChecklistOverallResult(StrEnum):
+    PASS = "PASS"
+    FAIL = "FAIL"
+
+
+class ChecklistResultStatus(StrEnum):
+    NORMAL = "NORMAL"
+    ABNORMAL = "ABNORMAL"
+    PASS = "PASS"
+    FAIL = "FAIL"
+    SKIPPED = "SKIPPED"
+
+
+class MaintenanceFindingType(StrEnum):
+    FAILURE = "FAILURE"
+    DEFECT = "DEFECT"
+    ABNORMAL_CONDITION = "ABNORMAL_CONDITION"
+    SAFETY_RISK = "SAFETY_RISK"
+    PART_WEAR = "PART_WEAR"
+    PART_REPLACEMENT = "PART_REPLACEMENT"
+    FURTHER_INSPECTION = "FURTHER_INSPECTION"
+    ADJUSTMENT = "ADJUSTMENT"
+    HOUSEKEEPING = "HOUSEKEEPING"
+    DOCUMENTATION = "DOCUMENTATION"
+
+
+class MaintenanceFindingSeverity(StrEnum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+
+class MaintenanceFindingStatus(StrEnum):
+    OPEN = "OPEN"
+    FOLLOW_UP_CREATED = "FOLLOW_UP_CREATED"
+    RESOLVED = "RESOLVED"
+    CANCELLED = "CANCELLED"

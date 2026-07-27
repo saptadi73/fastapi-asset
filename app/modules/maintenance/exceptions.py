@@ -51,3 +51,33 @@ class MaintenanceScheduleNotFoundError(AppError):
             status_code=status.HTTP_404_NOT_FOUND,
             details={"schedule_id": schedule_id},
         )
+
+
+class MaintenanceChecklistTemplateNotFoundError(AppError):
+    def __init__(self, template_id: str) -> None:
+        super().__init__(
+            code="MAINTENANCE_CHECKLIST_TEMPLATE_NOT_FOUND",
+            message="Maintenance checklist template tidak ditemukan.",
+            status_code=status.HTTP_404_NOT_FOUND,
+            details={"template_id": template_id},
+        )
+
+
+class MaintenanceChecklistExecutionNotFoundError(AppError):
+    def __init__(self, checklist_id: str) -> None:
+        super().__init__(
+            code="MAINTENANCE_CHECKLIST_EXECUTION_NOT_FOUND",
+            message="Maintenance checklist execution tidak ditemukan.",
+            status_code=status.HTTP_404_NOT_FOUND,
+            details={"checklist_id": checklist_id},
+        )
+
+
+class MaintenanceFindingNotFoundError(AppError):
+    def __init__(self, finding_id: str) -> None:
+        super().__init__(
+            code="MAINTENANCE_FINDING_NOT_FOUND",
+            message="Maintenance finding tidak ditemukan.",
+            status_code=status.HTTP_404_NOT_FOUND,
+            details={"finding_id": finding_id},
+        )

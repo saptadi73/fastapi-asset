@@ -381,3 +381,154 @@ class MaintenancePlanAsset(UUIDPrimaryKeyMixin, Base):
 
     plan: Mapped[MaintenancePlan] = relationship(back_populates="plan_assets")
     asset = relationship("Asset")
+
+
+class MaintenanceChecklistTemplate(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_checklist_templates"
+
+    template_code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    template_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    asset_category_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("asset_categories.id", ondelete="SET NULL")
+    )
+    maintenance_type: Mapped[str | None] = mapped_column(String(30))
+    version_number: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    effective_from: Mapped[date] = mapped_column(nullable=False)
+    effective_to: Mapped[date | None] = mapped_column(nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    asset_category = relationship("AssetCategory")
+    items: Mapped[list[MaintenanceChecklistTemplateItem]] = relationship(
+        back_populates="template"
+    )
+
+
+class MaintenanceChecklistTemplateItem(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_checklist_template_items"
+    __table_args__ = (
+        UniqueConstraint(
+            "checklist_template_id",
+            "sequence_no",
+            name="uq_maintenance_checklist_template_items_template_sequence",
+        ),
+    )
+
+    checklist_template_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_checklist_templates.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    sequence_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    item_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    instruction: Mapped[str] = mapped_column(Text, nullable=False)
+    response_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    is_required: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    normal_min_value: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+    normal_max_value: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+    unit_of_measure: Mapped[str | None] = mapped_column(String(20))
+    failure_response_rule: Mapped[str | None] = mapped_column(String(30))
+
+    template: Mapped[MaintenanceChecklistTemplate] = relationship(back_populates="items")
+
+
+class MaintenanceChecklistExecution(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_checklist_executions"
+
+    checklist_template_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_checklist_templates.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    work_order_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("maintenance_work_orders.id", ondelete="SET NULL")
+    )
+    maintenance_schedule_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("maintenance_schedules.id", ondelete="SET NULL")
+    )
+    asset_id: Mapped[UUID] = mapped_column(
+        ForeignKey("assets.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    performed_by_employee_id: Mapped[UUID] = mapped_column(nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    overall_result: Mapped[str | None] = mapped_column(String(20))
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    template: Mapped[MaintenanceChecklistTemplate] = relationship()
+    work_order: Mapped[MaintenanceWorkOrder | None] = relationship()
+    maintenance_schedule = relationship("MaintenanceSchedule")
+    asset = relationship("Asset")
+    results: Mapped[list[MaintenanceChecklistResult]] = relationship(
+        back_populates="execution"
+    )
+
+
+class MaintenanceChecklistResult(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_checklist_results"
+    __table_args__ = (
+        UniqueConstraint(
+            "checklist_execution_id",
+            "template_item_id",
+            name="uq_maintenance_checklist_results_execution_template_item",
+        ),
+    )
+
+    checklist_execution_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_checklist_executions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    template_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_checklist_template_items.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    result_status: Mapped[str | None] = mapped_column(String(20))
+    boolean_value: Mapped[bool | None] = mapped_column(Boolean)
+    numeric_value: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+    text_value: Mapped[str | None] = mapped_column(Text)
+    meter_reading_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text)
+    performed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    execution: Mapped[MaintenanceChecklistExecution] = relationship(back_populates="results")
+    template_item: Mapped[MaintenanceChecklistTemplateItem] = relationship()
+    findings: Mapped[list[MaintenanceFinding]] = relationship(back_populates="checklist_result")
+
+
+class MaintenanceFinding(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_findings"
+
+    finding_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    checklist_result_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("maintenance_checklist_results.id", ondelete="SET NULL")
+    )
+    work_order_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("maintenance_work_orders.id", ondelete="SET NULL")
+    )
+    asset_id: Mapped[UUID] = mapped_column(
+        ForeignKey("assets.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    finding_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    severity: Mapped[str] = mapped_column(String(20), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    recommended_action: Mapped[str | None] = mapped_column(Text)
+    requires_follow_up: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    requires_asset_shutdown: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+    follow_up_due_date: Mapped[date | None] = mapped_column(nullable=True)
+    generated_request_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("maintenance_requests.id", ondelete="SET NULL")
+    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    reported_by_employee_id: Mapped[UUID] = mapped_column(nullable=False)
+    reported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    checklist_result: Mapped[MaintenanceChecklistResult | None] = relationship(
+        back_populates="findings"
+    )
+    work_order: Mapped[MaintenanceWorkOrder | None] = relationship()
+    asset = relationship("Asset")
+    generated_request: Mapped[MaintenanceRequest | None] = relationship()

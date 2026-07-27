@@ -9,7 +9,14 @@ from app.modules.attachments.constants import AttachmentEntityType
 from app.modules.attachments.schemas import AttachmentCreate, AttachmentRead
 from app.modules.attachments.service import AttachmentService
 from app.modules.maintenance.schemas import (
+    MaintenanceChecklistExecutionRead,
+    MaintenanceChecklistExecutionStartPayload,
+    MaintenanceChecklistResultSubmitPayload,
+    MaintenanceChecklistTemplateCreate,
+    MaintenanceChecklistTemplateRead,
     MaintenanceConvertToWorkOrderPayload,
+    MaintenanceFindingCreateRequestPayload,
+    MaintenanceFindingRead,
     MaintenancePlanAssetCreate,
     MaintenancePlanCreate,
     MaintenancePlanGeneratePayload,
@@ -75,6 +82,36 @@ async def list_maintenance_priorities(
             MaintenancePriorityRead.model_validate(item).model_dump(mode="json")
             for item in items
         ],
+    )
+
+
+@router.post("/checklist-templates", status_code=status.HTTP_201_CREATED)
+async def create_maintenance_checklist_template(
+    request: Request,
+    payload: MaintenanceChecklistTemplateCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.create_checklist_template(payload)
+    return success_response(
+        request=request,
+        message="Maintenance checklist template berhasil dibuat.",
+        data=MaintenanceChecklistTemplateRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get("/checklist-templates/{template_id}")
+async def get_maintenance_checklist_template(
+    request: Request,
+    template_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.get_checklist_template(template_id)
+    return success_response(
+        request=request,
+        message="Detail maintenance checklist template berhasil diambil.",
+        data=MaintenanceChecklistTemplateRead.model_validate(item).model_dump(mode="json"),
     )
 
 
@@ -631,6 +668,127 @@ async def close_maintenance_work_order(
         request=request,
         message="Maintenance work order berhasil ditutup.",
         data=MaintenanceWorkOrderRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post("/work-orders/{work_order_id}/checklists", status_code=status.HTTP_201_CREATED)
+async def start_maintenance_work_order_checklist(
+    request: Request,
+    work_order_id: UUID,
+    payload: MaintenanceChecklistExecutionStartPayload,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.start_work_order_checklist(work_order_id, payload)
+    return success_response(
+        request=request,
+        message="Checklist execution maintenance berhasil dimulai.",
+        data=MaintenanceChecklistExecutionRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get("/checklists/{checklist_id}")
+async def get_maintenance_checklist_execution(
+    request: Request,
+    checklist_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.get_checklist_execution(checklist_id)
+    return success_response(
+        request=request,
+        message="Detail checklist execution maintenance berhasil diambil.",
+        data=MaintenanceChecklistExecutionRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post("/checklists/{checklist_id}/results")
+async def submit_maintenance_checklist_results(
+    request: Request,
+    checklist_id: UUID,
+    payload: MaintenanceChecklistResultSubmitPayload,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.submit_checklist_results(checklist_id, payload)
+    return success_response(
+        request=request,
+        message="Hasil checklist maintenance berhasil disimpan.",
+        data=MaintenanceChecklistExecutionRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get("/findings/{finding_id}")
+async def get_maintenance_finding(
+    request: Request,
+    finding_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.get_finding(finding_id)
+    return success_response(
+        request=request,
+        message="Detail maintenance finding berhasil diambil.",
+        data=MaintenanceFindingRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post("/findings/{finding_id}/create-request", status_code=status.HTTP_201_CREATED)
+async def create_request_from_maintenance_finding(
+    request: Request,
+    finding_id: UUID,
+    payload: MaintenanceFindingCreateRequestPayload,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.create_request_from_finding(finding_id, payload)
+    return success_response(
+        request=request,
+        message="Follow-up request dari maintenance finding berhasil dibuat.",
+        data=MaintenanceRequestRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get("/findings/{finding_id}/attachments")
+async def list_maintenance_finding_attachments(
+    request: Request,
+    finding_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AttachmentService(session)
+    items = await service.list_entity_attachments(
+        entity_type=AttachmentEntityType.MAINTENANCE_FINDING.value,
+        entity_id=finding_id,
+    )
+    return success_response(
+        request=request,
+        message="Daftar attachment maintenance finding berhasil diambil.",
+        data=[
+            AttachmentRead.model_validate(item).model_dump(mode="json", by_alias=True)
+            for item in items
+        ],
+    )
+
+
+@router.post("/findings/{finding_id}/attachments", status_code=status.HTTP_201_CREATED)
+async def create_maintenance_finding_attachment(
+    request: Request,
+    finding_id: UUID,
+    payload: AttachmentCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AttachmentService(session)
+    enriched_payload = payload.model_copy(
+        update={
+            "entity_type": AttachmentEntityType.MAINTENANCE_FINDING,
+            "entity_id": finding_id,
+        }
+    )
+    item = await service.create_attachment(enriched_payload)
+    return success_response(
+        request=request,
+        message="Attachment maintenance finding berhasil dibuat.",
+        data=AttachmentRead.model_validate(item).model_dump(mode="json", by_alias=True),
     )
 
 

@@ -181,7 +181,8 @@ Query:
 ### `POST /attachments`
 
 Membuat metadata file dan attachment generik untuk `ASSET`,
-`ASSET_TRANSFER`, `MAINTENANCE_REQUEST`, atau `MAINTENANCE_WORK_ORDER`.
+`ASSET_TRANSFER`, `MAINTENANCE_REQUEST`, `MAINTENANCE_WORK_ORDER`, atau
+`MAINTENANCE_FINDING`.
 
 ### `GET /attachments/{attachment_id}`
 
@@ -231,6 +232,19 @@ Kategori yang direkomendasikan:
 - `DURING_MAINTENANCE_PHOTO`
 - `AFTER_MAINTENANCE_PHOTO`
 - `MAINTENANCE_REPORT`
+- `OTHER`
+
+### `GET /maintenance/findings/{finding_id}/attachments`
+
+Mengambil seluruh attachment untuk maintenance finding tertentu.
+
+### `POST /maintenance/findings/{finding_id}/attachments`
+
+Membuat attachment langsung untuk maintenance finding tertentu.
+
+Kategori yang direkomendasikan:
+
+- `FINDING_PHOTO`
 - `OTHER`
 
 ### `GET /attachments/assets/{asset_id}/photos`
@@ -456,6 +470,20 @@ Contoh request:
 ### `GET /maintenance/priorities`
 
 Mengambil daftar priority untuk dropdown triage dan work order.
+
+### `POST /maintenance/checklist-templates`
+
+Membuat checklist template maintenance beserta item-item pemeriksaannya.
+
+Aturan backend yang sudah aktif:
+
+- template wajib memiliki minimal satu item
+- `effective_to` tidak boleh lebih kecil dari `effective_from`
+- `sequence_no` item harus unik dalam satu template
+
+### `GET /maintenance/checklist-templates/{template_id}`
+
+Mengambil detail checklist template beserta seluruh itemnya.
 
 ### `POST /maintenance/plans`
 
@@ -717,6 +745,45 @@ Status:
 Saat close, backend menutup request terkait ke status `CLOSED` dan
 mengembalikan status aset ke `IN_SERVICE`.
 
+### `POST /maintenance/work-orders/{work_order_id}/checklists`
+
+Memulai checklist execution untuk work order.
+
+Aturan backend yang sudah aktif:
+
+- work order harus berada pada status yang masih mengizinkan checklist
+- `checklist_template_id` bisa dikirim eksplisit atau diambil dari maintenance
+  plan yang terkait
+
+### `GET /maintenance/checklists/{checklist_id}`
+
+Mengambil detail checklist execution, hasil tiap item, dan finding yang
+terbentuk.
+
+### `POST /maintenance/checklists/{checklist_id}/results`
+
+Menyimpan seluruh hasil checklist lalu menutup checklist execution.
+
+Perilaku backend:
+
+- seluruh item wajib yang ada di template harus diisi
+- hasil abnormal otomatis membuat `maintenance finding`
+- `overall_result` checklist akan menjadi `PASS` atau `FAIL`
+
+### `GET /maintenance/findings/{finding_id}`
+
+Mengambil detail satu finding hasil checklist.
+
+### `POST /maintenance/findings/{finding_id}/create-request`
+
+Membuat follow-up maintenance request dari finding.
+
+Perilaku backend:
+
+- source request yang dibuat adalah `CHECKLIST_FINDING`
+- finding yang sama tidak boleh membuat request lebih dari satu kali
+- jika `submit = true`, request baru langsung dibuat dalam status `SUBMITTED`
+
 ### `POST /maintenance/schedules`
 
 Membuat jadwal maintenance aktual.
@@ -954,6 +1021,18 @@ dengan asset tersebut.
 - `MAINTENANCE_PLAN_ASSET_PERIOD_INVALID`
 - `MAINTENANCE_PLAN_TARGETS_EMPTY`
 - `MAINTENANCE_PLAN_GENERATION_CONFLICT`
+- `MAINTENANCE_CHECKLIST_TEMPLATE_NOT_FOUND`
+- `MAINTENANCE_CHECKLIST_TEMPLATE_CONFLICT`
+- `MAINTENANCE_CHECKLIST_TEMPLATE_REQUIRED`
+- `MAINTENANCE_CHECKLIST_TEMPLATE_ITEMS_REQUIRED`
+- `MAINTENANCE_CHECKLIST_TEMPLATE_PERIOD_INVALID`
+- `MAINTENANCE_CHECKLIST_EXECUTION_NOT_FOUND`
+- `MAINTENANCE_CHECKLIST_EXECUTION_CONFLICT`
+- `MAINTENANCE_CHECKLIST_EXECUTION_INVALID_STATUS`
+- `MAINTENANCE_CHECKLIST_RESULT_REQUIRED`
+- `MAINTENANCE_CHECKLIST_RESULT_INVALID`
+- `MAINTENANCE_FINDING_NOT_FOUND`
+- `MAINTENANCE_FINDING_REQUEST_CONFLICT`
 - `MAINTENANCE_WORK_ORDER_NOT_FOUND`
 - `MAINTENANCE_WORK_ORDER_CONFLICT`
 - `MAINTENANCE_WORK_ORDER_INVALID_STATUS`

@@ -8,6 +8,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.modules.assets.schemas import AssetLocationRead
 from app.modules.maintenance.constants import (
+    ChecklistFailureResponseRule,
+    ChecklistResponseType,
+    ChecklistResultStatus,
+    MaintenanceFindingSeverity,
+    MaintenanceFindingType,
     MaintenancePlanTriggerType,
     MaintenanceRequestSourceType,
     MaintenanceRequestType,
@@ -520,6 +525,163 @@ class MaintenanceScheduleListItemRead(BaseModel):
                 else None
             ),
         )
+
+
+class MaintenanceChecklistTemplateItemCreate(BaseModel):
+    sequence_no: int = Field(ge=1)
+    item_code: str = Field(max_length=50)
+    instruction: str
+    response_type: ChecklistResponseType
+    is_required: bool = True
+    normal_min_value: Decimal | None = None
+    normal_max_value: Decimal | None = None
+    unit_of_measure: str | None = Field(default=None, max_length=20)
+    failure_response_rule: ChecklistFailureResponseRule | None = None
+
+
+class MaintenanceChecklistTemplateCreate(BaseModel):
+    template_code: str = Field(max_length=50)
+    template_name: str = Field(max_length=200)
+    asset_category_id: UUID | None = None
+    maintenance_type: MaintenanceType | None = None
+    version_number: int = Field(default=1, ge=1)
+    effective_from: date
+    effective_to: date | None = None
+    is_active: bool = True
+    items: list[MaintenanceChecklistTemplateItemCreate]
+
+
+class MaintenanceChecklistTemplateItemRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    checklist_template_id: UUID
+    sequence_no: int
+    item_code: str
+    instruction: str
+    response_type: str
+    is_required: bool
+    normal_min_value: Decimal | None
+    normal_max_value: Decimal | None
+    unit_of_measure: str | None
+    failure_response_rule: str | None
+
+
+class MaintenanceChecklistTemplateRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    template_code: str
+    template_name: str
+    asset_category_id: UUID | None
+    maintenance_type: str | None
+    version_number: int
+    effective_from: date
+    effective_to: date | None
+    is_active: bool
+    items: list[MaintenanceChecklistTemplateItemRead] = []
+
+
+class MaintenanceChecklistExecutionStartPayload(BaseModel):
+    checklist_template_id: UUID | None = None
+    performed_by_employee_id: UUID
+    started_at: datetime
+
+
+class MaintenanceChecklistResultEntryCreate(BaseModel):
+    template_item_id: UUID
+    result_status: ChecklistResultStatus | None = None
+    boolean_value: bool | None = None
+    numeric_value: Decimal | None = None
+    text_value: str | None = None
+    meter_reading_id: UUID | None = None
+    notes: str | None = None
+    performed_at: datetime
+    finding_type: MaintenanceFindingType | None = None
+    finding_severity: MaintenanceFindingSeverity | None = None
+    finding_description: str | None = None
+    recommended_action: str | None = None
+    requires_follow_up: bool = False
+    requires_asset_shutdown: bool = False
+    follow_up_due_date: date | None = None
+
+
+class MaintenanceChecklistResultSubmitPayload(BaseModel):
+    completed_at: datetime
+    results: list[MaintenanceChecklistResultEntryCreate]
+
+
+class MaintenanceFindingCreateRequestPayload(BaseModel):
+    request_number: str = Field(max_length=50)
+    priority_id: UUID
+    reported_at: datetime
+    title: str = Field(max_length=200)
+    problem_description: str
+    requested_vendor_partner_id: UUID | None = None
+    required_response_at: datetime | None = None
+    required_resolution_at: datetime | None = None
+    created_by: UUID
+    updated_by: UUID | None = None
+    submit: bool = False
+
+
+class MaintenanceFindingRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    finding_number: str
+    checklist_result_id: UUID | None
+    work_order_id: UUID | None
+    asset_id: UUID
+    finding_type: str
+    severity: str
+    description: str
+    recommended_action: str | None
+    requires_follow_up: bool
+    requires_asset_shutdown: bool
+    follow_up_due_date: date | None
+    generated_request_id: UUID | None
+    status: str
+    reported_by_employee_id: UUID
+    reported_at: datetime
+    resolved_at: datetime | None
+    asset: MaintenanceAssetReferenceRead
+    generated_request: MaintenanceRequestRead | None = None
+
+
+class MaintenanceChecklistResultRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    checklist_execution_id: UUID
+    template_item_id: UUID
+    result_status: str | None
+    boolean_value: bool | None
+    numeric_value: Decimal | None
+    text_value: str | None
+    meter_reading_id: UUID | None
+    notes: str | None
+    performed_at: datetime
+    template_item: MaintenanceChecklistTemplateItemRead
+    findings: list[MaintenanceFindingRead] = []
+
+
+class MaintenanceChecklistExecutionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    checklist_template_id: UUID
+    work_order_id: UUID | None
+    maintenance_schedule_id: UUID | None
+    asset_id: UUID
+    performed_by_employee_id: UUID
+    started_at: datetime
+    completed_at: datetime | None
+    overall_result: str | None
+    status: str
+    template: MaintenanceChecklistTemplateRead
+    asset: MaintenanceAssetReferenceRead
+    results: list[MaintenanceChecklistResultRead] = []
 
 
 class MaintenancePlanCreate(BaseModel):

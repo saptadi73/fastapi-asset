@@ -6,6 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.modules.maintenance.models import (
+    MaintenanceChecklistExecution,
+    MaintenanceChecklistResult,
+    MaintenanceChecklistTemplate,
+    MaintenanceChecklistTemplateItem,
+    MaintenanceFinding,
     MaintenancePlan,
     MaintenancePlanAsset,
     MaintenancePriority,
@@ -145,6 +150,149 @@ class MaintenancePlanAssetRepository:
         )
         result = await self.session.scalars(stmt)
         return result.all()
+
+
+class MaintenanceChecklistTemplateRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenanceChecklistTemplate) -> MaintenanceChecklistTemplate:
+        self.session.add(item)
+        await self.session.flush()
+        await self.session.refresh(item, attribute_names=["asset_category", "items"])
+        return item
+
+    async def get(self, template_id: UUID) -> MaintenanceChecklistTemplate | None:
+        stmt = (
+            select(MaintenanceChecklistTemplate)
+            .options(
+                selectinload(MaintenanceChecklistTemplate.asset_category),
+                selectinload(MaintenanceChecklistTemplate.items),
+            )
+            .where(MaintenanceChecklistTemplate.id == template_id)
+        )
+        return await self.session.scalar(stmt)
+
+
+class MaintenanceChecklistTemplateItemRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(
+        self,
+        item: MaintenanceChecklistTemplateItem,
+    ) -> MaintenanceChecklistTemplateItem:
+        self.session.add(item)
+        await self.session.flush()
+        return item
+
+
+class MaintenanceChecklistExecutionRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(
+        self,
+        item: MaintenanceChecklistExecution,
+    ) -> MaintenanceChecklistExecution:
+        self.session.add(item)
+        await self.session.flush()
+        await self.session.refresh(
+            item,
+            attribute_names=["template", "work_order", "asset", "results"],
+        )
+        return item
+
+    async def get(self, checklist_id: UUID) -> MaintenanceChecklistExecution | None:
+        stmt = (
+            select(MaintenanceChecklistExecution)
+            .options(
+                selectinload(MaintenanceChecklistExecution.template).selectinload(
+                    MaintenanceChecklistTemplate.items
+                ),
+                selectinload(MaintenanceChecklistExecution.work_order),
+                selectinload(MaintenanceChecklistExecution.asset),
+                selectinload(MaintenanceChecklistExecution.results).selectinload(
+                    MaintenanceChecklistResult.template_item
+                ),
+                selectinload(MaintenanceChecklistExecution.results).selectinload(
+                    MaintenanceChecklistResult.findings
+                ).selectinload(MaintenanceFinding.asset),
+                selectinload(MaintenanceChecklistExecution.results).selectinload(
+                    MaintenanceChecklistResult.findings
+                ).selectinload(MaintenanceFinding.generated_request),
+                selectinload(MaintenanceChecklistExecution.results).selectinload(
+                    MaintenanceChecklistResult.findings
+                ),
+            )
+            .where(MaintenanceChecklistExecution.id == checklist_id)
+        )
+        return await self.session.scalar(stmt)
+
+    async def update(
+        self,
+        item: MaintenanceChecklistExecution,
+        **changes: object,
+    ) -> MaintenanceChecklistExecution:
+        for key, value in changes.items():
+            setattr(item, key, value)
+        await self.session.flush()
+        await self.session.refresh(
+            item,
+            attribute_names=["template", "work_order", "asset", "results"],
+        )
+        return item
+
+
+class MaintenanceChecklistResultRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenanceChecklistResult) -> MaintenanceChecklistResult:
+        self.session.add(item)
+        await self.session.flush()
+        return item
+
+
+class MaintenanceFindingRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenanceFinding) -> MaintenanceFinding:
+        self.session.add(item)
+        await self.session.flush()
+        await self.session.refresh(
+            item,
+            attribute_names=["checklist_result", "work_order", "asset", "generated_request"],
+        )
+        return item
+
+    async def get(self, finding_id: UUID) -> MaintenanceFinding | None:
+        stmt = (
+            select(MaintenanceFinding)
+            .options(
+                selectinload(MaintenanceFinding.checklist_result).selectinload(
+                    MaintenanceChecklistResult.template_item
+                ),
+                selectinload(MaintenanceFinding.work_order).selectinload(
+                    MaintenanceWorkOrder.requests
+                ),
+                selectinload(MaintenanceFinding.asset),
+                selectinload(MaintenanceFinding.generated_request),
+            )
+            .where(MaintenanceFinding.id == finding_id)
+        )
+        return await self.session.scalar(stmt)
+
+    async def update(self, item: MaintenanceFinding, **changes: object) -> MaintenanceFinding:
+        for key, value in changes.items():
+            setattr(item, key, value)
+        await self.session.flush()
+        await self.session.refresh(
+            item,
+            attribute_names=["checklist_result", "work_order", "asset", "generated_request"],
+        )
+        return item
 
 
 class MaintenanceRequestRepository:
