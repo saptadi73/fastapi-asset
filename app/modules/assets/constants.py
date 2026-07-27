@@ -1,0 +1,91 @@
+from enum import StrEnum
+
+
+class AssetType(StrEnum):
+    FIXED_ASSET = "FIXED_ASSET"
+    LOW_VALUE_ASSET = "LOW_VALUE_ASSET"
+    LEASED_ASSET = "LEASED_ASSET"
+    PARTNER_ASSET = "PARTNER_ASSET"
+    BORROWED_ASSET = "BORROWED_ASSET"
+    RIGHT_OF_USE_ASSET = "RIGHT_OF_USE_ASSET"
+    INTANGIBLE_ASSET = "INTANGIBLE_ASSET"
+    COMPONENT = "COMPONENT"
+
+
+class AssetStatus(StrEnum):
+    DRAFT = "DRAFT"
+    REGISTERED = "REGISTERED"
+    IN_STOCK = "IN_STOCK"
+    IN_SERVICE = "IN_SERVICE"
+    UNDER_MAINTENANCE = "UNDER_MAINTENANCE"
+    IDLE = "IDLE"
+    LOST = "LOST"
+    DAMAGED = "DAMAGED"
+    RETIRED = "RETIRED"
+    DISPOSED = "DISPOSED"
+    RETURNED = "RETURNED"
+
+
+class ConditionStatus(StrEnum):
+    NEW = "NEW"
+    GOOD = "GOOD"
+    FAIR = "FAIR"
+    POOR = "POOR"
+    CRITICAL = "CRITICAL"
+    UNSERVICEABLE = "UNSERVICEABLE"
+
+
+class AssignmentType(StrEnum):
+    PRIMARY_CUSTODIAN = "PRIMARY_CUSTODIAN"
+    USER = "USER"
+    TECHNICAL_PIC = "TECHNICAL_PIC"
+    DEPARTMENT_CONTROL = "DEPARTMENT_CONTROL"
+    TEMPORARY_BORROWER = "TEMPORARY_BORROWER"
+
+
+class AssignmentStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    RETURNED = "RETURNED"
+    CANCELLED = "CANCELLED"
+
+
+class AssetTimelineEventType(StrEnum):
+    LOCATION_CHANGE = "LOCATION_CHANGE"
+    ASSIGNMENT = "ASSIGNMENT"
+    STATUS_CHANGE = "STATUS_CHANGE"
+
+
+class AssetAttributeDataType(StrEnum):
+    TEXT = "TEXT"
+    NUMBER = "NUMBER"
+    DATE = "DATE"
+    BOOLEAN = "BOOLEAN"
+    JSON = "JSON"
+
+
+class AssetOwnerType(StrEnum):
+    COMPANY = "COMPANY"
+    PARTNER = "PARTNER"
+    JOINT = "JOINT"
+    LESSOR = "LESSOR"
+    GOVERNMENT = "GOVERNMENT"
+    OTHER = "OTHER"
+
+
+class AssetTransferStatus(StrEnum):
+    DRAFT = "DRAFT"
+    SUBMITTED = "SUBMITTED"
+    APPROVED = "APPROVED"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
+
+class AssetTransferType(StrEnum):
+    INTERNAL = "INTERNAL"
+    TEMPORARY = "TEMPORARY"
+    EXTERNAL = "EXTERNAL"
+
+
+class AssetTransferItemStatus(StrEnum):
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
