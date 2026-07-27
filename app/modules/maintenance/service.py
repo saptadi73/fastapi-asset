@@ -33,21 +33,27 @@ from app.modules.maintenance.constants import (
     MaintenanceWorkOrderStatus,
 )
 from app.modules.maintenance.exceptions import (
+    MaintenanceAssetFailureNotFoundError,
     MaintenanceChecklistExecutionNotFoundError,
     MaintenanceChecklistTemplateNotFoundError,
+    MaintenanceFailureModeNotFoundError,
     MaintenanceFindingNotFoundError,
     MaintenancePriorityNotFoundError,
     MaintenanceRequestNotFoundError,
+    MaintenanceRootCauseCodeNotFoundError,
     MaintenanceScheduleNotFoundError,
+    MaintenanceSymptomCodeNotFoundError,
     MaintenanceTeamNotFoundError,
     MaintenanceWorkOrderNotFoundError,
 )
 from app.modules.maintenance.models import (
+    AssetFailure,
     MaintenanceChecklistExecution,
     MaintenanceChecklistResult,
     MaintenanceChecklistTemplate,
     MaintenanceChecklistTemplateItem,
     MaintenanceDowntime,
+    MaintenanceFailureMode,
     MaintenanceFinding,
     MaintenanceLaborLog,
     MaintenancePartUsage,
@@ -56,7 +62,9 @@ from app.modules.maintenance.models import (
     MaintenancePriority,
     MaintenanceRequest,
     MaintenanceRequestWorkOrder,
+    MaintenanceRootCauseCode,
     MaintenanceSchedule,
+    MaintenanceSymptomCode,
     MaintenanceTeam,
     MaintenanceTeamMember,
     MaintenanceWorkOrder,
@@ -64,11 +72,13 @@ from app.modules.maintenance.models import (
     MaintenanceWorkOrderEvent,
 )
 from app.modules.maintenance.repository import (
+    AssetFailureRepository,
     MaintenanceChecklistExecutionRepository,
     MaintenanceChecklistResultRepository,
     MaintenanceChecklistTemplateItemRepository,
     MaintenanceChecklistTemplateRepository,
     MaintenanceDowntimeRepository,
+    MaintenanceFailureModeRepository,
     MaintenanceFindingRepository,
     MaintenanceLaborLogRepository,
     MaintenancePartUsageRepository,
@@ -78,7 +88,9 @@ from app.modules.maintenance.repository import (
     MaintenanceReportRepository,
     MaintenanceRequestRepository,
     MaintenanceRequestWorkOrderRepository,
+    MaintenanceRootCauseCodeRepository,
     MaintenanceScheduleRepository,
+    MaintenanceSymptomCodeRepository,
     MaintenanceTeamMemberRepository,
     MaintenanceTeamRepository,
     MaintenanceWorkOrderAssignmentRepository,
@@ -86,6 +98,7 @@ from app.modules.maintenance.repository import (
     MaintenanceWorkOrderRepository,
 )
 from app.modules.maintenance.schemas import (
+    AssetFailureCreate,
     AssetMaintenanceHistoryItemRead,
     MaintenanceBacklogReportRead,
     MaintenanceChecklistExecutionStartPayload,
@@ -95,8 +108,12 @@ from app.modules.maintenance.schemas import (
     MaintenanceConvertToWorkOrderPayload,
     MaintenanceCostReportItemRead,
     MaintenanceDowntimeCreate,
+    MaintenanceFailureAnalysisAssetRead,
+    MaintenanceFailureAnalysisBucketRead,
+    MaintenanceFailureAnalysisReportRead,
     MaintenanceFindingCreateRequestPayload,
     MaintenanceLaborLogCreate,
+    MaintenanceMasterCodeCreate,
     MaintenancePartUsageCreate,
     MaintenancePlanAssetCreate,
     MaintenancePlanCreate,
@@ -135,6 +152,10 @@ class MaintenanceService:
         self.checklist_results = MaintenanceChecklistResultRepository(session)
         self.downtimes = MaintenanceDowntimeRepository(session)
         self.findings = MaintenanceFindingRepository(session)
+        self.symptom_codes = MaintenanceSymptomCodeRepository(session)
+        self.failure_modes = MaintenanceFailureModeRepository(session)
+        self.root_cause_codes = MaintenanceRootCauseCodeRepository(session)
+        self.failures = AssetFailureRepository(session)
         self.part_usages = MaintenancePartUsageRepository(session)
         self.labor_logs = MaintenanceLaborLogRepository(session)
         self.events = MaintenanceWorkOrderEventRepository(session)
@@ -150,6 +171,78 @@ class MaintenanceService:
         self.asset_locations = AssetLocationRepository(session)
         self.asset_status_histories = AssetStatusHistoryRepository(session)
         self.partners = BusinessPartnerRepository(session)
+
+    async def create_symptom_code(
+        self,
+        payload: MaintenanceMasterCodeCreate,
+    ) -> MaintenanceSymptomCode:
+        item = MaintenanceSymptomCode(**payload.model_dump())
+        try:
+            await self.symptom_codes.create(item)
+            await self.session.commit()
+            await self.session.refresh(item)
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise AppError(
+                code="MAINTENANCE_SYMPTOM_CODE_CONFLICT",
+                message="Maintenance symptom code sudah digunakan.",
+                status_code=409,
+            ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
+        return item
+
+    async def list_symptom_codes(self) -> list[MaintenanceSymptomCode]:
+        return list(await self.symptom_codes.list())
+
+    async def create_failure_mode(
+        self,
+        payload: MaintenanceMasterCodeCreate,
+    ) -> MaintenanceFailureMode:
+        item = MaintenanceFailureMode(**payload.model_dump())
+        try:
+            await self.failure_modes.create(item)
+            await self.session.commit()
+            await self.session.refresh(item)
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise AppError(
+                code="MAINTENANCE_FAILURE_MODE_CONFLICT",
+                message="Maintenance failure mode sudah digunakan.",
+                status_code=409,
+            ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
+        return item
+
+    async def list_failure_modes(self) -> list[MaintenanceFailureMode]:
+        return list(await self.failure_modes.list())
+
+    async def create_root_cause_code(
+        self,
+        payload: MaintenanceMasterCodeCreate,
+    ) -> MaintenanceRootCauseCode:
+        item = MaintenanceRootCauseCode(**payload.model_dump())
+        try:
+            await self.root_cause_codes.create(item)
+            await self.session.commit()
+            await self.session.refresh(item)
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise AppError(
+                code="MAINTENANCE_ROOT_CAUSE_CODE_CONFLICT",
+                message="Maintenance root cause code sudah digunakan.",
+                status_code=409,
+            ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
+        return item
+
+    async def list_root_cause_codes(self) -> list[MaintenanceRootCauseCode]:
+        return list(await self.root_cause_codes.list())
 
     async def create_plan(self, payload: MaintenancePlanCreate) -> MaintenancePlan:
         if payload.asset_id is None and payload.asset_category_id is None:
@@ -921,6 +1014,131 @@ class MaintenanceService:
                 status_code=409,
             ) from exc
         return await self.get_request(request_item.id)
+
+    async def create_failure(
+        self,
+        work_order_id: UUID,
+        payload: AssetFailureCreate,
+    ) -> MaintenanceWorkOrder:
+        work_order = await self.get_work_order(work_order_id)
+        if payload.failure_started_at is not None and payload.failure_ended_at is not None:
+            if payload.failure_ended_at < payload.failure_started_at:
+                raise AppError(
+                    code="MAINTENANCE_ASSET_FAILURE_TIME_INVALID",
+                    message="failure_ended_at tidak boleh lebih kecil dari failure_started_at.",
+                    status_code=422,
+                )
+        if payload.failure_mode_id is not None:
+            await self._get_failure_mode_or_raise(payload.failure_mode_id)
+        if payload.symptom_code_id is not None:
+            await self._get_symptom_code_or_raise(payload.symptom_code_id)
+        if payload.root_cause_code_id is not None:
+            await self._get_root_cause_code_or_raise(payload.root_cause_code_id)
+
+        downtime_minutes = payload.downtime_minutes
+        if (
+            downtime_minutes is None
+            and payload.failure_started_at is not None
+            and payload.failure_ended_at is not None
+        ):
+            downtime_minutes = int(
+                (payload.failure_ended_at - payload.failure_started_at).total_seconds() // 60
+            )
+        created_timestamp = datetime.now(UTC)
+
+        failure = AssetFailure(
+            failure_number=payload.failure_number,
+            asset_id=work_order.asset_id,
+            maintenance_request_id=(
+                work_order.requests[0].maintenance_request_id if work_order.requests else None
+            ),
+            work_order_id=work_order.id,
+            detected_at=payload.detected_at,
+            detected_by_employee_id=payload.detected_by_employee_id,
+            failure_mode_id=payload.failure_mode_id,
+            symptom_code_id=payload.symptom_code_id,
+            failure_description=payload.failure_description,
+            failure_severity=payload.failure_severity.value,
+            asset_condition_before=payload.asset_condition_before,
+            asset_condition_after=payload.asset_condition_after,
+            caused_shutdown=payload.caused_shutdown,
+            safety_incident=payload.safety_incident,
+            repeat_failure=payload.repeat_failure,
+            temporary_action=payload.temporary_action,
+            root_cause_code_id=payload.root_cause_code_id,
+            root_cause_description=payload.root_cause_description,
+            corrective_action=payload.corrective_action,
+            preventive_action=payload.preventive_action,
+            failure_started_at=payload.failure_started_at,
+            failure_ended_at=payload.failure_ended_at,
+            downtime_minutes=downtime_minutes,
+            status=payload.status.value,
+            created_at=created_timestamp,
+            updated_at=created_timestamp,
+            created_by=payload.created_by,
+        )
+        try:
+            await self.failures.create(failure)
+            await self._record_work_order_event(
+                work_order_id=work_order.id,
+                event_type=MaintenanceWorkOrderEventType.FAILURE_RECORDED.value,
+                previous_status=None,
+                new_status=work_order.status,
+                event_at=payload.detected_at,
+                performed_by=payload.created_by,
+                employee_id=payload.detected_by_employee_id,
+                reason=payload.failure_description,
+                event_payload={
+                    "failure_number": payload.failure_number,
+                    "failure_severity": payload.failure_severity.value,
+                    "status": payload.status.value,
+                    "repeat_failure": payload.repeat_failure,
+                    "caused_shutdown": payload.caused_shutdown,
+                    "downtime_minutes": downtime_minutes,
+                },
+            )
+            await self.session.commit()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise AppError(
+                code="MAINTENANCE_ASSET_FAILURE_CONFLICT",
+                message="Asset failure menimbulkan konflik data.",
+                status_code=409,
+            ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
+        return await self.get_work_order(work_order_id)
+
+    async def get_failure(self, failure_id: UUID) -> AssetFailure:
+        item = await self.failures.get(failure_id)
+        if item is None:
+            raise MaintenanceAssetFailureNotFoundError(str(failure_id))
+        return item
+
+    async def list_failures(
+        self,
+        pagination: PaginationParams,
+        *,
+        asset_id: UUID | None = None,
+        work_order_id: UUID | None = None,
+        status: str | None = None,
+        failure_mode_id: UUID | None = None,
+        root_cause_code_id: UUID | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+    ) -> tuple[list[AssetFailure], int]:
+        items, total_items = await self.failures.list(
+            pagination,
+            asset_id=asset_id,
+            work_order_id=work_order_id,
+            status=status,
+            failure_mode_id=failure_mode_id,
+            root_cause_code_id=root_cause_code_id,
+            date_from=date_from,
+            date_to=date_to,
+        )
+        return list(items), total_items
 
     async def create_downtime(
         self,
@@ -1861,6 +2079,69 @@ class MaintenanceService:
             repeat_failure_asset_count=int(summary["repeat_failure_asset_count"]),
         )
 
+    async def get_failure_analysis_report(
+        self,
+        *,
+        asset_id: UUID | None = None,
+        failure_mode_id: UUID | None = None,
+        root_cause_code_id: UUID | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+    ) -> MaintenanceFailureAnalysisReportRead:
+        generated_at = datetime.now(UTC)
+        summary = await self.reports.get_failure_analysis_summary(
+            asset_id=asset_id,
+            failure_mode_id=failure_mode_id,
+            root_cause_code_id=root_cause_code_id,
+            date_from=date_from,
+            date_to=date_to,
+        )
+        failure_count = int(summary["failure_count"])
+        repeat_failure_count = int(summary["repeat_failure_count"])
+        total_downtime_minutes = int(summary["total_downtime_minutes"])
+        caused_shutdown_count = int(summary["caused_shutdown_count"])
+        safety_incident_count = int(summary["safety_incident_count"])
+        intervals_in_hours = list(summary["intervals_in_hours"])
+
+        repeat_failure_rate_pct = Decimal("0")
+        average_downtime_minutes = Decimal("0")
+        mtbf_hours = Decimal("0")
+        if failure_count > 0:
+            repeat_failure_rate_pct = (
+                Decimal(repeat_failure_count) * Decimal("100") / Decimal(failure_count)
+            ).quantize(Decimal("0.01"))
+            average_downtime_minutes = (
+                Decimal(total_downtime_minutes) / Decimal(failure_count)
+            ).quantize(Decimal("0.01"))
+        if intervals_in_hours:
+            mtbf_hours = (
+                sum(intervals_in_hours, Decimal("0")) / Decimal(len(intervals_in_hours))
+            ).quantize(Decimal("0.01"))
+
+        return MaintenanceFailureAnalysisReportRead(
+            generated_at=generated_at,
+            failure_count=failure_count,
+            repeat_failure_count=repeat_failure_count,
+            repeat_failure_rate_pct=repeat_failure_rate_pct,
+            caused_shutdown_count=caused_shutdown_count,
+            safety_incident_count=safety_incident_count,
+            total_downtime_minutes=total_downtime_minutes,
+            average_downtime_minutes=average_downtime_minutes,
+            mtbf_hours=mtbf_hours,
+            top_failure_modes=[
+                MaintenanceFailureAnalysisBucketRead(**item)
+                for item in summary["top_failure_modes"]
+            ],
+            top_root_causes=[
+                MaintenanceFailureAnalysisBucketRead(**item)
+                for item in summary["top_root_causes"]
+            ],
+            top_assets=[
+                MaintenanceFailureAnalysisAssetRead(**item)
+                for item in summary["top_assets"]
+            ],
+        )
+
     def _validate_checklist_result_entry(
         self,
         template_item: MaintenanceChecklistTemplateItem,
@@ -1999,6 +2280,30 @@ class MaintenanceService:
                 event_payload=event_payload,
             )
         )
+
+    async def _get_symptom_code_or_raise(self, symptom_code_id: UUID) -> MaintenanceSymptomCode:
+        item = await self.symptom_codes.get(symptom_code_id)
+        if item is None:
+            raise MaintenanceSymptomCodeNotFoundError(str(symptom_code_id))
+        return item
+
+    async def _get_failure_mode_or_raise(
+        self,
+        failure_mode_id: UUID,
+    ) -> MaintenanceFailureMode:
+        item = await self.failure_modes.get(failure_mode_id)
+        if item is None:
+            raise MaintenanceFailureModeNotFoundError(str(failure_mode_id))
+        return item
+
+    async def _get_root_cause_code_or_raise(
+        self,
+        root_cause_code_id: UUID,
+    ) -> MaintenanceRootCauseCode:
+        item = await self.root_cause_codes.get(root_cause_code_id)
+        if item is None:
+            raise MaintenanceRootCauseCodeNotFoundError(str(root_cause_code_id))
+        return item
 
     async def _get_asset_or_raise(self, asset_id):
         asset = await self.assets.get(asset_id)

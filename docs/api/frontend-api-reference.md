@@ -582,6 +582,30 @@ Contoh request:
 
 Mengambil daftar priority untuk dropdown triage dan work order.
 
+### `POST /maintenance/symptom-codes`
+
+Membuat master symptom code untuk klasifikasi gejala awal kerusakan.
+
+### `GET /maintenance/symptom-codes`
+
+Mengambil daftar symptom code untuk dropdown form failure analysis.
+
+### `POST /maintenance/failure-modes`
+
+Membuat master failure mode.
+
+### `GET /maintenance/failure-modes`
+
+Mengambil daftar failure mode untuk dropdown analisis failure.
+
+### `POST /maintenance/root-cause-codes`
+
+Membuat master root cause code.
+
+### `GET /maintenance/root-cause-codes`
+
+Mengambil daftar root cause code untuk dropdown root cause analysis.
+
 ### `POST /maintenance/checklist-templates`
 
 Membuat checklist template maintenance beserta item-item pemeriksaannya.
@@ -923,6 +947,35 @@ Contoh request:
 }
 ```
 
+### `POST /maintenance/work-orders/{work_order_id}/failures`
+
+Mencatat kejadian failure teknis pada work order.
+
+Perilaku backend:
+
+- `asset_id` dan `maintenance_request_id` diambil dari konteks work order;
+- `created_by` diisi otomatis dari user login;
+- `detected_by_employee_id` default ke user login bila tidak dikirim;
+- event `FAILURE_RECORDED` otomatis ditambahkan ke histori work order;
+- `downtime_minutes` dihitung otomatis bila `failure_started_at` dan
+  `failure_ended_at` tersedia.
+
+Field penting untuk frontend:
+
+- `failure_number`
+- `detected_at`
+- `failure_mode_id`
+- `symptom_code_id`
+- `failure_description`
+- `failure_severity`
+- `root_cause_code_id`
+- `root_cause_description`
+- `corrective_action`
+- `preventive_action`
+- `repeat_failure`
+- `caused_shutdown`
+- `safety_incident`
+
 ### `GET /maintenance/work-orders/{work_order_id}/downtimes`
 
 Mengambil daftar downtime pada work order untuk tab downtime, analytics durasi,
@@ -964,6 +1017,30 @@ Contoh event yang saat ini dapat muncul:
 - `VERIFIED`
 - `CLOSED`
 
+### `GET /maintenance/failures`
+
+List asset failure untuk inbox analisis reliability atau investigasi teknis.
+
+Query:
+
+- `page`
+- `page_size`
+- `search`
+- `sort`: `failure_number`, `detected_at`, `failure_severity`, `status`, `created_at`
+- `order`: `asc`, `desc`
+- `asset_id`
+- `work_order_id`
+- `status`
+- `failure_mode_id`
+- `root_cause_code_id`
+- `date_from`: ISO datetime
+- `date_to`: ISO datetime
+
+### `GET /maintenance/failures/{failure_id}`
+
+Mengambil detail satu failure, termasuk symptom code, failure mode, root cause,
+dan tindakan korektif/preventif.
+
 ### `GET /maintenance/checklists/{checklist_id}`
 
 Mengambil detail checklist execution, hasil tiap item, dan finding yang
@@ -992,6 +1069,25 @@ Perilaku backend:
 - source request yang dibuat adalah `CHECKLIST_FINDING`
 - finding yang sama tidak boleh membuat request lebih dari satu kali
 - jika `submit = true`, request baru langsung dibuat dalam status `SUBMITTED`
+
+### `GET /maintenance/failures/{failure_id}/attachments`
+
+Mengambil attachment bukti failure dan root cause untuk satu failure.
+
+Kategori yang direkomendasikan:
+
+- `FAILURE_PHOTO`
+- `ROOT_CAUSE_EVIDENCE`
+- `OTHER`
+
+### `POST /maintenance/failures/{failure_id}/attachments`
+
+Membuat attachment langsung untuk asset failure tertentu.
+
+Catatan:
+
+- `created_by` dan `file.uploaded_by` diisi otomatis dari user login;
+- `captured_by` akan diisi user login bila tidak dikirim eksplisit.
 
 ### `GET /maintenance/reports/backlog`
 
@@ -1092,6 +1188,37 @@ Catatan implementasi saat ini:
   `actual_start_at` dan `actual_end_at`
 - downtime diambil dari tabel `maintenance_downtimes`
 - ratio planned vs unplanned memakai klasifikasi work order yang sudah ada
+
+### `GET /maintenance/reports/failure-analysis`
+
+Mengambil analytics berbasis failure untuk reliability dashboard dan RCA view.
+
+Query:
+
+- `asset_id`
+- `failure_mode_id`
+- `root_cause_code_id`
+- `date_from`: ISO datetime
+- `date_to`: ISO datetime
+
+Field utama pada response:
+
+- `failure_count`
+- `repeat_failure_count`
+- `repeat_failure_rate_pct`
+- `caused_shutdown_count`
+- `safety_incident_count`
+- `total_downtime_minutes`
+- `average_downtime_minutes`
+- `mtbf_hours`
+- `top_failure_modes`
+- `top_root_causes`
+- `top_assets`
+
+Catatan implementasi saat ini:
+
+- MTBF saat ini diperkirakan dari interval antar `detected_at` failure per aset
+  karena jam operasi aktual aset belum disimpan sebagai sumber KPI.
 
 ### `POST /maintenance/schedules`
 
@@ -1297,6 +1424,7 @@ Ringkasan tambahan yang sekarang tersedia per item:
 - `downtime_count`
 - `total_downtime_minutes`
 - `labor_log_count`
+- `failure_count`
 - `work_order_event_count`
 
 ## Error Code Awal
@@ -1364,6 +1492,15 @@ Ringkasan tambahan yang sekarang tersedia per item:
 - `MAINTENANCE_CHECKLIST_RESULT_INVALID`
 - `MAINTENANCE_FINDING_NOT_FOUND`
 - `MAINTENANCE_FINDING_REQUEST_CONFLICT`
+- `MAINTENANCE_SYMPTOM_CODE_NOT_FOUND`
+- `MAINTENANCE_SYMPTOM_CODE_CONFLICT`
+- `MAINTENANCE_FAILURE_MODE_NOT_FOUND`
+- `MAINTENANCE_FAILURE_MODE_CONFLICT`
+- `MAINTENANCE_ROOT_CAUSE_CODE_NOT_FOUND`
+- `MAINTENANCE_ROOT_CAUSE_CODE_CONFLICT`
+- `MAINTENANCE_ASSET_FAILURE_NOT_FOUND`
+- `MAINTENANCE_ASSET_FAILURE_CONFLICT`
+- `MAINTENANCE_ASSET_FAILURE_TIME_INVALID`
 - `MAINTENANCE_PART_USAGE_CONFLICT`
 - `MAINTENANCE_PART_USAGE_INVALID_STATUS`
 - `MAINTENANCE_LABOR_LOG_CONFLICT`

@@ -81,3 +81,43 @@ class MaintenanceFindingNotFoundError(AppError):
             status_code=status.HTTP_404_NOT_FOUND,
             details={"finding_id": finding_id},
         )
+
+
+class MaintenanceSymptomCodeNotFoundError(AppError):
+    def __init__(self, symptom_code_id: str) -> None:
+        super().__init__(
+            code="MAINTENANCE_SYMPTOM_CODE_NOT_FOUND",
+            message="Maintenance symptom code tidak ditemukan.",
+            status_code=status.HTTP_404_NOT_FOUND,
+            details={"symptom_code_id": symptom_code_id},
+        )
+
+
+class MaintenanceFailureModeNotFoundError(AppError):
+    def __init__(self, failure_mode_id: str) -> None:
+        super().__init__(
+            code="MAINTENANCE_FAILURE_MODE_NOT_FOUND",
+            message="Maintenance failure mode tidak ditemukan.",
+            status_code=status.HTTP_404_NOT_FOUND,
+            details={"failure_mode_id": failure_mode_id},
+        )
+
+
+class MaintenanceRootCauseCodeNotFoundError(AppError):
+    def __init__(self, root_cause_code_id: str) -> None:
+        super().__init__(
+            code="MAINTENANCE_ROOT_CAUSE_CODE_NOT_FOUND",
+            message="Maintenance root cause code tidak ditemukan.",
+            status_code=status.HTTP_404_NOT_FOUND,
+            details={"root_cause_code_id": root_cause_code_id},
+        )
+
+
+class MaintenanceAssetFailureNotFoundError(AppError):
+    def __init__(self, failure_id: str) -> None:
+        super().__init__(
+            code="MAINTENANCE_ASSET_FAILURE_NOT_FOUND",
+            message="Asset failure tidak ditemukan.",
+            status_code=status.HTTP_404_NOT_FOUND,
+            details={"failure_id": failure_id},
+        )

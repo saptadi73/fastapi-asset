@@ -12,6 +12,8 @@ from app.modules.maintenance.constants import (
     ChecklistResponseType,
     ChecklistResultStatus,
     MaintenanceDowntimeType,
+    MaintenanceFailureSeverity,
+    MaintenanceFailureStatus,
     MaintenanceFindingSeverity,
     MaintenanceFindingType,
     MaintenanceLaborActivityType,
@@ -53,6 +55,23 @@ class MaintenancePriorityRead(BaseModel):
     escalation_after_minutes: int | None
     color_code: str | None
     is_emergency: bool
+    is_active: bool
+
+
+class MaintenanceMasterCodeCreate(BaseModel):
+    code: str = Field(max_length=50)
+    name: str = Field(max_length=150)
+    description: str | None = None
+    is_active: bool = True
+
+
+class MaintenanceMasterCodeRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    code: str
+    name: str
+    description: str | None
     is_active: bool
 
 
@@ -193,6 +212,24 @@ class MaintenanceRequestWorkOrderLinkRead(BaseModel):
     relationship_type: str
 
 
+class MaintenanceRequestReferenceRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    request_number: str
+    title: str
+    status: str
+
+
+class MaintenanceWorkOrderReferenceRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    work_order_number: str
+    title: str
+    status: str
+
+
 class MaintenanceWorkOrderAssignmentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -294,6 +331,111 @@ class MaintenanceDowntimeRead(BaseModel):
     reason: str
 
 
+class AssetFailureCreate(BaseModel):
+    failure_number: str = Field(max_length=50)
+    detected_at: datetime
+    detected_by_employee_id: UUID | None = None
+    failure_mode_id: UUID | None = None
+    symptom_code_id: UUID | None = None
+    failure_description: str
+    failure_severity: MaintenanceFailureSeverity
+    asset_condition_before: str | None = Field(default=None, max_length=30)
+    asset_condition_after: str | None = Field(default=None, max_length=30)
+    caused_shutdown: bool = False
+    safety_incident: bool = False
+    repeat_failure: bool = False
+    temporary_action: str | None = None
+    root_cause_code_id: UUID | None = None
+    root_cause_description: str | None = None
+    corrective_action: str | None = None
+    preventive_action: str | None = None
+    failure_started_at: datetime | None = None
+    failure_ended_at: datetime | None = None
+    downtime_minutes: int | None = Field(default=None, ge=0)
+    status: MaintenanceFailureStatus = MaintenanceFailureStatus.OPEN
+    created_by: UUID | None = None
+
+
+class AssetFailureRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    failure_number: str
+    asset_id: UUID
+    maintenance_request_id: UUID | None
+    work_order_id: UUID | None
+    detected_at: datetime
+    detected_by_employee_id: UUID | None
+    failure_mode_id: UUID | None
+    symptom_code_id: UUID | None
+    failure_description: str
+    failure_severity: str
+    asset_condition_before: str | None
+    asset_condition_after: str | None
+    caused_shutdown: bool
+    safety_incident: bool
+    repeat_failure: bool
+    temporary_action: str | None
+    root_cause_code_id: UUID | None
+    root_cause_description: str | None
+    corrective_action: str | None
+    preventive_action: str | None
+    failure_started_at: datetime | None
+    failure_ended_at: datetime | None
+    downtime_minutes: int | None
+    status: str
+    created_at: datetime
+    created_by: UUID
+    asset: MaintenanceAssetReferenceRead
+    maintenance_request: MaintenanceRequestReferenceRead | None = None
+    work_order: MaintenanceWorkOrderReferenceRead | None = None
+    failure_mode: MaintenanceMasterCodeRead | None = None
+    symptom_code: MaintenanceMasterCodeRead | None = None
+    root_cause_code: MaintenanceMasterCodeRead | None = None
+
+
+class AssetFailureListItemRead(BaseModel):
+    id: UUID
+    failure_number: str
+    asset_id: UUID
+    work_order_id: UUID | None
+    detected_at: datetime
+    failure_severity: str
+    status: str
+    repeat_failure: bool
+    caused_shutdown: bool
+    downtime_minutes: int | None
+    asset: MaintenanceAssetReferenceRead
+    failure_mode: MaintenanceMasterCodeRead | None = None
+    root_cause_code: MaintenanceMasterCodeRead | None = None
+
+    @classmethod
+    def from_model(cls, item: object) -> AssetFailureListItemRead:
+        return cls(
+            id=item.id,
+            failure_number=item.failure_number,
+            asset_id=item.asset_id,
+            work_order_id=item.work_order_id,
+            detected_at=item.detected_at,
+            failure_severity=item.failure_severity,
+            status=item.status,
+            repeat_failure=item.repeat_failure,
+            caused_shutdown=item.caused_shutdown,
+            downtime_minutes=item.downtime_minutes,
+            asset=MaintenanceAssetReferenceRead.model_validate(item.asset),
+            failure_mode=(
+                MaintenanceMasterCodeRead.model_validate(item.failure_mode)
+                if getattr(item, "failure_mode", None)
+                else None
+            ),
+            root_cause_code=(
+                MaintenanceMasterCodeRead.model_validate(item.root_cause_code)
+                if getattr(item, "root_cause_code", None)
+                else None
+            ),
+        )
+
+
 class MaintenanceWorkOrderEventRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -382,6 +524,34 @@ class MaintenanceReliabilityReportRead(BaseModel):
     average_downtime_minutes: Decimal
     planned_vs_unplanned_ratio: Decimal
     repeat_failure_asset_count: int
+
+
+class MaintenanceFailureAnalysisBucketRead(BaseModel):
+    id: UUID | None
+    name: str
+    failure_count: int
+
+
+class MaintenanceFailureAnalysisAssetRead(BaseModel):
+    asset_id: UUID
+    asset_code: str
+    asset_name: str
+    failure_count: int
+
+
+class MaintenanceFailureAnalysisReportRead(BaseModel):
+    generated_at: datetime
+    failure_count: int
+    repeat_failure_count: int
+    repeat_failure_rate_pct: Decimal
+    caused_shutdown_count: int
+    safety_incident_count: int
+    total_downtime_minutes: int
+    average_downtime_minutes: Decimal
+    mtbf_hours: Decimal
+    top_failure_modes: list[MaintenanceFailureAnalysisBucketRead]
+    top_root_causes: list[MaintenanceFailureAnalysisBucketRead]
+    top_assets: list[MaintenanceFailureAnalysisAssetRead]
 
 
 class MaintenanceRequestRead(BaseModel):
@@ -501,6 +671,7 @@ class MaintenanceWorkOrderRead(BaseModel):
     priority: MaintenancePriorityRead
     requests: list[MaintenanceRequestWorkOrderLinkRead] = []
     assignments: list[MaintenanceWorkOrderAssignmentRead] = []
+    failures: list[AssetFailureRead] = []
     part_usages: list[MaintenancePartUsageRead] = []
     labor_logs: list[MaintenanceLaborLogRead] = []
     downtimes: list[MaintenanceDowntimeRead] = []
@@ -1013,6 +1184,7 @@ class AssetMaintenanceHistoryItemRead(BaseModel):
     downtime_count: int = 0
     total_downtime_minutes: int = 0
     labor_log_count: int = 0
+    failure_count: int = 0
     work_order_event_count: int = 0
     priority: MaintenancePriorityRead
 
@@ -1036,6 +1208,7 @@ class AssetMaintenanceHistoryItemRead(BaseModel):
                 downtime.duration_minutes or 0 for downtime in getattr(item, "downtimes", [])
             ),
             labor_log_count=len(getattr(item, "labor_logs", [])),
+            failure_count=len(getattr(item, "failures", [])),
             work_order_event_count=len(getattr(item, "events", [])),
             priority=MaintenancePriorityRead.model_validate(item.priority),
         )

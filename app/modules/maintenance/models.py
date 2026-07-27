@@ -168,6 +168,7 @@ class MaintenanceWorkOrder(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     assignments: Mapped[list[MaintenanceWorkOrderAssignment]] = relationship(
         back_populates="work_order"
     )
+    failures: Mapped[list[AssetFailure]] = relationship(back_populates="work_order")
     part_usages: Mapped[list[MaintenancePartUsage]] = relationship(back_populates="work_order")
     labor_logs: Mapped[list[MaintenanceLaborLog]] = relationship(back_populates="work_order")
     downtimes: Mapped[list[MaintenanceDowntime]] = relationship(back_populates="work_order")
@@ -536,6 +537,83 @@ class MaintenanceFinding(UUIDPrimaryKeyMixin, Base):
     work_order: Mapped[MaintenanceWorkOrder | None] = relationship()
     asset = relationship("Asset")
     generated_request: Mapped[MaintenanceRequest | None] = relationship()
+
+
+class MaintenanceSymptomCode(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_symptom_codes"
+
+    code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class MaintenanceFailureMode(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_failure_modes"
+
+    code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class MaintenanceRootCauseCode(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_root_cause_codes"
+
+    code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class AssetFailure(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "asset_failures"
+
+    failure_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    asset_id: Mapped[UUID] = mapped_column(
+        ForeignKey("assets.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    maintenance_request_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("maintenance_requests.id", ondelete="SET NULL")
+    )
+    work_order_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("maintenance_work_orders.id", ondelete="SET NULL")
+    )
+    detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    detected_by_employee_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    failure_mode_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("maintenance_failure_modes.id", ondelete="SET NULL")
+    )
+    symptom_code_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("maintenance_symptom_codes.id", ondelete="SET NULL")
+    )
+    failure_description: Mapped[str] = mapped_column(Text, nullable=False)
+    failure_severity: Mapped[str] = mapped_column(String(20), nullable=False)
+    asset_condition_before: Mapped[str | None] = mapped_column(String(30))
+    asset_condition_after: Mapped[str | None] = mapped_column(String(30))
+    caused_shutdown: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    safety_incident: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    repeat_failure: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    temporary_action: Mapped[str | None] = mapped_column(Text)
+    root_cause_code_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("maintenance_root_cause_codes.id", ondelete="SET NULL")
+    )
+    root_cause_description: Mapped[str | None] = mapped_column(Text)
+    corrective_action: Mapped[str | None] = mapped_column(Text)
+    preventive_action: Mapped[str | None] = mapped_column(Text)
+    failure_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    failure_ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    downtime_minutes: Mapped[int | None] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(30), nullable=False)
+    created_by: Mapped[UUID] = mapped_column(nullable=False)
+
+    asset = relationship("Asset")
+    maintenance_request: Mapped[MaintenanceRequest | None] = relationship()
+    work_order: Mapped[MaintenanceWorkOrder | None] = relationship(back_populates="failures")
+    failure_mode: Mapped[MaintenanceFailureMode | None] = relationship()
+    symptom_code: Mapped[MaintenanceSymptomCode | None] = relationship()
+    root_cause_code: Mapped[MaintenanceRootCauseCode | None] = relationship()
 
 
 class MaintenancePartUsage(UUIDPrimaryKeyMixin, Base):

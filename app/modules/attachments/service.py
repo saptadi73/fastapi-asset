@@ -15,6 +15,7 @@ from app.modules.attachments.repository import (
 )
 from app.modules.attachments.schemas import AttachmentCreate, AttachmentUpdate
 from app.modules.maintenance.repository import (
+    AssetFailureRepository,
     MaintenanceFindingRepository,
     MaintenanceRequestRepository,
     MaintenanceWorkOrderRepository,
@@ -29,6 +30,7 @@ class AttachmentService:
         self.attachments = AttachmentRepository(session)
         self.assets = AssetRepository(session)
         self.transfers = AssetTransferRepository(session)
+        self.asset_failures = AssetFailureRepository(session)
         self.maintenance_findings = MaintenanceFindingRepository(session)
         self.maintenance_requests = MaintenanceRequestRepository(session)
         self.maintenance_work_orders = MaintenanceWorkOrderRepository(session)
@@ -218,6 +220,17 @@ class AttachmentService:
         if entity_type == AttachmentEntityType.MAINTENANCE_FINDING.value:
             finding = await self.maintenance_findings.get(entity_id)
             if finding is None:
+                raise AppError(
+                    code="ATTACHMENT_ENTITY_NOT_FOUND",
+                    message="Entity target attachment tidak ditemukan.",
+                    status_code=404,
+                    details={"entity_type": entity_type, "entity_id": str(entity_id)},
+                )
+            return
+
+        if entity_type == AttachmentEntityType.ASSET_FAILURE.value:
+            failure = await self.asset_failures.get(entity_id)
+            if failure is None:
                 raise AppError(
                     code="ATTACHMENT_ENTITY_NOT_FOUND",
                     message="Entity target attachment tidak ditemukan.",

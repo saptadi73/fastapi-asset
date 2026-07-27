@@ -227,12 +227,27 @@ class MaintenanceDowntimeType(StrEnum):
     FULL = "FULL"
 
 
+class MaintenanceFailureSeverity(StrEnum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+
+class MaintenanceFailureStatus(StrEnum):
+    OPEN = "OPEN"
+    UNDER_ANALYSIS = "UNDER_ANALYSIS"
+    RESOLVED = "RESOLVED"
+    CLOSED = "CLOSED"
+
+
 class MaintenanceWorkOrderEventType(StrEnum):
     CREATED = "CREATED"
     APPROVED = "APPROVED"
     ASSIGNED = "ASSIGNED"
     STARTED = "STARTED"
     DOWNTIME_RECORDED = "DOWNTIME_RECORDED"
+    FAILURE_RECORDED = "FAILURE_RECORDED"
     CHECKLIST_COMPLETED = "CHECKLIST_COMPLETED"
     FINDING_CREATED = "FINDING_CREATED"
     PART_ISSUED = "PART_ISSUED"

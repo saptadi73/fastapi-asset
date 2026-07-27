@@ -54,6 +54,30 @@ def service() -> MaintenanceService:
                 "repeat_failure_asset_count": 2,
             }
         ),
+        get_failure_analysis_summary=AsyncMock(
+            return_value={
+                "failure_count": 4,
+                "repeat_failure_count": 1,
+                "caused_shutdown_count": 2,
+                "safety_incident_count": 1,
+                "total_downtime_minutes": 360,
+                "intervals_in_hours": [24, 48],
+                "top_failure_modes": [
+                    {"id": uuid4(), "name": "Bearing Failure", "failure_count": 2},
+                ],
+                "top_root_causes": [
+                    {"id": uuid4(), "name": "Poor Lubrication", "failure_count": 2},
+                ],
+                "top_assets": [
+                    {
+                        "asset_id": uuid4(),
+                        "asset_code": "AST-001",
+                        "asset_name": "Pompa Utility",
+                        "failure_count": 2,
+                    }
+                ],
+            }
+        ),
     )
     return svc
 
@@ -119,3 +143,18 @@ async def test_get_reliability_report_calculates_metrics(
     assert item.average_downtime_minutes == 80
     assert item.planned_vs_unplanned_ratio == 1
     assert item.repeat_failure_asset_count == 2
+
+
+@pytest.mark.asyncio
+async def test_get_failure_analysis_report_calculates_metrics(
+    service: MaintenanceService,
+) -> None:
+    item = await service.get_failure_analysis_report(
+        date_from=datetime(2026, 7, 1, 0, 0, tzinfo=UTC),
+        date_to=datetime(2026, 7, 27, 23, 59, tzinfo=UTC),
+    )
+
+    assert item.repeat_failure_rate_pct == 25
+    assert item.average_downtime_minutes == 90
+    assert item.mtbf_hours == 36
+    assert item.top_failure_modes[0].name == "Bearing Failure"

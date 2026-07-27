@@ -9,11 +9,13 @@ from sqlalchemy.orm import selectinload
 
 from app.modules.assets.models import Asset
 from app.modules.maintenance.models import (
+    AssetFailure,
     MaintenanceChecklistExecution,
     MaintenanceChecklistResult,
     MaintenanceChecklistTemplate,
     MaintenanceChecklistTemplateItem,
     MaintenanceDowntime,
+    MaintenanceFailureMode,
     MaintenanceFinding,
     MaintenanceLaborLog,
     MaintenancePartUsage,
@@ -22,7 +24,9 @@ from app.modules.maintenance.models import (
     MaintenancePriority,
     MaintenanceRequest,
     MaintenanceRequestWorkOrder,
+    MaintenanceRootCauseCode,
     MaintenanceSchedule,
+    MaintenanceSymptomCode,
     MaintenanceTeam,
     MaintenanceTeamMember,
     MaintenanceWorkOrder,
@@ -328,6 +332,182 @@ class MaintenanceFindingRepository:
         return result.all()
 
 
+class MaintenanceSymptomCodeRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenanceSymptomCode) -> MaintenanceSymptomCode:
+        self.session.add(item)
+        await self.session.flush()
+        return item
+
+    async def get(self, symptom_code_id: UUID) -> MaintenanceSymptomCode | None:
+        return await self.session.get(MaintenanceSymptomCode, symptom_code_id)
+
+    async def list(self) -> Sequence[MaintenanceSymptomCode]:
+        result = await self.session.scalars(
+            select(MaintenanceSymptomCode).order_by(MaintenanceSymptomCode.code.asc())
+        )
+        return result.all()
+
+
+class MaintenanceFailureModeRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenanceFailureMode) -> MaintenanceFailureMode:
+        self.session.add(item)
+        await self.session.flush()
+        return item
+
+    async def get(self, failure_mode_id: UUID) -> MaintenanceFailureMode | None:
+        return await self.session.get(MaintenanceFailureMode, failure_mode_id)
+
+    async def list(self) -> Sequence[MaintenanceFailureMode]:
+        result = await self.session.scalars(
+            select(MaintenanceFailureMode).order_by(MaintenanceFailureMode.code.asc())
+        )
+        return result.all()
+
+
+class MaintenanceRootCauseCodeRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenanceRootCauseCode) -> MaintenanceRootCauseCode:
+        self.session.add(item)
+        await self.session.flush()
+        return item
+
+    async def get(self, root_cause_code_id: UUID) -> MaintenanceRootCauseCode | None:
+        return await self.session.get(MaintenanceRootCauseCode, root_cause_code_id)
+
+    async def list(self) -> Sequence[MaintenanceRootCauseCode]:
+        result = await self.session.scalars(
+            select(MaintenanceRootCauseCode).order_by(MaintenanceRootCauseCode.code.asc())
+        )
+        return result.all()
+
+
+class AssetFailureRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: AssetFailure) -> AssetFailure:
+        self.session.add(item)
+        await self.session.flush()
+        await self.session.refresh(
+            item,
+            attribute_names=[
+                "asset",
+                "maintenance_request",
+                "work_order",
+                "failure_mode",
+                "symptom_code",
+                "root_cause_code",
+            ],
+        )
+        return item
+
+    async def get(self, failure_id: UUID) -> AssetFailure | None:
+        stmt = (
+            select(AssetFailure)
+            .options(
+                selectinload(AssetFailure.asset),
+                selectinload(AssetFailure.maintenance_request),
+                selectinload(AssetFailure.work_order),
+                selectinload(AssetFailure.failure_mode),
+                selectinload(AssetFailure.symptom_code),
+                selectinload(AssetFailure.root_cause_code),
+            )
+            .where(AssetFailure.id == failure_id)
+        )
+        return await self.session.scalar(stmt)
+
+    async def list(
+        self,
+        pagination: PaginationParams,
+        *,
+        asset_id: UUID | None = None,
+        work_order_id: UUID | None = None,
+        status: str | None = None,
+        failure_mode_id: UUID | None = None,
+        root_cause_code_id: UUID | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+    ) -> tuple[Sequence[AssetFailure], int]:
+        stmt: Select[tuple[AssetFailure]] = select(AssetFailure).options(
+            selectinload(AssetFailure.asset),
+            selectinload(AssetFailure.maintenance_request),
+            selectinload(AssetFailure.work_order),
+            selectinload(AssetFailure.failure_mode),
+            selectinload(AssetFailure.symptom_code),
+            selectinload(AssetFailure.root_cause_code),
+        )
+        count_stmt = select(func.count()).select_from(AssetFailure)
+
+        if pagination.search:
+            search_value = f"%{pagination.search}%"
+            search_filter = or_(
+                AssetFailure.failure_number.ilike(search_value),
+                AssetFailure.failure_description.ilike(search_value),
+                AssetFailure.root_cause_description.ilike(search_value),
+                AssetFailure.corrective_action.ilike(search_value),
+                AssetFailure.preventive_action.ilike(search_value),
+            )
+            stmt = stmt.where(search_filter)
+            count_stmt = count_stmt.where(search_filter)
+
+        if asset_id is not None:
+            stmt = stmt.where(AssetFailure.asset_id == asset_id)
+            count_stmt = count_stmt.where(AssetFailure.asset_id == asset_id)
+        if work_order_id is not None:
+            stmt = stmt.where(AssetFailure.work_order_id == work_order_id)
+            count_stmt = count_stmt.where(AssetFailure.work_order_id == work_order_id)
+        if status is not None:
+            stmt = stmt.where(AssetFailure.status == status)
+            count_stmt = count_stmt.where(AssetFailure.status == status)
+        if failure_mode_id is not None:
+            stmt = stmt.where(AssetFailure.failure_mode_id == failure_mode_id)
+            count_stmt = count_stmt.where(AssetFailure.failure_mode_id == failure_mode_id)
+        if root_cause_code_id is not None:
+            stmt = stmt.where(AssetFailure.root_cause_code_id == root_cause_code_id)
+            count_stmt = count_stmt.where(AssetFailure.root_cause_code_id == root_cause_code_id)
+        if date_from is not None:
+            stmt = stmt.where(AssetFailure.detected_at >= date_from)
+            count_stmt = count_stmt.where(AssetFailure.detected_at >= date_from)
+        if date_to is not None:
+            stmt = stmt.where(AssetFailure.detected_at <= date_to)
+            count_stmt = count_stmt.where(AssetFailure.detected_at <= date_to)
+
+        sort_column = getattr(AssetFailure, pagination.sort or "detected_at")
+        if pagination.order == "desc":
+            sort_column = sort_column.desc()
+
+        offset = (pagination.page - 1) * pagination.page_size
+        stmt = stmt.order_by(sort_column).offset(offset).limit(pagination.page_size)
+        items = await self.session.scalars(stmt)
+        total_items = await self.session.scalar(count_stmt) or 0
+        return items.all(), total_items
+
+    async def list_by_work_order(self, work_order_id: UUID) -> Sequence[AssetFailure]:
+        stmt = (
+            select(AssetFailure)
+            .options(
+                selectinload(AssetFailure.asset),
+                selectinload(AssetFailure.maintenance_request),
+                selectinload(AssetFailure.work_order),
+                selectinload(AssetFailure.failure_mode),
+                selectinload(AssetFailure.symptom_code),
+                selectinload(AssetFailure.root_cause_code),
+            )
+            .where(AssetFailure.work_order_id == work_order_id)
+            .order_by(AssetFailure.detected_at.desc(), AssetFailure.created_at.desc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+
 class MaintenanceRequestRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -408,6 +588,7 @@ class MaintenanceWorkOrderRepository:
                 "priority",
                 "requests",
                 "assignments",
+                "failures",
                 "part_usages",
                 "labor_logs",
                 "downtimes",
@@ -427,6 +608,11 @@ class MaintenanceWorkOrderRepository:
                     MaintenanceRequestWorkOrder.request
                 ),
                 selectinload(MaintenanceWorkOrder.assignments),
+                selectinload(MaintenanceWorkOrder.failures).selectinload(AssetFailure.failure_mode),
+                selectinload(MaintenanceWorkOrder.failures).selectinload(AssetFailure.symptom_code),
+                selectinload(MaintenanceWorkOrder.failures).selectinload(
+                    AssetFailure.root_cause_code
+                ),
                 selectinload(MaintenanceWorkOrder.part_usages),
                 selectinload(MaintenanceWorkOrder.labor_logs),
                 selectinload(MaintenanceWorkOrder.downtimes),
@@ -445,6 +631,7 @@ class MaintenanceWorkOrderRepository:
             selectinload(MaintenanceWorkOrder.priority),
             selectinload(MaintenanceWorkOrder.requests),
             selectinload(MaintenanceWorkOrder.assignments),
+            selectinload(MaintenanceWorkOrder.failures),
             selectinload(MaintenanceWorkOrder.part_usages),
             selectinload(MaintenanceWorkOrder.labor_logs),
             selectinload(MaintenanceWorkOrder.downtimes),
@@ -477,6 +664,7 @@ class MaintenanceWorkOrderRepository:
                 selectinload(MaintenanceWorkOrder.priority),
                 selectinload(MaintenanceWorkOrder.requests),
                 selectinload(MaintenanceWorkOrder.assignments),
+                selectinload(MaintenanceWorkOrder.failures),
                 selectinload(MaintenanceWorkOrder.part_usages),
                 selectinload(MaintenanceWorkOrder.labor_logs),
                 selectinload(MaintenanceWorkOrder.downtimes),
@@ -506,6 +694,7 @@ class MaintenanceWorkOrderRepository:
                 "priority",
                 "requests",
                 "assignments",
+                "failures",
                 "part_usages",
                 "labor_logs",
                 "downtimes",
@@ -808,6 +997,111 @@ class MaintenanceReportRepository:
             "total_downtime_minutes": total_downtime_minutes,
             "downtime_count": len(downtimes),
             "repeat_failure_asset_count": repeat_failure_asset_count,
+        }
+
+    async def get_failure_analysis_summary(
+        self,
+        *,
+        asset_id: UUID | None = None,
+        failure_mode_id: UUID | None = None,
+        root_cause_code_id: UUID | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+    ) -> dict[str, object]:
+        stmt = select(AssetFailure).options(
+            selectinload(AssetFailure.asset),
+            selectinload(AssetFailure.failure_mode),
+            selectinload(AssetFailure.root_cause_code),
+        )
+
+        if asset_id is not None:
+            stmt = stmt.where(AssetFailure.asset_id == asset_id)
+        if failure_mode_id is not None:
+            stmt = stmt.where(AssetFailure.failure_mode_id == failure_mode_id)
+        if root_cause_code_id is not None:
+            stmt = stmt.where(AssetFailure.root_cause_code_id == root_cause_code_id)
+        if date_from is not None:
+            stmt = stmt.where(AssetFailure.detected_at >= date_from)
+        if date_to is not None:
+            stmt = stmt.where(AssetFailure.detected_at <= date_to)
+
+        failures = list((await self.session.scalars(stmt)).all())
+        failure_count = len(failures)
+        repeat_failure_count = sum(1 for item in failures if item.repeat_failure)
+        caused_shutdown_count = sum(1 for item in failures if item.caused_shutdown)
+        safety_incident_count = sum(1 for item in failures if item.safety_incident)
+        total_downtime_minutes = sum(item.downtime_minutes or 0 for item in failures)
+
+        intervals_in_hours: list[Decimal] = []
+        failures_by_asset: dict[UUID, list[AssetFailure]] = {}
+        for item in failures:
+            failures_by_asset.setdefault(item.asset_id, []).append(item)
+        for asset_failures in failures_by_asset.values():
+            ordered = sorted(asset_failures, key=lambda failure: failure.detected_at)
+            for index in range(1, len(ordered)):
+                delta = ordered[index].detected_at - ordered[index - 1].detected_at
+                intervals_in_hours.append(
+                    Decimal(str(delta.total_seconds())) / Decimal("3600")
+                )
+
+        failure_mode_counts: dict[tuple[UUID | None, str], int] = {}
+        root_cause_counts: dict[tuple[UUID | None, str], int] = {}
+        asset_counts: dict[tuple[UUID, str, str], int] = {}
+        for item in failures:
+            mode_key = (
+                item.failure_mode_id,
+                item.failure_mode.name if item.failure_mode is not None else "Unclassified",
+            )
+            failure_mode_counts[mode_key] = failure_mode_counts.get(mode_key, 0) + 1
+
+            root_cause_key = (
+                item.root_cause_code_id,
+                item.root_cause_code.name
+                if item.root_cause_code is not None
+                else "Unclassified",
+            )
+            root_cause_counts[root_cause_key] = root_cause_counts.get(root_cause_key, 0) + 1
+
+            asset_key = (item.asset_id, item.asset.asset_code, item.asset.asset_name)
+            asset_counts[asset_key] = asset_counts.get(asset_key, 0) + 1
+
+        top_failure_modes = [
+            {"id": key[0], "name": key[1], "failure_count": count}
+            for key, count in sorted(
+                failure_mode_counts.items(),
+                key=lambda entry: (-entry[1], entry[0][1]),
+            )[:5]
+        ]
+        top_root_causes = [
+            {"id": key[0], "name": key[1], "failure_count": count}
+            for key, count in sorted(
+                root_cause_counts.items(),
+                key=lambda entry: (-entry[1], entry[0][1]),
+            )[:5]
+        ]
+        top_assets = [
+            {
+                "asset_id": key[0],
+                "asset_code": key[1],
+                "asset_name": key[2],
+                "failure_count": count,
+            }
+            for key, count in sorted(
+                asset_counts.items(),
+                key=lambda entry: (-entry[1], entry[0][1], entry[0][2]),
+            )[:5]
+        ]
+
+        return {
+            "failure_count": failure_count,
+            "repeat_failure_count": repeat_failure_count,
+            "caused_shutdown_count": caused_shutdown_count,
+            "safety_incident_count": safety_incident_count,
+            "total_downtime_minutes": total_downtime_minutes,
+            "intervals_in_hours": intervals_in_hours,
+            "top_failure_modes": top_failure_modes,
+            "top_root_causes": top_root_causes,
+            "top_assets": top_assets,
         }
 
     async def list_cost_report(

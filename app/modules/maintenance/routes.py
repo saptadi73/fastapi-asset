@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import (
+    get_current_user,
     get_session,
     require_maintenance_read,
     require_maintenance_report_read,
@@ -14,7 +15,11 @@ from app.api.dependencies import (
 from app.modules.attachments.constants import AttachmentEntityType
 from app.modules.attachments.schemas import AttachmentCreate, AttachmentRead
 from app.modules.attachments.service import AttachmentService
+from app.modules.auth.models import AppUser
 from app.modules.maintenance.schemas import (
+    AssetFailureCreate,
+    AssetFailureListItemRead,
+    AssetFailureRead,
     MaintenanceChecklistExecutionRead,
     MaintenanceChecklistExecutionStartPayload,
     MaintenanceChecklistResultSubmitPayload,
@@ -23,9 +28,12 @@ from app.modules.maintenance.schemas import (
     MaintenanceConvertToWorkOrderPayload,
     MaintenanceDowntimeCreate,
     MaintenanceDowntimeRead,
+    MaintenanceFailureAnalysisReportRead,
     MaintenanceFindingCreateRequestPayload,
     MaintenanceFindingRead,
     MaintenanceLaborLogCreate,
+    MaintenanceMasterCodeCreate,
+    MaintenanceMasterCodeRead,
     MaintenancePartUsageCreate,
     MaintenancePlanAssetCreate,
     MaintenancePlanCreate,
@@ -97,6 +105,114 @@ async def list_maintenance_priorities(
         message="Daftar maintenance priority berhasil diambil.",
         data=[
             MaintenancePriorityRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
+    )
+
+
+@router.post(
+    "/symptom-codes",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def create_maintenance_symptom_code(
+    request: Request,
+    payload: MaintenanceMasterCodeCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.create_symptom_code(payload)
+    return success_response(
+        request=request,
+        message="Maintenance symptom code berhasil dibuat.",
+        data=MaintenanceMasterCodeRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get("/symptom-codes", dependencies=[Depends(require_maintenance_read)])
+async def list_maintenance_symptom_codes(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.list_symptom_codes()
+    return success_response(
+        request=request,
+        message="Daftar maintenance symptom code berhasil diambil.",
+        data=[
+            MaintenanceMasterCodeRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
+    )
+
+
+@router.post(
+    "/failure-modes",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def create_maintenance_failure_mode(
+    request: Request,
+    payload: MaintenanceMasterCodeCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.create_failure_mode(payload)
+    return success_response(
+        request=request,
+        message="Maintenance failure mode berhasil dibuat.",
+        data=MaintenanceMasterCodeRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get("/failure-modes", dependencies=[Depends(require_maintenance_read)])
+async def list_maintenance_failure_modes(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.list_failure_modes()
+    return success_response(
+        request=request,
+        message="Daftar maintenance failure mode berhasil diambil.",
+        data=[
+            MaintenanceMasterCodeRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
+    )
+
+
+@router.post(
+    "/root-cause-codes",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def create_maintenance_root_cause_code(
+    request: Request,
+    payload: MaintenanceMasterCodeCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.create_root_cause_code(payload)
+    return success_response(
+        request=request,
+        message="Maintenance root cause code berhasil dibuat.",
+        data=MaintenanceMasterCodeRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get("/root-cause-codes", dependencies=[Depends(require_maintenance_read)])
+async def list_maintenance_root_cause_codes(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.list_root_cause_codes()
+    return success_response(
+        request=request,
+        message="Daftar maintenance root cause code berhasil diambil.",
+        data=[
+            MaintenanceMasterCodeRead.model_validate(item).model_dump(mode="json")
             for item in items
         ],
     )
@@ -871,6 +987,98 @@ async def list_maintenance_work_order_downtimes(
     )
 
 
+@router.post(
+    "/work-orders/{work_order_id}/failures",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def create_maintenance_work_order_failure(
+    request: Request,
+    work_order_id: UUID,
+    payload: AssetFailureCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.create_failure(
+        work_order_id,
+        payload.model_copy(
+            update={
+                "created_by": current_user.id,
+                "detected_by_employee_id": payload.detected_by_employee_id or current_user.id,
+            }
+        ),
+    )
+    return success_response(
+        request=request,
+        message="Asset failure berhasil dicatat pada work order.",
+        data=MaintenanceWorkOrderRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get("/failures", dependencies=[Depends(require_maintenance_read)])
+async def list_maintenance_failures(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    search: str | None = None,
+    sort: str = Query(
+        default="detected_at",
+        pattern="^(failure_number|detected_at|failure_severity|status|created_at)$",
+    ),
+    order: str = Query(default="desc", pattern="^(asc|desc)$"),
+    asset_id: UUID | None = None,
+    work_order_id: UUID | None = None,
+    status_filter: str | None = Query(default=None, alias="status"),
+    failure_mode_id: UUID | None = None,
+    root_cause_code_id: UUID | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict:
+    service = MaintenanceService(session)
+    pagination = PaginationParams(
+        page=page,
+        page_size=page_size,
+        search=search,
+        sort=sort,
+        order=order,
+    )
+    parsed_date_from = datetime.fromisoformat(date_from) if date_from else None
+    parsed_date_to = datetime.fromisoformat(date_to) if date_to else None
+    items, total_items = await service.list_failures(
+        pagination,
+        asset_id=asset_id,
+        work_order_id=work_order_id,
+        status=status_filter,
+        failure_mode_id=failure_mode_id,
+        root_cause_code_id=root_cause_code_id,
+        date_from=parsed_date_from,
+        date_to=parsed_date_to,
+    )
+    return success_response(
+        request=request,
+        message="Daftar asset failure berhasil diambil.",
+        data=[AssetFailureListItemRead.from_model(item).model_dump(mode="json") for item in items],
+        pagination=PaginationMeta.create(page=page, page_size=page_size, total_items=total_items),
+    )
+
+
+@router.get("/failures/{failure_id}", dependencies=[Depends(require_maintenance_read)])
+async def get_maintenance_failure(
+    request: Request,
+    failure_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.get_failure(failure_id)
+    return success_response(
+        request=request,
+        message="Detail asset failure berhasil diambil.",
+        data=AssetFailureRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
 @router.get(
     "/work-orders/{work_order_id}/events",
     dependencies=[Depends(require_maintenance_read)],
@@ -1005,6 +1213,36 @@ async def get_maintenance_reliability_report(
     )
 
 
+@router.get(
+    "/reports/failure-analysis",
+    dependencies=[Depends(require_maintenance_report_read)],
+)
+async def get_maintenance_failure_analysis_report(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    asset_id: UUID | None = None,
+    failure_mode_id: UUID | None = None,
+    root_cause_code_id: UUID | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict:
+    service = MaintenanceService(session)
+    parsed_date_from = datetime.fromisoformat(date_from) if date_from else None
+    parsed_date_to = datetime.fromisoformat(date_to) if date_to else None
+    item = await service.get_failure_analysis_report(
+        asset_id=asset_id,
+        failure_mode_id=failure_mode_id,
+        root_cause_code_id=root_cause_code_id,
+        date_from=parsed_date_from,
+        date_to=parsed_date_to,
+    )
+    return success_response(
+        request=request,
+        message="Report failure analysis maintenance berhasil diambil.",
+        data=MaintenanceFailureAnalysisReportRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
 @router.get("/checklists/{checklist_id}", dependencies=[Depends(require_maintenance_read)])
 async def get_maintenance_checklist_execution(
     request: Request,
@@ -1120,6 +1358,60 @@ async def create_maintenance_finding_attachment(
     return success_response(
         request=request,
         message="Attachment maintenance finding berhasil dibuat.",
+        data=AttachmentRead.model_validate(item).model_dump(mode="json", by_alias=True),
+    )
+
+
+@router.get(
+    "/failures/{failure_id}/attachments",
+    dependencies=[Depends(require_maintenance_read)],
+)
+async def list_maintenance_failure_attachments(
+    request: Request,
+    failure_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AttachmentService(session)
+    items = await service.list_entity_attachments(
+        entity_type=AttachmentEntityType.ASSET_FAILURE.value,
+        entity_id=failure_id,
+    )
+    return success_response(
+        request=request,
+        message="Daftar attachment asset failure berhasil diambil.",
+        data=[
+            AttachmentRead.model_validate(item).model_dump(mode="json", by_alias=True)
+            for item in items
+        ],
+    )
+
+
+@router.post(
+    "/failures/{failure_id}/attachments",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def create_maintenance_failure_attachment(
+    request: Request,
+    failure_id: UUID,
+    payload: AttachmentCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
+) -> dict:
+    service = AttachmentService(session)
+    enriched_payload = payload.model_copy(
+        update={
+            "entity_type": AttachmentEntityType.ASSET_FAILURE,
+            "entity_id": failure_id,
+            "created_by": current_user.id,
+            "captured_by": payload.captured_by or current_user.id,
+            "file": payload.file.model_copy(update={"uploaded_by": current_user.id}),
+        }
+    )
+    item = await service.create_attachment(enriched_payload)
+    return success_response(
+        request=request,
+        message="Attachment asset failure berhasil dibuat.",
         data=AttachmentRead.model_validate(item).model_dump(mode="json", by_alias=True),
     )
 

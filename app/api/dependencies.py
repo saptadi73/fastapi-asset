@@ -22,7 +22,6 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 async def get_current_auth_context(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
-    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> AuthContext:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise AppError(
@@ -30,8 +29,14 @@ async def get_current_auth_context(
             message="Bearer token diperlukan.",
             status_code=401,
         )
-    service = AuthService(session)
-    return await service.get_current_user(credentials.credentials)
+    async for session in get_db_session():
+        service = AuthService(session)
+        return await service.get_current_user(credentials.credentials)
+    raise AppError(
+        code="AUTH_SESSION_UNAVAILABLE",
+        message="Session autentikasi tidak tersedia.",
+        status_code=500,
+    )
 
 
 async def get_current_user(
