@@ -358,6 +358,32 @@ class MaintenanceCostReportItemRead(BaseModel):
         )
 
 
+class MaintenanceSlaReportRead(BaseModel):
+    generated_at: datetime
+    response_sla_target_count: int
+    response_sla_met_count: int
+    response_sla_breached_count: int
+    response_sla_compliance_pct: Decimal
+    resolution_sla_target_count: int
+    resolution_sla_met_count: int
+    resolution_sla_breached_count: int
+    resolution_sla_compliance_pct: Decimal
+
+
+class MaintenanceReliabilityReportRead(BaseModel):
+    generated_at: datetime
+    completed_repair_count: int
+    breakdown_work_order_count: int
+    preventive_work_order_count: int
+    unplanned_work_order_count: int
+    planned_work_order_count: int
+    mttr_minutes: Decimal
+    total_downtime_minutes: int
+    average_downtime_minutes: Decimal
+    planned_vs_unplanned_ratio: Decimal
+    repeat_failure_asset_count: int
+
+
 class MaintenanceRequestRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

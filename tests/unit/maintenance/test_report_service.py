@@ -31,6 +31,29 @@ def service() -> MaintenanceService:
             }
         ),
         list_cost_report=AsyncMock(return_value=([], 0)),
+        get_sla_summary=AsyncMock(
+            return_value={
+                "response_sla_target_count": 10,
+                "response_sla_met_count": 8,
+                "response_sla_breached_count": 2,
+                "resolution_sla_target_count": 6,
+                "resolution_sla_met_count": 3,
+                "resolution_sla_breached_count": 3,
+            }
+        ),
+        get_reliability_summary=AsyncMock(
+            return_value={
+                "completed_repair_count": 4,
+                "breakdown_work_order_count": 3,
+                "preventive_work_order_count": 2,
+                "unplanned_work_order_count": 5,
+                "planned_work_order_count": 5,
+                "total_repair_minutes": 600,
+                "total_downtime_minutes": 240,
+                "downtime_count": 3,
+                "repeat_failure_asset_count": 2,
+            }
+        ),
     )
     return svc
 
@@ -75,3 +98,24 @@ async def test_get_cost_report_serializes_work_orders(service: MaintenanceServic
     assert total_items == 1
     assert items[0].work_order_number == "WO-REP-001"
     assert items[0].total_actual_cost == 500000
+
+
+@pytest.mark.asyncio
+async def test_get_sla_report_calculates_compliance(service: MaintenanceService) -> None:
+    item = await service.get_sla_report()
+
+    assert item.response_sla_compliance_pct == 80
+    assert item.resolution_sla_compliance_pct == 50
+    service.reports.get_sla_summary.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_get_reliability_report_calculates_metrics(
+    service: MaintenanceService,
+) -> None:
+    item = await service.get_reliability_report()
+
+    assert item.mttr_minutes == 150
+    assert item.average_downtime_minutes == 80
+    assert item.planned_vs_unplanned_ratio == 1
+    assert item.repeat_failure_asset_count == 2

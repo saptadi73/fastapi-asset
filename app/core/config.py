@@ -33,6 +33,26 @@ class Settings(BaseSettings):
     cors_allow_credentials: bool = Field(default=True, alias="CORS_ALLOW_CREDENTIALS")
     trusted_hosts: list[str] = Field(default_factory=list, alias="TRUSTED_HOSTS")
 
+    jwt_secret_key: str = Field(default="change-me", alias="JWT_SECRET_KEY")
+    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    jwt_access_token_minutes: int = Field(default=15, alias="JWT_ACCESS_TOKEN_MINUTES")
+    jwt_refresh_token_days: int = Field(default=7, alias="JWT_REFRESH_TOKEN_DAYS")
+    jwt_issuer: str = Field(default="asset-management-api", alias="JWT_ISSUER")
+    jwt_audience: str = Field(default="asset-management-client", alias="JWT_AUDIENCE")
+
+    auth_bootstrap_admin_email: str | None = Field(
+        default=None,
+        alias="AUTH_BOOTSTRAP_ADMIN_EMAIL",
+    )
+    auth_bootstrap_admin_password: str | None = Field(
+        default=None,
+        alias="AUTH_BOOTSTRAP_ADMIN_PASSWORD",
+    )
+    auth_bootstrap_admin_full_name: str = Field(
+        default="System Administrator",
+        alias="AUTH_BOOTSTRAP_ADMIN_FULL_NAME",
+    )
+
 
 @lru_cache
 def get_settings() -> Settings:

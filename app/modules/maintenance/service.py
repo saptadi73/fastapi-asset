@@ -102,6 +102,7 @@ from app.modules.maintenance.schemas import (
     MaintenancePlanCreate,
     MaintenancePlanGeneratePayload,
     MaintenancePriorityCreate,
+    MaintenanceReliabilityReportRead,
     MaintenanceRequestActionPayload,
     MaintenanceRequestCreate,
     MaintenanceRequestRejectPayload,
@@ -109,6 +110,7 @@ from app.modules.maintenance.schemas import (
     MaintenanceScheduleConfirmPayload,
     MaintenanceScheduleCreate,
     MaintenanceScheduleReschedulePayload,
+    MaintenanceSlaReportRead,
     MaintenanceTeamCreate,
     MaintenanceTeamMemberCreate,
     MaintenanceWorkOrderAssignPayload,
@@ -1770,6 +1772,94 @@ class MaintenanceService:
             date_to=date_to,
         )
         return [MaintenanceCostReportItemRead.from_model(item) for item in items], total_items
+
+    async def get_sla_report(
+        self,
+        *,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+    ) -> MaintenanceSlaReportRead:
+        generated_at = datetime.now(UTC)
+        summary = await self.reports.get_sla_summary(
+            as_of=generated_at,
+            date_from=date_from,
+            date_to=date_to,
+        )
+        response_target = summary["response_sla_target_count"]
+        resolution_target = summary["resolution_sla_target_count"]
+        response_pct = Decimal("0")
+        resolution_pct = Decimal("0")
+        if response_target > 0:
+            response_pct = (
+                Decimal(summary["response_sla_met_count"])
+                * Decimal("100")
+                / Decimal(response_target)
+            ).quantize(Decimal("0.01"))
+        if resolution_target > 0:
+            resolution_pct = (
+                Decimal(summary["resolution_sla_met_count"])
+                * Decimal("100")
+                / Decimal(resolution_target)
+            ).quantize(Decimal("0.01"))
+        return MaintenanceSlaReportRead(
+            generated_at=generated_at,
+            response_sla_target_count=response_target,
+            response_sla_met_count=summary["response_sla_met_count"],
+            response_sla_breached_count=summary["response_sla_breached_count"],
+            response_sla_compliance_pct=response_pct,
+            resolution_sla_target_count=resolution_target,
+            resolution_sla_met_count=summary["resolution_sla_met_count"],
+            resolution_sla_breached_count=summary["resolution_sla_breached_count"],
+            resolution_sla_compliance_pct=resolution_pct,
+        )
+
+    async def get_reliability_report(
+        self,
+        *,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+    ) -> MaintenanceReliabilityReportRead:
+        generated_at = datetime.now(UTC)
+        summary = await self.reports.get_reliability_summary(
+            date_from=date_from,
+            date_to=date_to,
+        )
+        completed_repair_count = int(summary["completed_repair_count"])
+        unplanned_work_order_count = int(summary["unplanned_work_order_count"])
+        planned_work_order_count = int(summary["planned_work_order_count"])
+        total_repair_minutes = Decimal(str(summary["total_repair_minutes"]))
+        total_downtime_minutes = int(summary["total_downtime_minutes"])
+        downtime_count = int(summary["downtime_count"])
+
+        mttr_minutes = Decimal("0")
+        average_downtime_minutes = Decimal("0")
+        planned_vs_unplanned_ratio = Decimal("0")
+        if completed_repair_count > 0:
+            mttr_minutes = (total_repair_minutes / Decimal(completed_repair_count)).quantize(
+                Decimal("0.01")
+            )
+        if downtime_count > 0:
+            average_downtime_minutes = (
+                Decimal(total_downtime_minutes) / Decimal(downtime_count)
+            ).quantize(Decimal("0.01"))
+        if unplanned_work_order_count > 0:
+            planned_vs_unplanned_ratio = (
+                Decimal(planned_work_order_count) / Decimal(unplanned_work_order_count)
+            ).quantize(Decimal("0.01"))
+
+        return MaintenanceReliabilityReportRead(
+            generated_at=generated_at,
+            completed_repair_count=completed_repair_count,
+            breakdown_work_order_count=int(summary["breakdown_work_order_count"]),
+            preventive_work_order_count=int(summary["preventive_work_order_count"]),
+            unplanned_work_order_count=unplanned_work_order_count,
+            planned_work_order_count=planned_work_order_count,
+            mttr_minutes=mttr_minutes,
+            total_downtime_minutes=total_downtime_minutes,
+            average_downtime_minutes=average_downtime_minutes,
+            planned_vs_unplanned_ratio=planned_vs_unplanned_ratio,
+            repeat_failure_asset_count=int(summary["repeat_failure_asset_count"]),
+        )
 
     def _validate_checklist_result_entry(
         self,

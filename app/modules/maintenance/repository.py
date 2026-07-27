@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import Select, func, not_, or_, select
@@ -668,6 +669,145 @@ class MaintenanceReportRepository:
             "overdue_work_order_count": overdue_work_order_count or 0,
             "active_schedule_count": active_schedule_count or 0,
             "overdue_schedule_count": overdue_schedule_count or 0,
+        }
+
+    async def get_sla_summary(
+        self,
+        *,
+        as_of: datetime,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+    ) -> dict[str, int]:
+        response_stmt = select(MaintenanceRequest).where(
+            MaintenanceRequest.required_response_at.is_not(None)
+        )
+        resolution_stmt = select(MaintenanceRequest).where(
+            MaintenanceRequest.required_resolution_at.is_not(None)
+        )
+
+        if date_from is not None:
+            response_stmt = response_stmt.where(MaintenanceRequest.reported_at >= date_from)
+            resolution_stmt = resolution_stmt.where(MaintenanceRequest.reported_at >= date_from)
+
+        if date_to is not None:
+            response_stmt = response_stmt.where(MaintenanceRequest.reported_at <= date_to)
+            resolution_stmt = resolution_stmt.where(MaintenanceRequest.reported_at <= date_to)
+
+        response_items = (await self.session.scalars(response_stmt)).all()
+        resolution_items = (await self.session.scalars(resolution_stmt)).all()
+
+        response_met_count = sum(
+            1
+            for item in response_items
+            if item.triaged_at is not None and item.triaged_at <= item.required_response_at
+        )
+        response_breached_count = sum(
+            1
+            for item in response_items
+            if (item.triaged_at is not None and item.triaged_at > item.required_response_at)
+            or (
+                item.triaged_at is None
+                and item.status not in ["REJECTED", "CANCELLED"]
+                and item.required_response_at < as_of
+            )
+        )
+
+        resolution_met_count = sum(
+            1
+            for item in resolution_items
+            if (
+                item.status in ["RESOLVED", "CLOSED", "CONVERTED_TO_WORK_ORDER"]
+                and item.updated_at <= item.required_resolution_at
+            )
+        )
+        resolution_breached_count = sum(
+            1
+            for item in resolution_items
+            if (
+                item.status in ["RESOLVED", "CLOSED", "CONVERTED_TO_WORK_ORDER"]
+                and item.updated_at > item.required_resolution_at
+            )
+            or (
+                item.status not in ["RESOLVED", "CLOSED", "REJECTED", "CANCELLED"]
+                and item.required_resolution_at < as_of
+            )
+        )
+
+        return {
+            "response_sla_target_count": len(response_items),
+            "response_sla_met_count": response_met_count,
+            "response_sla_breached_count": response_breached_count,
+            "resolution_sla_target_count": len(resolution_items),
+            "resolution_sla_met_count": resolution_met_count,
+            "resolution_sla_breached_count": resolution_breached_count,
+        }
+
+    async def get_reliability_summary(
+        self,
+        *,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+    ) -> dict[str, int | Decimal]:
+        work_order_stmt = select(MaintenanceWorkOrder).where(
+            MaintenanceWorkOrder.actual_start_at.is_not(None),
+            MaintenanceWorkOrder.actual_end_at.is_not(None),
+        )
+        downtime_stmt = select(MaintenanceDowntime)
+
+        if date_from is not None:
+            work_order_stmt = work_order_stmt.where(
+                MaintenanceWorkOrder.actual_end_at >= date_from
+            )
+            downtime_stmt = downtime_stmt.where(MaintenanceDowntime.started_at >= date_from)
+
+        if date_to is not None:
+            work_order_stmt = work_order_stmt.where(MaintenanceWorkOrder.actual_end_at <= date_to)
+            downtime_stmt = downtime_stmt.where(MaintenanceDowntime.started_at <= date_to)
+
+        work_orders = (await self.session.scalars(work_order_stmt)).all()
+        downtimes = (await self.session.scalars(downtime_stmt)).all()
+
+        completed_repairs = [
+            item for item in work_orders if item.status in ["COMPLETED", "VERIFICATION", "CLOSED"]
+        ]
+        breakdown_work_order_count = len(
+            [item for item in work_orders if item.maintenance_type == "BREAKDOWN"]
+        )
+        preventive_work_order_count = len(
+            [item for item in work_orders if item.maintenance_type == "PREVENTIVE"]
+        )
+        unplanned_work_order_count = len(
+            [
+                item
+                for item in work_orders
+                if item.maintenance_type in ["BREAKDOWN", "CORRECTIVE", "EMERGENCY"]
+            ]
+        )
+        planned_work_order_count = len(work_orders) - unplanned_work_order_count
+
+        total_repair_minutes = sum(
+            int((item.actual_end_at - item.actual_start_at).total_seconds() // 60)
+            for item in completed_repairs
+        )
+        total_downtime_minutes = sum(item.duration_minutes or 0 for item in downtimes)
+        repeat_failure_asset_count = len(
+            {
+                item.asset_id
+                for item in work_orders
+                if item.maintenance_type in ["BREAKDOWN", "CORRECTIVE", "EMERGENCY"]
+            }
+        )
+
+        return {
+            "completed_repair_count": len(completed_repairs),
+            "breakdown_work_order_count": breakdown_work_order_count,
+            "preventive_work_order_count": preventive_work_order_count,
+            "unplanned_work_order_count": unplanned_work_order_count,
+            "planned_work_order_count": planned_work_order_count,
+            "total_repair_minutes": total_repair_minutes,
+            "total_downtime_minutes": total_downtime_minutes,
+            "downtime_count": len(downtimes),
+            "repeat_failure_asset_count": repeat_failure_asset_count,
         }
 
     async def list_cost_report(

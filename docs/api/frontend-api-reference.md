@@ -57,6 +57,63 @@ Untuk endpoint list:
 Frontend dapat membaca `meta.pagination` untuk membangun table, infinite list,
 atau pagination control.
 
+## Authentication
+
+### `POST /auth/login`
+
+Login dengan email dan password.
+
+Request:
+
+```json
+{
+  "email": "admin@example.com",
+  "password": "Admin12345!"
+}
+```
+
+Response `data` berisi:
+
+- `user`
+- `tokens.access_token`
+- `tokens.refresh_token`
+- `tokens.token_type`
+- `tokens.access_token_expires_at`
+- `tokens.refresh_token_expires_at`
+
+### `POST /auth/refresh`
+
+Memutar refresh token dan menghasilkan pasangan token baru.
+
+Request:
+
+```json
+{
+  "refresh_token": "<jwt-refresh-token>"
+}
+```
+
+Catatan frontend:
+
+- simpan refresh token terbaru setelah refresh berhasil
+- refresh token lama tidak boleh dipakai ulang
+
+### `POST /auth/logout`
+
+Logout session aktif berdasarkan bearer access token.
+
+Header:
+
+- `Authorization: Bearer <access_token>`
+
+### `GET /auth/me`
+
+Mengambil profil user yang sedang login.
+
+Header:
+
+- `Authorization: Bearer <access_token>`
+
 ## Business Partners
 
 ### `POST /business-partners`
@@ -925,6 +982,62 @@ Field utama pada response item:
 - `total_actual_cost`
 - `actual_end_at`
 - `closed_at`
+
+### `GET /maintenance/reports/sla`
+
+Mengambil ringkasan kepatuhan SLA maintenance request.
+
+Query:
+
+- `date_from`: ISO datetime
+- `date_to`: ISO datetime
+
+Field utama pada response:
+
+- `response_sla_target_count`
+- `response_sla_met_count`
+- `response_sla_breached_count`
+- `response_sla_compliance_pct`
+- `resolution_sla_target_count`
+- `resolution_sla_met_count`
+- `resolution_sla_breached_count`
+- `resolution_sla_compliance_pct`
+
+Catatan implementasi saat ini:
+
+- response SLA dihitung dari `required_response_at` vs `triaged_at`
+- resolution SLA dihitung dari `required_resolution_at` vs status akhir request
+  dan `updated_at`
+
+### `GET /maintenance/reports/reliability`
+
+Mengambil ringkasan reliability maintenance dari work order dan downtime yang
+sudah tercatat.
+
+Query:
+
+- `date_from`: ISO datetime
+- `date_to`: ISO datetime
+
+Field utama pada response:
+
+- `completed_repair_count`
+- `breakdown_work_order_count`
+- `preventive_work_order_count`
+- `unplanned_work_order_count`
+- `planned_work_order_count`
+- `mttr_minutes`
+- `total_downtime_minutes`
+- `average_downtime_minutes`
+- `planned_vs_unplanned_ratio`
+- `repeat_failure_asset_count`
+
+Catatan implementasi saat ini:
+
+- MTTR dihitung dari rata-rata durasi work order yang sudah punya
+  `actual_start_at` dan `actual_end_at`
+- downtime diambil dari tabel `maintenance_downtimes`
+- ratio planned vs unplanned memakai klasifikasi work order yang sudah ada
 
 ### `POST /maintenance/schedules`
 

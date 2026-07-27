@@ -5,7 +5,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_session
+from app.api.dependencies import (
+    get_session,
+    require_maintenance_read,
+    require_maintenance_report_read,
+    require_maintenance_write,
+)
 from app.modules.attachments.constants import AttachmentEntityType
 from app.modules.attachments.schemas import AttachmentCreate, AttachmentRead
 from app.modules.attachments.service import AttachmentService
@@ -29,6 +34,7 @@ from app.modules.maintenance.schemas import (
     MaintenancePlanRead,
     MaintenancePriorityCreate,
     MaintenancePriorityRead,
+    MaintenanceReliabilityReportRead,
     MaintenanceRequestActionPayload,
     MaintenanceRequestCreate,
     MaintenanceRequestListItemRead,
@@ -40,6 +46,7 @@ from app.modules.maintenance.schemas import (
     MaintenanceScheduleListItemRead,
     MaintenanceScheduleRead,
     MaintenanceScheduleReschedulePayload,
+    MaintenanceSlaReportRead,
     MaintenanceTeamCreate,
     MaintenanceTeamListItemRead,
     MaintenanceTeamMemberCreate,
@@ -59,7 +66,11 @@ from app.shared.responses import success_response
 router = APIRouter(prefix="/maintenance")
 
 
-@router.post("/priorities", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/priorities",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def create_maintenance_priority(
     request: Request,
     payload: MaintenancePriorityCreate,
@@ -74,7 +85,7 @@ async def create_maintenance_priority(
     )
 
 
-@router.get("/priorities")
+@router.get("/priorities", dependencies=[Depends(require_maintenance_read)])
 async def list_maintenance_priorities(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -91,7 +102,11 @@ async def list_maintenance_priorities(
     )
 
 
-@router.post("/checklist-templates", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/checklist-templates",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def create_maintenance_checklist_template(
     request: Request,
     payload: MaintenanceChecklistTemplateCreate,
@@ -106,7 +121,10 @@ async def create_maintenance_checklist_template(
     )
 
 
-@router.get("/checklist-templates/{template_id}")
+@router.get(
+    "/checklist-templates/{template_id}",
+    dependencies=[Depends(require_maintenance_read)],
+)
 async def get_maintenance_checklist_template(
     request: Request,
     template_id: UUID,
@@ -121,7 +139,11 @@ async def get_maintenance_checklist_template(
     )
 
 
-@router.post("/plans", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/plans",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def create_maintenance_plan(
     request: Request,
     payload: MaintenancePlanCreate,
@@ -136,7 +158,7 @@ async def create_maintenance_plan(
     )
 
 
-@router.get("/plans")
+@router.get("/plans", dependencies=[Depends(require_maintenance_read)])
 async def list_maintenance_plans(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -166,7 +188,7 @@ async def list_maintenance_plans(
     )
 
 
-@router.get("/plans/{plan_id}")
+@router.get("/plans/{plan_id}", dependencies=[Depends(require_maintenance_read)])
 async def get_maintenance_plan(
     request: Request,
     plan_id: UUID,
@@ -181,7 +203,11 @@ async def get_maintenance_plan(
     )
 
 
-@router.post("/plans/{plan_id}/assets", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/plans/{plan_id}/assets",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def add_maintenance_plan_asset(
     request: Request,
     plan_id: UUID,
@@ -197,7 +223,10 @@ async def add_maintenance_plan_asset(
     )
 
 
-@router.post("/plans/{plan_id}/generate")
+@router.post(
+    "/plans/{plan_id}/generate",
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def generate_maintenance_plan_schedules(
     request: Request,
     plan_id: UUID,
@@ -216,7 +245,11 @@ async def generate_maintenance_plan_schedules(
     )
 
 
-@router.post("/teams", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/teams",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def create_maintenance_team(
     request: Request,
     payload: MaintenanceTeamCreate,
@@ -231,7 +264,7 @@ async def create_maintenance_team(
     )
 
 
-@router.get("/teams")
+@router.get("/teams", dependencies=[Depends(require_maintenance_read)])
 async def list_maintenance_teams(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -261,7 +294,7 @@ async def list_maintenance_teams(
     )
 
 
-@router.get("/teams/{team_id}")
+@router.get("/teams/{team_id}", dependencies=[Depends(require_maintenance_read)])
 async def get_maintenance_team(
     request: Request,
     team_id: UUID,
@@ -276,7 +309,11 @@ async def get_maintenance_team(
     )
 
 
-@router.post("/teams/{team_id}/members", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/teams/{team_id}/members",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def add_maintenance_team_member(
     request: Request,
     team_id: UUID,
@@ -292,7 +329,11 @@ async def add_maintenance_team_member(
     )
 
 
-@router.post("/requests", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/requests",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def create_maintenance_request(
     request: Request,
     payload: MaintenanceRequestCreate,
@@ -307,7 +348,7 @@ async def create_maintenance_request(
     )
 
 
-@router.get("/requests")
+@router.get("/requests", dependencies=[Depends(require_maintenance_read)])
 async def list_maintenance_requests(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -337,7 +378,7 @@ async def list_maintenance_requests(
     )
 
 
-@router.get("/requests/{request_id}")
+@router.get("/requests/{request_id}", dependencies=[Depends(require_maintenance_read)])
 async def get_maintenance_request(
     request: Request,
     request_id: UUID,
@@ -352,7 +393,10 @@ async def get_maintenance_request(
     )
 
 
-@router.post("/requests/{request_id}/submit")
+@router.post(
+    "/requests/{request_id}/submit",
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def submit_maintenance_request(
     request: Request,
     request_id: UUID,
@@ -368,7 +412,10 @@ async def submit_maintenance_request(
     )
 
 
-@router.post("/requests/{request_id}/triage")
+@router.post(
+    "/requests/{request_id}/triage",
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def triage_maintenance_request(
     request: Request,
     request_id: UUID,
@@ -384,7 +431,10 @@ async def triage_maintenance_request(
     )
 
 
-@router.post("/requests/{request_id}/approve")
+@router.post(
+    "/requests/{request_id}/approve",
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def approve_maintenance_request(
     request: Request,
     request_id: UUID,
@@ -400,7 +450,10 @@ async def approve_maintenance_request(
     )
 
 
-@router.post("/requests/{request_id}/reject")
+@router.post(
+    "/requests/{request_id}/reject",
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def reject_maintenance_request(
     request: Request,
     request_id: UUID,
@@ -416,7 +469,11 @@ async def reject_maintenance_request(
     )
 
 
-@router.post("/requests/{request_id}/convert-to-work-order", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/requests/{request_id}/convert-to-work-order",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def convert_request_to_work_order(
     request: Request,
     request_id: UUID,
@@ -432,7 +489,10 @@ async def convert_request_to_work_order(
     )
 
 
-@router.get("/requests/{request_id}/attachments")
+@router.get(
+    "/requests/{request_id}/attachments",
+    dependencies=[Depends(require_maintenance_read)],
+)
 async def list_maintenance_request_attachments(
     request: Request,
     request_id: UUID,
@@ -453,7 +513,11 @@ async def list_maintenance_request_attachments(
     )
 
 
-@router.post("/requests/{request_id}/attachments", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/requests/{request_id}/attachments",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def create_maintenance_request_attachment(
     request: Request,
     request_id: UUID,
@@ -475,7 +539,10 @@ async def create_maintenance_request_attachment(
     )
 
 
-@router.get("/work-orders/{work_order_id}/attachments")
+@router.get(
+    "/work-orders/{work_order_id}/attachments",
+    dependencies=[Depends(require_maintenance_read)],
+)
 async def list_maintenance_work_order_attachments(
     request: Request,
     work_order_id: UUID,
@@ -496,7 +563,11 @@ async def list_maintenance_work_order_attachments(
     )
 
 
-@router.post("/work-orders/{work_order_id}/attachments", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/work-orders/{work_order_id}/attachments",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def create_maintenance_work_order_attachment(
     request: Request,
     work_order_id: UUID,
@@ -518,7 +589,11 @@ async def create_maintenance_work_order_attachment(
     )
 
 
-@router.post("/work-orders", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/work-orders",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def create_maintenance_work_order(
     request: Request,
     payload: MaintenanceWorkOrderCreate,
@@ -533,7 +608,7 @@ async def create_maintenance_work_order(
     )
 
 
-@router.get("/work-orders")
+@router.get("/work-orders", dependencies=[Depends(require_maintenance_read)])
 async def list_maintenance_work_orders(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -566,7 +641,7 @@ async def list_maintenance_work_orders(
     )
 
 
-@router.get("/work-orders/{work_order_id}")
+@router.get("/work-orders/{work_order_id}", dependencies=[Depends(require_maintenance_read)])
 async def get_maintenance_work_order(
     request: Request,
     work_order_id: UUID,
@@ -581,7 +656,10 @@ async def get_maintenance_work_order(
     )
 
 
-@router.post("/work-orders/{work_order_id}/approve")
+@router.post(
+    "/work-orders/{work_order_id}/approve",
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def approve_maintenance_work_order(
     request: Request,
     work_order_id: UUID,
@@ -597,7 +675,10 @@ async def approve_maintenance_work_order(
     )
 
 
-@router.post("/work-orders/{work_order_id}/assign")
+@router.post(
+    "/work-orders/{work_order_id}/assign",
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def assign_maintenance_work_order(
     request: Request,
     work_order_id: UUID,
@@ -613,7 +694,10 @@ async def assign_maintenance_work_order(
     )
 
 
-@router.post("/work-orders/{work_order_id}/start")
+@router.post(
+    "/work-orders/{work_order_id}/start",
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def start_maintenance_work_order(
     request: Request,
     work_order_id: UUID,
@@ -629,7 +713,10 @@ async def start_maintenance_work_order(
     )
 
 
-@router.post("/work-orders/{work_order_id}/complete")
+@router.post(
+    "/work-orders/{work_order_id}/complete",
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def complete_maintenance_work_order(
     request: Request,
     work_order_id: UUID,
@@ -645,7 +732,10 @@ async def complete_maintenance_work_order(
     )
 
 
-@router.post("/work-orders/{work_order_id}/verify")
+@router.post(
+    "/work-orders/{work_order_id}/verify",
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def verify_maintenance_work_order(
     request: Request,
     work_order_id: UUID,
@@ -661,7 +751,10 @@ async def verify_maintenance_work_order(
     )
 
 
-@router.post("/work-orders/{work_order_id}/close")
+@router.post(
+    "/work-orders/{work_order_id}/close",
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def close_maintenance_work_order(
     request: Request,
     work_order_id: UUID,
@@ -677,7 +770,11 @@ async def close_maintenance_work_order(
     )
 
 
-@router.post("/work-orders/{work_order_id}/checklists", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/work-orders/{work_order_id}/checklists",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def start_maintenance_work_order_checklist(
     request: Request,
     work_order_id: UUID,
@@ -693,7 +790,11 @@ async def start_maintenance_work_order_checklist(
     )
 
 
-@router.post("/work-orders/{work_order_id}/parts", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/work-orders/{work_order_id}/parts",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def create_maintenance_work_order_part_usage(
     request: Request,
     work_order_id: UUID,
@@ -709,7 +810,11 @@ async def create_maintenance_work_order_part_usage(
     )
 
 
-@router.post("/work-orders/{work_order_id}/labor-logs", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/work-orders/{work_order_id}/labor-logs",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def create_maintenance_work_order_labor_log(
     request: Request,
     work_order_id: UUID,
@@ -725,7 +830,11 @@ async def create_maintenance_work_order_labor_log(
     )
 
 
-@router.post("/work-orders/{work_order_id}/downtimes", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/work-orders/{work_order_id}/downtimes",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def create_maintenance_work_order_downtime(
     request: Request,
     work_order_id: UUID,
@@ -741,7 +850,10 @@ async def create_maintenance_work_order_downtime(
     )
 
 
-@router.get("/work-orders/{work_order_id}/downtimes")
+@router.get(
+    "/work-orders/{work_order_id}/downtimes",
+    dependencies=[Depends(require_maintenance_read)],
+)
 async def list_maintenance_work_order_downtimes(
     request: Request,
     work_order_id: UUID,
@@ -759,7 +871,10 @@ async def list_maintenance_work_order_downtimes(
     )
 
 
-@router.get("/work-orders/{work_order_id}/events")
+@router.get(
+    "/work-orders/{work_order_id}/events",
+    dependencies=[Depends(require_maintenance_read)],
+)
 async def list_maintenance_work_order_events(
     request: Request,
     work_order_id: UUID,
@@ -777,7 +892,10 @@ async def list_maintenance_work_order_events(
     )
 
 
-@router.get("/reports/backlog")
+@router.get(
+    "/reports/backlog",
+    dependencies=[Depends(require_maintenance_report_read)],
+)
 async def get_maintenance_backlog_report(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -791,7 +909,10 @@ async def get_maintenance_backlog_report(
     )
 
 
-@router.get("/reports/cost")
+@router.get(
+    "/reports/cost",
+    dependencies=[Depends(require_maintenance_report_read)],
+)
 async def get_maintenance_cost_report(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -836,7 +957,55 @@ async def get_maintenance_cost_report(
     )
 
 
-@router.get("/checklists/{checklist_id}")
+@router.get(
+    "/reports/sla",
+    dependencies=[Depends(require_maintenance_report_read)],
+)
+async def get_maintenance_sla_report(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict:
+    service = MaintenanceService(session)
+    parsed_date_from = datetime.fromisoformat(date_from) if date_from else None
+    parsed_date_to = datetime.fromisoformat(date_to) if date_to else None
+    item = await service.get_sla_report(
+        date_from=parsed_date_from,
+        date_to=parsed_date_to,
+    )
+    return success_response(
+        request=request,
+        message="Report SLA maintenance berhasil diambil.",
+        data=MaintenanceSlaReportRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get(
+    "/reports/reliability",
+    dependencies=[Depends(require_maintenance_report_read)],
+)
+async def get_maintenance_reliability_report(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict:
+    service = MaintenanceService(session)
+    parsed_date_from = datetime.fromisoformat(date_from) if date_from else None
+    parsed_date_to = datetime.fromisoformat(date_to) if date_to else None
+    item = await service.get_reliability_report(
+        date_from=parsed_date_from,
+        date_to=parsed_date_to,
+    )
+    return success_response(
+        request=request,
+        message="Report reliability maintenance berhasil diambil.",
+        data=MaintenanceReliabilityReportRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get("/checklists/{checklist_id}", dependencies=[Depends(require_maintenance_read)])
 async def get_maintenance_checklist_execution(
     request: Request,
     checklist_id: UUID,
@@ -851,7 +1020,10 @@ async def get_maintenance_checklist_execution(
     )
 
 
-@router.post("/checklists/{checklist_id}/results")
+@router.post(
+    "/checklists/{checklist_id}/results",
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def submit_maintenance_checklist_results(
     request: Request,
     checklist_id: UUID,
@@ -867,7 +1039,7 @@ async def submit_maintenance_checklist_results(
     )
 
 
-@router.get("/findings/{finding_id}")
+@router.get("/findings/{finding_id}", dependencies=[Depends(require_maintenance_read)])
 async def get_maintenance_finding(
     request: Request,
     finding_id: UUID,
@@ -882,7 +1054,11 @@ async def get_maintenance_finding(
     )
 
 
-@router.post("/findings/{finding_id}/create-request", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/findings/{finding_id}/create-request",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def create_request_from_maintenance_finding(
     request: Request,
     finding_id: UUID,
@@ -898,7 +1074,10 @@ async def create_request_from_maintenance_finding(
     )
 
 
-@router.get("/findings/{finding_id}/attachments")
+@router.get(
+    "/findings/{finding_id}/attachments",
+    dependencies=[Depends(require_maintenance_read)],
+)
 async def list_maintenance_finding_attachments(
     request: Request,
     finding_id: UUID,
@@ -919,7 +1098,11 @@ async def list_maintenance_finding_attachments(
     )
 
 
-@router.post("/findings/{finding_id}/attachments", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/findings/{finding_id}/attachments",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def create_maintenance_finding_attachment(
     request: Request,
     finding_id: UUID,
@@ -941,7 +1124,11 @@ async def create_maintenance_finding_attachment(
     )
 
 
-@router.post("/schedules", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/schedules",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def create_maintenance_schedule(
     request: Request,
     payload: MaintenanceScheduleCreate,
@@ -956,7 +1143,7 @@ async def create_maintenance_schedule(
     )
 
 
-@router.get("/schedules")
+@router.get("/schedules", dependencies=[Depends(require_maintenance_read)])
 async def list_maintenance_schedules(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -989,7 +1176,7 @@ async def list_maintenance_schedules(
     )
 
 
-@router.get("/schedules/{schedule_id}")
+@router.get("/schedules/{schedule_id}", dependencies=[Depends(require_maintenance_read)])
 async def get_maintenance_schedule(
     request: Request,
     schedule_id: UUID,
@@ -1004,7 +1191,10 @@ async def get_maintenance_schedule(
     )
 
 
-@router.post("/schedules/{schedule_id}/confirm")
+@router.post(
+    "/schedules/{schedule_id}/confirm",
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def confirm_maintenance_schedule(
     request: Request,
     schedule_id: UUID,
@@ -1020,7 +1210,10 @@ async def confirm_maintenance_schedule(
     )
 
 
-@router.post("/schedules/{schedule_id}/reschedule")
+@router.post(
+    "/schedules/{schedule_id}/reschedule",
+    dependencies=[Depends(require_maintenance_write)],
+)
 async def reschedule_maintenance_schedule(
     request: Request,
     schedule_id: UUID,
