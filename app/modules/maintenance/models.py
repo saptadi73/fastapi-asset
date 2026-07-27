@@ -170,6 +170,8 @@ class MaintenanceWorkOrder(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     part_usages: Mapped[list[MaintenancePartUsage]] = relationship(back_populates="work_order")
     labor_logs: Mapped[list[MaintenanceLaborLog]] = relationship(back_populates="work_order")
+    downtimes: Mapped[list[MaintenanceDowntime]] = relationship(back_populates="work_order")
+    events: Mapped[list[MaintenanceWorkOrderEvent]] = relationship(back_populates="work_order")
 
 
 class MaintenanceRequestWorkOrder(UUIDPrimaryKeyMixin, Base):
@@ -581,3 +583,48 @@ class MaintenanceLaborLog(UUIDPrimaryKeyMixin, Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
     work_order: Mapped[MaintenanceWorkOrder] = relationship(back_populates="labor_logs")
+
+
+class MaintenanceDowntime(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_downtimes"
+
+    asset_id: Mapped[UUID] = mapped_column(
+        ForeignKey("assets.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    maintenance_request_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("maintenance_requests.id", ondelete="SET NULL")
+    )
+    work_order_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("maintenance_work_orders.id", ondelete="SET NULL")
+    )
+    downtime_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    duration_minutes: Mapped[int | None] = mapped_column(Integer)
+    production_loss_quantity: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+    unit_of_measure: Mapped[str | None] = mapped_column(String(20))
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+
+    asset = relationship("Asset")
+    request: Mapped[MaintenanceRequest | None] = relationship()
+    work_order: Mapped[MaintenanceWorkOrder | None] = relationship(back_populates="downtimes")
+
+
+class MaintenanceWorkOrderEvent(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_work_order_events"
+
+    work_order_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_work_orders.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    event_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    previous_status: Mapped[str | None] = mapped_column(String(30))
+    new_status: Mapped[str | None] = mapped_column(String(30))
+    event_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    performed_by: Mapped[UUID | None] = mapped_column(nullable=True)
+    employee_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text)
+    event_payload: Mapped[dict | None] = mapped_column(JSONB)
+
+    work_order: Mapped[MaintenanceWorkOrder] = relationship(back_populates="events")

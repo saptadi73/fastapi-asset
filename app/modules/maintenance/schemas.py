@@ -11,6 +11,7 @@ from app.modules.maintenance.constants import (
     ChecklistFailureResponseRule,
     ChecklistResponseType,
     ChecklistResultStatus,
+    MaintenanceDowntimeType,
     MaintenanceFindingSeverity,
     MaintenanceFindingType,
     MaintenanceLaborActivityType,
@@ -267,6 +268,96 @@ class MaintenanceLaborLogRead(BaseModel):
     notes: str | None
 
 
+class MaintenanceDowntimeCreate(BaseModel):
+    downtime_type: MaintenanceDowntimeType
+    started_at: datetime
+    ended_at: datetime | None = None
+    duration_minutes: int | None = Field(default=None, ge=0)
+    production_loss_quantity: Decimal | None = Field(default=None, ge=0)
+    unit_of_measure: str | None = Field(default=None, max_length=20)
+    reason: str
+
+
+class MaintenanceDowntimeRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    asset_id: UUID
+    maintenance_request_id: UUID | None
+    work_order_id: UUID | None
+    downtime_type: str
+    started_at: datetime
+    ended_at: datetime | None
+    duration_minutes: int | None
+    production_loss_quantity: Decimal | None
+    unit_of_measure: str | None
+    reason: str
+
+
+class MaintenanceWorkOrderEventRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    work_order_id: UUID
+    event_type: str
+    previous_status: str | None
+    new_status: str | None
+    event_at: datetime
+    performed_by: UUID | None
+    employee_id: UUID | None
+    reason: str | None
+    event_payload: dict | None
+
+
+class MaintenanceBacklogReportRead(BaseModel):
+    generated_at: datetime
+    request_backlog_count: int
+    overdue_request_count: int
+    open_work_order_count: int
+    overdue_work_order_count: int
+    active_schedule_count: int
+    overdue_schedule_count: int
+
+
+class MaintenanceCostReportItemRead(BaseModel):
+    work_order_id: UUID
+    work_order_number: str
+    asset_id: UUID
+    asset_code: str
+    asset_name: str
+    maintenance_type: str
+    status: str
+    currency_code: str | None
+    actual_part_cost: Decimal
+    actual_labor_cost: Decimal
+    actual_vendor_cost: Decimal
+    total_actual_cost: Decimal
+    actual_end_at: datetime | None
+    closed_at: datetime | None
+
+    @classmethod
+    def from_model(cls, item: object) -> MaintenanceCostReportItemRead:
+        actual_part_cost = item.actual_part_cost or Decimal("0")
+        actual_labor_cost = item.actual_labor_cost or Decimal("0")
+        actual_vendor_cost = item.actual_vendor_cost or Decimal("0")
+        return cls(
+            work_order_id=item.id,
+            work_order_number=item.work_order_number,
+            asset_id=item.asset_id,
+            asset_code=item.asset.asset_code,
+            asset_name=item.asset.asset_name,
+            maintenance_type=item.maintenance_type,
+            status=item.status,
+            currency_code=item.currency_code,
+            actual_part_cost=actual_part_cost,
+            actual_labor_cost=actual_labor_cost,
+            actual_vendor_cost=actual_vendor_cost,
+            total_actual_cost=actual_part_cost + actual_labor_cost + actual_vendor_cost,
+            actual_end_at=item.actual_end_at,
+            closed_at=item.closed_at,
+        )
+
+
 class MaintenanceRequestRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -386,6 +477,8 @@ class MaintenanceWorkOrderRead(BaseModel):
     assignments: list[MaintenanceWorkOrderAssignmentRead] = []
     part_usages: list[MaintenancePartUsageRead] = []
     labor_logs: list[MaintenanceLaborLogRead] = []
+    downtimes: list[MaintenanceDowntimeRead] = []
+    events: list[MaintenanceWorkOrderEventRead] = []
 
 
 class MaintenanceWorkOrderListItemRead(BaseModel):
@@ -891,6 +984,10 @@ class AssetMaintenanceHistoryItemRead(BaseModel):
     completion_summary: str | None
     asset_condition_before: str | None
     asset_condition_after: str | None
+    downtime_count: int = 0
+    total_downtime_minutes: int = 0
+    labor_log_count: int = 0
+    work_order_event_count: int = 0
     priority: MaintenancePriorityRead
 
     @classmethod
@@ -908,5 +1005,11 @@ class AssetMaintenanceHistoryItemRead(BaseModel):
             completion_summary=item.completion_summary,
             asset_condition_before=item.asset_condition_before,
             asset_condition_after=item.asset_condition_after,
+            downtime_count=len(getattr(item, "downtimes", [])),
+            total_downtime_minutes=sum(
+                downtime.duration_minutes or 0 for downtime in getattr(item, "downtimes", [])
+            ),
+            labor_log_count=len(getattr(item, "labor_logs", [])),
+            work_order_event_count=len(getattr(item, "events", [])),
             priority=MaintenancePriorityRead.model_validate(item.priority),
         )

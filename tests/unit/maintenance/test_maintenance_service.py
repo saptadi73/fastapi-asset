@@ -36,6 +36,7 @@ def service() -> MaintenanceService:
     svc.findings = SimpleNamespace(list_by_work_order=AsyncMock(return_value=[]))
     svc.part_usages = SimpleNamespace(list_by_work_order=AsyncMock(return_value=[]))
     svc.labor_logs = SimpleNamespace(list_by_work_order=AsyncMock(return_value=[]))
+    svc.events = SimpleNamespace(create=AsyncMock(), list_by_work_order=AsyncMock(return_value=[]))
     svc.assets = SimpleNamespace(get=AsyncMock(), update=AsyncMock())
     svc.priorities = SimpleNamespace(get=AsyncMock())
     svc.partners = SimpleNamespace(get=AsyncMock())
@@ -89,6 +90,7 @@ async def test_convert_request_to_work_order_updates_request_status(
         asset_id=asset_id,
         priority_id=priority_id,
         title="Motor panas",
+        reported_at=datetime(2026, 7, 27, 9, 0, tzinfo=UTC),
     )
     created_work_order = SimpleNamespace(id=uuid4())
     service.get_request = AsyncMock(return_value=request)

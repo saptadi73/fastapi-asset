@@ -45,6 +45,7 @@ def service() -> MaintenanceService:
     )
     svc.checklist_results = SimpleNamespace(create=AsyncMock())
     svc.findings = SimpleNamespace(create=AsyncMock(), get=AsyncMock(), update=AsyncMock())
+    svc.events = SimpleNamespace(create=AsyncMock(), list_by_work_order=AsyncMock(return_value=[]))
     svc.requests = SimpleNamespace(create=AsyncMock(), update=AsyncMock())
     svc.assets = SimpleNamespace(get=AsyncMock())
     svc.priorities = SimpleNamespace(get=AsyncMock())

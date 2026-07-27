@@ -1,15 +1,18 @@
 from collections.abc import Sequence
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Select, func, or_, select
+from sqlalchemy import Select, func, not_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.modules.assets.models import Asset
 from app.modules.maintenance.models import (
     MaintenanceChecklistExecution,
     MaintenanceChecklistResult,
     MaintenanceChecklistTemplate,
     MaintenanceChecklistTemplateItem,
+    MaintenanceDowntime,
     MaintenanceFinding,
     MaintenanceLaborLog,
     MaintenancePartUsage,
@@ -23,6 +26,7 @@ from app.modules.maintenance.models import (
     MaintenanceTeamMember,
     MaintenanceWorkOrder,
     MaintenanceWorkOrderAssignment,
+    MaintenanceWorkOrderEvent,
 )
 from app.shared.pagination import PaginationParams
 
@@ -405,6 +409,8 @@ class MaintenanceWorkOrderRepository:
                 "assignments",
                 "part_usages",
                 "labor_logs",
+                "downtimes",
+                "events",
             ],
         )
         return item
@@ -422,6 +428,8 @@ class MaintenanceWorkOrderRepository:
                 selectinload(MaintenanceWorkOrder.assignments),
                 selectinload(MaintenanceWorkOrder.part_usages),
                 selectinload(MaintenanceWorkOrder.labor_logs),
+                selectinload(MaintenanceWorkOrder.downtimes),
+                selectinload(MaintenanceWorkOrder.events),
             )
             .where(MaintenanceWorkOrder.id == work_order_id)
         )
@@ -438,6 +446,8 @@ class MaintenanceWorkOrderRepository:
             selectinload(MaintenanceWorkOrder.assignments),
             selectinload(MaintenanceWorkOrder.part_usages),
             selectinload(MaintenanceWorkOrder.labor_logs),
+            selectinload(MaintenanceWorkOrder.downtimes),
+            selectinload(MaintenanceWorkOrder.events),
         )
         count_stmt = select(func.count()).select_from(MaintenanceWorkOrder)
         if pagination.search:
@@ -468,6 +478,8 @@ class MaintenanceWorkOrderRepository:
                 selectinload(MaintenanceWorkOrder.assignments),
                 selectinload(MaintenanceWorkOrder.part_usages),
                 selectinload(MaintenanceWorkOrder.labor_logs),
+                selectinload(MaintenanceWorkOrder.downtimes),
+                selectinload(MaintenanceWorkOrder.events),
             )
             .where(MaintenanceWorkOrder.asset_id == asset_id)
             .order_by(
@@ -495,6 +507,8 @@ class MaintenanceWorkOrderRepository:
                 "assignments",
                 "part_usages",
                 "labor_logs",
+                "downtimes",
+                "events",
             ],
         )
         return item
@@ -536,6 +550,188 @@ class MaintenanceLaborLogRepository:
         )
         result = await self.session.scalars(stmt)
         return result.all()
+
+
+class MaintenanceDowntimeRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenanceDowntime) -> MaintenanceDowntime:
+        self.session.add(item)
+        await self.session.flush()
+        await self.session.refresh(item, attribute_names=["asset", "request", "work_order"])
+        return item
+
+    async def list_by_work_order(self, work_order_id: UUID) -> Sequence[MaintenanceDowntime]:
+        stmt = (
+            select(MaintenanceDowntime)
+            .options(
+                selectinload(MaintenanceDowntime.asset),
+                selectinload(MaintenanceDowntime.request),
+            )
+            .where(MaintenanceDowntime.work_order_id == work_order_id)
+            .order_by(MaintenanceDowntime.started_at.asc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+
+class MaintenanceWorkOrderEventRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenanceWorkOrderEvent) -> MaintenanceWorkOrderEvent:
+        self.session.add(item)
+        await self.session.flush()
+        return item
+
+    async def list_by_work_order(self, work_order_id: UUID) -> Sequence[MaintenanceWorkOrderEvent]:
+        stmt = (
+            select(MaintenanceWorkOrderEvent)
+            .where(MaintenanceWorkOrderEvent.work_order_id == work_order_id)
+            .order_by(MaintenanceWorkOrderEvent.event_at.asc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+
+class MaintenanceReportRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def get_backlog_summary(self, *, as_of: datetime) -> dict[str, int]:
+        request_backlog_statuses = [
+            "SUBMITTED",
+            "TRIAGE",
+            "WAITING_INFORMATION",
+            "APPROVED",
+            "IN_PROGRESS",
+        ]
+        request_terminal_statuses = [
+            "REJECTED",
+            "CONVERTED_TO_WORK_ORDER",
+            "RESOLVED",
+            "CLOSED",
+            "CANCELLED",
+        ]
+        active_schedule_statuses = ["PLANNED", "CONFIRMED", "DISPATCHED", "IN_PROGRESS"]
+
+        request_backlog_count = await self.session.scalar(
+            select(func.count())
+            .select_from(MaintenanceRequest)
+            .where(MaintenanceRequest.status.in_(request_backlog_statuses))
+        )
+        overdue_request_count = await self.session.scalar(
+            select(func.count())
+            .select_from(MaintenanceRequest)
+            .where(
+                MaintenanceRequest.required_response_at.is_not(None),
+                MaintenanceRequest.required_response_at < as_of,
+                not_(MaintenanceRequest.status.in_(request_terminal_statuses)),
+            )
+        )
+        open_work_order_count = await self.session.scalar(
+            select(func.count())
+            .select_from(MaintenanceWorkOrder)
+            .where(not_(MaintenanceWorkOrder.status.in_(["CLOSED", "CANCELLED"])))
+        )
+        overdue_work_order_count = await self.session.scalar(
+            select(func.count())
+            .select_from(MaintenanceWorkOrder)
+            .where(
+                MaintenanceWorkOrder.planned_end_at.is_not(None),
+                MaintenanceWorkOrder.planned_end_at < as_of,
+                not_(
+                    MaintenanceWorkOrder.status.in_(
+                        ["COMPLETED", "VERIFICATION", "CLOSED", "CANCELLED"]
+                    )
+                ),
+            )
+        )
+        active_schedule_count = await self.session.scalar(
+            select(func.count())
+            .select_from(MaintenanceSchedule)
+            .where(MaintenanceSchedule.status.in_(active_schedule_statuses))
+        )
+        overdue_schedule_count = await self.session.scalar(
+            select(func.count())
+            .select_from(MaintenanceSchedule)
+            .where(
+                MaintenanceSchedule.scheduled_end_at < as_of,
+                MaintenanceSchedule.status.in_(active_schedule_statuses),
+            )
+        )
+        return {
+            "request_backlog_count": request_backlog_count or 0,
+            "overdue_request_count": overdue_request_count or 0,
+            "open_work_order_count": open_work_order_count or 0,
+            "overdue_work_order_count": overdue_work_order_count or 0,
+            "active_schedule_count": active_schedule_count or 0,
+            "overdue_schedule_count": overdue_schedule_count or 0,
+        }
+
+    async def list_cost_report(
+        self,
+        pagination: PaginationParams,
+        *,
+        asset_id: UUID | None = None,
+        maintenance_type: str | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+    ) -> tuple[Sequence[MaintenanceWorkOrder], int]:
+        stmt: Select[tuple[MaintenanceWorkOrder]] = (
+            select(MaintenanceWorkOrder)
+            .options(selectinload(MaintenanceWorkOrder.asset))
+        )
+        count_stmt = select(func.count()).select_from(MaintenanceWorkOrder)
+
+        if pagination.search:
+            search_value = f"%{pagination.search}%"
+            stmt = stmt.join(MaintenanceWorkOrder.asset)
+            count_stmt = count_stmt.join(MaintenanceWorkOrder.asset)
+            search_filter = or_(
+                MaintenanceWorkOrder.work_order_number.ilike(search_value),
+                MaintenanceWorkOrder.title.ilike(search_value),
+                MaintenanceWorkOrder.maintenance_type.ilike(search_value),
+                Asset.asset_code.ilike(search_value),
+                Asset.asset_name.ilike(search_value),
+            )
+            stmt = stmt.where(search_filter)
+            count_stmt = count_stmt.where(search_filter)
+
+        if asset_id is not None:
+            stmt = stmt.where(MaintenanceWorkOrder.asset_id == asset_id)
+            count_stmt = count_stmt.where(MaintenanceWorkOrder.asset_id == asset_id)
+
+        if maintenance_type is not None:
+            stmt = stmt.where(MaintenanceWorkOrder.maintenance_type == maintenance_type)
+            count_stmt = count_stmt.where(MaintenanceWorkOrder.maintenance_type == maintenance_type)
+
+        if date_from is not None:
+            date_filter = or_(
+                MaintenanceWorkOrder.actual_end_at >= date_from,
+                MaintenanceWorkOrder.closed_at >= date_from,
+            )
+            stmt = stmt.where(date_filter)
+            count_stmt = count_stmt.where(date_filter)
+
+        if date_to is not None:
+            date_filter = or_(
+                MaintenanceWorkOrder.actual_end_at <= date_to,
+                MaintenanceWorkOrder.closed_at <= date_to,
+            )
+            stmt = stmt.where(date_filter)
+            count_stmt = count_stmt.where(date_filter)
+
+        sort_column = getattr(MaintenanceWorkOrder, pagination.sort or "closed_at")
+        if pagination.order == "desc":
+            sort_column = sort_column.desc()
+
+        offset = (pagination.page - 1) * pagination.page_size
+        stmt = stmt.order_by(sort_column).offset(offset).limit(pagination.page_size)
+        items = await self.session.scalars(stmt)
+        total_items = await self.session.scalar(count_stmt) or 0
+        return items.all(), total_items
 
 
 class MaintenanceRequestWorkOrderRepository:

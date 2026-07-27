@@ -695,7 +695,8 @@ Query:
 
 ### `GET /maintenance/work-orders/{work_order_id}`
 
-Mengambil detail work order beserta asset, priority, request link, dan assignment.
+Mengambil detail work order beserta asset, priority, request link, assignment,
+downtime, event lifecycle, part usage, dan labor log.
 
 ### `POST /maintenance/work-orders/{work_order_id}/approve`
 
@@ -785,6 +786,73 @@ Perilaku backend:
 - biaya aktual labor pada work order dihitung ulang dari labor log yang
   tersimpan
 
+### `POST /maintenance/work-orders/{work_order_id}/downtimes`
+
+Mencatat downtime yang terkait ke work order.
+
+Perilaku backend:
+
+- `asset_id` downtime otomatis mengikuti asset pada work order
+- `maintenance_request_id` akan ikut terhubung bila work order berasal dari
+  maintenance request
+- jika `ended_at` dikirim tetapi `duration_minutes` kosong, backend menghitung
+  durasi downtime otomatis
+- setiap pencatatan downtime otomatis membuat event `DOWNTIME_RECORDED`
+
+Contoh request:
+
+```json
+{
+  "downtime_type": "UNPLANNED",
+  "started_at": "2026-07-27T08:00:00Z",
+  "ended_at": "2026-07-27T09:30:00Z",
+  "production_loss_quantity": 120.5,
+  "unit_of_measure": "PCS",
+  "reason": "Motor conveyor trip mendadak"
+}
+```
+
+### `GET /maintenance/work-orders/{work_order_id}/downtimes`
+
+Mengambil daftar downtime pada work order untuk tab downtime, analytics durasi,
+atau ringkasan loss produksi.
+
+Field penting pada response item:
+
+- `downtime_type`
+- `started_at`
+- `ended_at`
+- `duration_minutes`
+- `production_loss_quantity`
+- `unit_of_measure`
+- `reason`
+
+### `GET /maintenance/work-orders/{work_order_id}/events`
+
+Mengambil histori event lifecycle work order secara kronologis.
+
+Use case frontend:
+
+- timeline progress work order
+- audit aktivitas work order
+- badge atau log otomatis untuk checklist, finding, part issue, labor log, dan
+  downtime
+
+Contoh event yang saat ini dapat muncul:
+
+- `CREATED`
+- `APPROVED`
+- `ASSIGNED`
+- `STARTED`
+- `DOWNTIME_RECORDED`
+- `CHECKLIST_COMPLETED`
+- `FINDING_CREATED`
+- `PART_ISSUED`
+- `LABOR_LOGGED`
+- `COMPLETED`
+- `VERIFIED`
+- `CLOSED`
+
 ### `GET /maintenance/checklists/{checklist_id}`
 
 Mengambil detail checklist execution, hasil tiap item, dan finding yang
@@ -813,6 +881,50 @@ Perilaku backend:
 - source request yang dibuat adalah `CHECKLIST_FINDING`
 - finding yang sama tidak boleh membuat request lebih dari satu kali
 - jika `submit = true`, request baru langsung dibuat dalam status `SUBMITTED`
+
+### `GET /maintenance/reports/backlog`
+
+Mengambil ringkasan backlog operasional maintenance untuk dashboard.
+
+Field utama pada response:
+
+- `request_backlog_count`
+- `overdue_request_count`
+- `open_work_order_count`
+- `overdue_work_order_count`
+- `active_schedule_count`
+- `overdue_schedule_count`
+- `generated_at`
+
+### `GET /maintenance/reports/cost`
+
+Mengambil daftar biaya aktual maintenance per work order.
+
+Query:
+
+- `page`
+- `page_size`
+- `search`
+- `sort`: `work_order_number`, `maintenance_type`, `status`, `actual_end_at`, `closed_at`, `actual_part_cost`, `actual_labor_cost`, `actual_vendor_cost`
+- `order`: `asc`, `desc`
+- `asset_id`
+- `maintenance_type`
+- `date_from`: ISO datetime
+- `date_to`: ISO datetime
+
+Field utama pada response item:
+
+- `work_order_number`
+- `asset_code`
+- `asset_name`
+- `maintenance_type`
+- `status`
+- `actual_part_cost`
+- `actual_labor_cost`
+- `actual_vendor_cost`
+- `total_actual_cost`
+- `actual_end_at`
+- `closed_at`
 
 ### `POST /maintenance/schedules`
 
@@ -997,6 +1109,13 @@ Mengambil timeline gabungan dari:
 
 Mengambil histori maintenance asset berbasis work order yang pernah terkait
 dengan asset tersebut.
+
+Ringkasan tambahan yang sekarang tersedia per item:
+
+- `downtime_count`
+- `total_downtime_minutes`
+- `labor_log_count`
+- `work_order_event_count`
 
 ## Error Code Awal
 

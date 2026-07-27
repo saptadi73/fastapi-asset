@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -15,6 +16,8 @@ from app.modules.maintenance.schemas import (
     MaintenanceChecklistTemplateCreate,
     MaintenanceChecklistTemplateRead,
     MaintenanceConvertToWorkOrderPayload,
+    MaintenanceDowntimeCreate,
+    MaintenanceDowntimeRead,
     MaintenanceFindingCreateRequestPayload,
     MaintenanceFindingRead,
     MaintenanceLaborLogCreate,
@@ -44,6 +47,7 @@ from app.modules.maintenance.schemas import (
     MaintenanceWorkOrderAssignPayload,
     MaintenanceWorkOrderCompletePayload,
     MaintenanceWorkOrderCreate,
+    MaintenanceWorkOrderEventRead,
     MaintenanceWorkOrderListItemRead,
     MaintenanceWorkOrderRead,
     MaintenanceWorkOrderVerifyPayload,
@@ -718,6 +722,117 @@ async def create_maintenance_work_order_labor_log(
         request=request,
         message="Labor log maintenance work order berhasil dicatat.",
         data=MaintenanceWorkOrderRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post("/work-orders/{work_order_id}/downtimes", status_code=status.HTTP_201_CREATED)
+async def create_maintenance_work_order_downtime(
+    request: Request,
+    work_order_id: UUID,
+    payload: MaintenanceDowntimeCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.create_downtime(work_order_id, payload)
+    return success_response(
+        request=request,
+        message="Downtime maintenance work order berhasil dicatat.",
+        data=MaintenanceWorkOrderRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get("/work-orders/{work_order_id}/downtimes")
+async def list_maintenance_work_order_downtimes(
+    request: Request,
+    work_order_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.list_downtimes(work_order_id)
+    return success_response(
+        request=request,
+        message="Daftar downtime maintenance work order berhasil diambil.",
+        data=[
+            MaintenanceDowntimeRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
+    )
+
+
+@router.get("/work-orders/{work_order_id}/events")
+async def list_maintenance_work_order_events(
+    request: Request,
+    work_order_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.list_work_order_events(work_order_id)
+    return success_response(
+        request=request,
+        message="Daftar event maintenance work order berhasil diambil.",
+        data=[
+            MaintenanceWorkOrderEventRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
+    )
+
+
+@router.get("/reports/backlog")
+async def get_maintenance_backlog_report(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.get_backlog_report()
+    return success_response(
+        request=request,
+        message="Report backlog maintenance berhasil diambil.",
+        data=item.model_dump(mode="json"),
+    )
+
+
+@router.get("/reports/cost")
+async def get_maintenance_cost_report(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    search: str | None = None,
+    sort: str = Query(
+        default="closed_at",
+        pattern=(
+            "^(work_order_number|maintenance_type|status|actual_end_at|closed_at|"
+            "actual_part_cost|actual_labor_cost|actual_vendor_cost)$"
+        ),
+    ),
+    order: str = Query(default="desc", pattern="^(asc|desc)$"),
+    asset_id: UUID | None = None,
+    maintenance_type: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict:
+    service = MaintenanceService(session)
+    pagination = PaginationParams(
+        page=page,
+        page_size=page_size,
+        search=search,
+        sort=sort,
+        order=order,
+    )
+    parsed_date_from = datetime.fromisoformat(date_from) if date_from else None
+    parsed_date_to = datetime.fromisoformat(date_to) if date_to else None
+    items, total_items = await service.get_cost_report(
+        pagination,
+        asset_id=asset_id,
+        maintenance_type=maintenance_type,
+        date_from=parsed_date_from,
+        date_to=parsed_date_to,
+    )
+    return success_response(
+        request=request,
+        message="Report biaya maintenance berhasil diambil.",
+        data=[item.model_dump(mode="json") for item in items],
+        pagination=PaginationMeta.create(page=page, page_size=page_size, total_items=total_items),
     )
 
 
