@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.modules.assets.schemas import AssetLocationRead
 from app.modules.maintenance.constants import (
+    MaintenancePlanTriggerType,
     MaintenanceRequestSourceType,
     MaintenanceRequestType,
     MaintenanceRequestWorkOrderRelationshipType,
@@ -518,4 +519,167 @@ class MaintenanceScheduleListItemRead(BaseModel):
                 if getattr(item, "maintenance_team", None)
                 else None
             ),
+        )
+
+
+class MaintenancePlanCreate(BaseModel):
+    plan_code: str = Field(max_length=50)
+    plan_name: str = Field(max_length=200)
+    asset_id: UUID | None = None
+    asset_category_id: UUID | None = None
+    maintenance_type: MaintenanceType
+    trigger_type: MaintenancePlanTriggerType
+    calendar_interval_value: int | None = Field(default=None, ge=1)
+    calendar_interval_unit: str | None = Field(default=None, max_length=20)
+    meter_id: UUID | None = None
+    meter_interval: Decimal | None = None
+    condition_rule: dict | None = None
+    default_priority_id: UUID
+    default_team_id: UUID | None = None
+    default_vendor_partner_id: UUID | None = None
+    maintenance_contract_id: UUID | None = None
+    checklist_template_id: UUID | None = None
+    estimated_duration_minutes: int | None = Field(default=None, ge=1)
+    lead_time_days: int = Field(default=0, ge=0)
+    auto_create_request: bool = False
+    auto_create_work_order: bool = True
+    requires_approval: bool = False
+    effective_from: date
+    effective_to: date | None = None
+    next_due_date: date | None = None
+    next_due_meter_value: Decimal | None = None
+    is_active: bool = True
+
+
+class MaintenancePlanAssetCreate(BaseModel):
+    asset_id: UUID
+    effective_from: date
+    effective_to: date | None = None
+    override_interval_value: int | None = Field(default=None, ge=1)
+    override_interval_unit: str | None = Field(default=None, max_length=20)
+    is_active: bool = True
+
+
+class MaintenancePlanGeneratePayload(BaseModel):
+    scheduled_start_at: datetime
+    schedule_prefix: str = Field(default="SCH", max_length=20)
+    created_by: UUID
+    create_work_orders: bool | None = None
+
+
+class MaintenancePlanAssetRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    maintenance_plan_id: UUID
+    asset_id: UUID
+    effective_from: date
+    effective_to: date | None
+    override_interval_value: int | None
+    override_interval_unit: str | None
+    is_active: bool
+    asset: MaintenanceAssetReferenceRead
+
+
+class MaintenancePlanRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    plan_code: str
+    plan_name: str
+    asset_id: UUID | None
+    asset_category_id: UUID | None
+    maintenance_type: str
+    trigger_type: str
+    calendar_interval_value: int | None
+    calendar_interval_unit: str | None
+    meter_id: UUID | None
+    meter_interval: Decimal | None
+    condition_rule: dict | None
+    default_priority_id: UUID
+    default_team_id: UUID | None
+    default_vendor_partner_id: UUID | None
+    maintenance_contract_id: UUID | None
+    checklist_template_id: UUID | None
+    estimated_duration_minutes: int | None
+    lead_time_days: int
+    auto_create_request: bool
+    auto_create_work_order: bool
+    requires_approval: bool
+    effective_from: date
+    effective_to: date | None
+    next_due_date: date | None
+    next_due_meter_value: Decimal | None
+    is_active: bool
+    asset: MaintenanceAssetReferenceRead | None = None
+    default_priority: MaintenancePriorityRead
+    default_team: MaintenanceTeamRead | None = None
+    plan_assets: list[MaintenancePlanAssetRead] = []
+
+
+class MaintenancePlanListItemRead(BaseModel):
+    id: UUID
+    plan_code: str
+    plan_name: str
+    maintenance_type: str
+    trigger_type: str
+    asset_id: UUID | None
+    asset_category_id: UUID | None
+    default_priority: MaintenancePriorityRead
+    default_team: MaintenanceTeamRead | None = None
+    is_active: bool
+    plan_asset_count: int
+
+    @classmethod
+    def from_model(cls, item: object) -> MaintenancePlanListItemRead:
+        return cls(
+            id=item.id,
+            plan_code=item.plan_code,
+            plan_name=item.plan_name,
+            maintenance_type=item.maintenance_type,
+            trigger_type=item.trigger_type,
+            asset_id=item.asset_id,
+            asset_category_id=item.asset_category_id,
+            default_priority=MaintenancePriorityRead.model_validate(item.default_priority),
+            default_team=(
+                MaintenanceTeamRead.model_validate(item.default_team)
+                if getattr(item, "default_team", None)
+                else None
+            ),
+            is_active=item.is_active,
+            plan_asset_count=len(getattr(item, "plan_assets", [])),
+        )
+
+
+class AssetMaintenanceHistoryItemRead(BaseModel):
+    work_order_id: UUID
+    work_order_number: str
+    maintenance_type: str
+    status: str
+    title: str
+    planned_start_at: datetime | None
+    actual_start_at: datetime | None
+    actual_end_at: datetime | None
+    closed_at: datetime | None
+    completion_summary: str | None
+    asset_condition_before: str | None
+    asset_condition_after: str | None
+    priority: MaintenancePriorityRead
+
+    @classmethod
+    def from_model(cls, item: object) -> AssetMaintenanceHistoryItemRead:
+        return cls(
+            work_order_id=item.id,
+            work_order_number=item.work_order_number,
+            maintenance_type=item.maintenance_type,
+            status=item.status,
+            title=item.title,
+            planned_start_at=item.planned_start_at,
+            actual_start_at=item.actual_start_at,
+            actual_end_at=item.actual_end_at,
+            closed_at=item.closed_at,
+            completion_summary=item.completion_summary,
+            asset_condition_before=item.asset_condition_before,
+            asset_condition_after=item.asset_condition_after,
+            priority=MaintenancePriorityRead.model_validate(item.priority),
         )

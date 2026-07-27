@@ -125,3 +125,12 @@ class MaintenanceScheduleStatus(StrEnum):
     MISSED = "MISSED"
     POSTPONED = "POSTPONED"
     CANCELLED = "CANCELLED"
+
+
+class MaintenancePlanTriggerType(StrEnum):
+    CALENDAR = "CALENDAR"
+    METER = "METER"
+    CALENDAR_OR_METER = "CALENDAR_OR_METER"
+    CALENDAR_AND_METER = "CALENDAR_AND_METER"
+    CONDITION = "CONDITION"
+    MANUAL = "MANUAL"

@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.modules.maintenance.models import (
+    MaintenancePlan,
+    MaintenancePlanAsset,
     MaintenancePriority,
     MaintenanceRequest,
     MaintenanceRequestWorkOrder,
@@ -37,6 +39,111 @@ class MaintenancePriorityRepository:
                 MaintenancePriority.code.asc(),
             )
         )
+        return result.all()
+
+
+class MaintenancePlanRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenancePlan) -> MaintenancePlan:
+        self.session.add(item)
+        await self.session.flush()
+        await self.session.refresh(
+            item,
+            attribute_names=[
+                "asset",
+                "asset_category",
+                "default_priority",
+                "default_team",
+                "default_vendor_partner",
+                "plan_assets",
+            ],
+        )
+        return item
+
+    async def get(self, plan_id: UUID) -> MaintenancePlan | None:
+        stmt = (
+            select(MaintenancePlan)
+            .options(
+                selectinload(MaintenancePlan.asset),
+                selectinload(MaintenancePlan.asset_category),
+                selectinload(MaintenancePlan.default_priority),
+                selectinload(MaintenancePlan.default_team),
+                selectinload(MaintenancePlan.default_vendor_partner),
+                selectinload(MaintenancePlan.plan_assets).selectinload(
+                    MaintenancePlanAsset.asset
+                ),
+            )
+            .where(MaintenancePlan.id == plan_id)
+        )
+        return await self.session.scalar(stmt)
+
+    async def list(self, pagination: PaginationParams) -> tuple[Sequence[MaintenancePlan], int]:
+        stmt: Select[tuple[MaintenancePlan]] = select(MaintenancePlan).options(
+            selectinload(MaintenancePlan.asset),
+            selectinload(MaintenancePlan.asset_category),
+            selectinload(MaintenancePlan.default_priority),
+            selectinload(MaintenancePlan.default_team),
+            selectinload(MaintenancePlan.default_vendor_partner),
+            selectinload(MaintenancePlan.plan_assets),
+        )
+        count_stmt = select(func.count()).select_from(MaintenancePlan)
+        if pagination.search:
+            search_value = f"%{pagination.search}%"
+            search_filter = or_(
+                MaintenancePlan.plan_code.ilike(search_value),
+                MaintenancePlan.plan_name.ilike(search_value),
+            )
+            stmt = stmt.where(search_filter)
+            count_stmt = count_stmt.where(search_filter)
+        sort_column = getattr(MaintenancePlan, pagination.sort or "plan_code")
+        if pagination.order == "desc":
+            sort_column = sort_column.desc()
+        offset = (pagination.page - 1) * pagination.page_size
+        stmt = stmt.order_by(sort_column).offset(offset).limit(pagination.page_size)
+        items = await self.session.scalars(stmt)
+        total_items = await self.session.scalar(count_stmt) or 0
+        return items.all(), total_items
+
+    async def update(self, item: MaintenancePlan, **changes: object) -> MaintenancePlan:
+        for key, value in changes.items():
+            setattr(item, key, value)
+        await self.session.flush()
+        await self.session.refresh(
+            item,
+            attribute_names=[
+                "asset",
+                "asset_category",
+                "default_priority",
+                "default_team",
+                "default_vendor_partner",
+                "plan_assets",
+            ],
+        )
+        return item
+
+
+class MaintenancePlanAssetRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenancePlanAsset) -> MaintenancePlanAsset:
+        self.session.add(item)
+        await self.session.flush()
+        return item
+
+    async def list_active_by_plan(self, plan_id: UUID) -> Sequence[MaintenancePlanAsset]:
+        stmt = (
+            select(MaintenancePlanAsset)
+            .options(selectinload(MaintenancePlanAsset.asset))
+            .where(
+                MaintenancePlanAsset.maintenance_plan_id == plan_id,
+                MaintenancePlanAsset.is_active.is_(True),
+            )
+            .order_by(MaintenancePlanAsset.effective_from.asc())
+        )
+        result = await self.session.scalars(stmt)
         return result.all()
 
 
@@ -163,6 +270,27 @@ class MaintenanceWorkOrderRepository:
         items = await self.session.scalars(stmt)
         total_items = await self.session.scalar(count_stmt) or 0
         return items.all(), total_items
+
+    async def list_by_asset(self, asset_id: UUID) -> Sequence[MaintenanceWorkOrder]:
+        stmt = (
+            select(MaintenanceWorkOrder)
+            .options(
+                selectinload(MaintenanceWorkOrder.asset),
+                selectinload(MaintenanceWorkOrder.priority),
+                selectinload(MaintenanceWorkOrder.requests),
+                selectinload(MaintenanceWorkOrder.assignments),
+            )
+            .where(MaintenanceWorkOrder.asset_id == asset_id)
+            .order_by(
+                MaintenanceWorkOrder.closed_at.desc(),
+                MaintenanceWorkOrder.actual_end_at.desc(),
+                MaintenanceWorkOrder.actual_start_at.desc(),
+                MaintenanceWorkOrder.planned_start_at.desc(),
+                MaintenanceWorkOrder.created_at.desc(),
+            )
+        )
+        items = await self.session.scalars(stmt)
+        return items.all()
 
     async def update(self, item: MaintenanceWorkOrder, **changes: object) -> MaintenanceWorkOrder:
         for key, value in changes.items():

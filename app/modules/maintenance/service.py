@@ -1,3 +1,6 @@
+from datetime import UTC, datetime, timedelta
+from uuid import UUID
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +14,7 @@ from app.modules.assets.repository import (
     AssetStatusHistoryRepository,
 )
 from app.modules.maintenance.constants import (
+    MaintenancePlanTriggerType,
     MaintenanceRequestStatus,
     MaintenanceScheduleStatus,
     MaintenanceWorkOrderStatus,
@@ -23,6 +27,8 @@ from app.modules.maintenance.exceptions import (
     MaintenanceWorkOrderNotFoundError,
 )
 from app.modules.maintenance.models import (
+    MaintenancePlan,
+    MaintenancePlanAsset,
     MaintenancePriority,
     MaintenanceRequest,
     MaintenanceRequestWorkOrder,
@@ -33,6 +39,8 @@ from app.modules.maintenance.models import (
     MaintenanceWorkOrderAssignment,
 )
 from app.modules.maintenance.repository import (
+    MaintenancePlanAssetRepository,
+    MaintenancePlanRepository,
     MaintenancePriorityRepository,
     MaintenanceRequestRepository,
     MaintenanceRequestWorkOrderRepository,
@@ -43,7 +51,11 @@ from app.modules.maintenance.repository import (
     MaintenanceWorkOrderRepository,
 )
 from app.modules.maintenance.schemas import (
+    AssetMaintenanceHistoryItemRead,
     MaintenanceConvertToWorkOrderPayload,
+    MaintenancePlanAssetCreate,
+    MaintenancePlanCreate,
+    MaintenancePlanGeneratePayload,
     MaintenancePriorityCreate,
     MaintenanceRequestActionPayload,
     MaintenanceRequestCreate,
@@ -68,6 +80,8 @@ class MaintenanceService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.priorities = MaintenancePriorityRepository(session)
+        self.plans = MaintenancePlanRepository(session)
+        self.plan_assets = MaintenancePlanAssetRepository(session)
         self.requests = MaintenanceRequestRepository(session)
         self.work_orders = MaintenanceWorkOrderRepository(session)
         self.request_work_orders = MaintenanceRequestWorkOrderRepository(session)
@@ -79,6 +93,243 @@ class MaintenanceService:
         self.asset_locations = AssetLocationRepository(session)
         self.asset_status_histories = AssetStatusHistoryRepository(session)
         self.partners = BusinessPartnerRepository(session)
+
+    async def create_plan(self, payload: MaintenancePlanCreate) -> MaintenancePlan:
+        if payload.asset_id is None and payload.asset_category_id is None:
+            raise AppError(
+                code="MAINTENANCE_PLAN_SCOPE_REQUIRED",
+                message="Maintenance plan harus memiliki asset_id atau asset_category_id.",
+                status_code=422,
+            )
+        if payload.trigger_type == MaintenancePlanTriggerType.CALENDAR and (
+            payload.calendar_interval_value is None or payload.calendar_interval_unit is None
+        ):
+            raise AppError(
+                code="MAINTENANCE_PLAN_TRIGGER_INVALID",
+                message=(
+                    "Calendar plan harus memiliki calendar_interval_value dan "
+                    "calendar_interval_unit."
+                ),
+                status_code=422,
+            )
+        if payload.asset_id is not None:
+            await self._get_asset_or_raise(payload.asset_id)
+        if payload.default_team_id is not None:
+            await self.get_team(payload.default_team_id)
+        await self._get_priority_or_raise(payload.default_priority_id)
+        if payload.default_vendor_partner_id is not None:
+            await self._get_partner_or_raise(payload.default_vendor_partner_id)
+        if payload.effective_to is not None and payload.effective_to < payload.effective_from:
+            raise AppError(
+                code="MAINTENANCE_PLAN_PERIOD_INVALID",
+                message="effective_to tidak boleh lebih kecil dari effective_from.",
+                status_code=422,
+            )
+        item = MaintenancePlan(
+            plan_code=payload.plan_code,
+            plan_name=payload.plan_name,
+            asset_id=payload.asset_id,
+            asset_category_id=payload.asset_category_id,
+            maintenance_type=payload.maintenance_type.value,
+            trigger_type=payload.trigger_type.value,
+            calendar_interval_value=payload.calendar_interval_value,
+            calendar_interval_unit=payload.calendar_interval_unit,
+            meter_id=payload.meter_id,
+            meter_interval=payload.meter_interval,
+            condition_rule=payload.condition_rule,
+            default_priority_id=payload.default_priority_id,
+            default_team_id=payload.default_team_id,
+            default_vendor_partner_id=payload.default_vendor_partner_id,
+            maintenance_contract_id=payload.maintenance_contract_id,
+            checklist_template_id=payload.checklist_template_id,
+            estimated_duration_minutes=payload.estimated_duration_minutes,
+            lead_time_days=payload.lead_time_days,
+            auto_create_request=payload.auto_create_request,
+            auto_create_work_order=payload.auto_create_work_order,
+            requires_approval=payload.requires_approval,
+            effective_from=payload.effective_from,
+            effective_to=payload.effective_to,
+            next_due_date=payload.next_due_date,
+            next_due_meter_value=payload.next_due_meter_value,
+            is_active=payload.is_active,
+        )
+        try:
+            async with self.session.begin():
+                await self.plans.create(item)
+        except IntegrityError as exc:
+            raise AppError(
+                code="MAINTENANCE_PLAN_CONFLICT",
+                message="Plan code sudah digunakan.",
+                status_code=409,
+            ) from exc
+        return await self.get_plan(item.id)
+
+    async def list_plans(self, pagination: PaginationParams) -> tuple[list[MaintenancePlan], int]:
+        items, total_items = await self.plans.list(pagination)
+        return list(items), total_items
+
+    async def get_plan(self, plan_id) -> MaintenancePlan:
+        item = await self.plans.get(plan_id)
+        if item is None:
+            raise AppError(
+                code="MAINTENANCE_PLAN_NOT_FOUND",
+                message="Maintenance plan tidak ditemukan.",
+                status_code=404,
+                details={"plan_id": str(plan_id)},
+            )
+        return item
+
+    async def add_plan_asset(
+        self,
+        plan_id,
+        payload: MaintenancePlanAssetCreate,
+    ) -> MaintenancePlan:
+        plan = await self.get_plan(plan_id)
+        await self._get_asset_or_raise(payload.asset_id)
+        if payload.effective_to is not None and payload.effective_to < payload.effective_from:
+            raise AppError(
+                code="MAINTENANCE_PLAN_ASSET_PERIOD_INVALID",
+                message="effective_to tidak boleh lebih kecil dari effective_from.",
+                status_code=422,
+            )
+        item = MaintenancePlanAsset(
+            maintenance_plan_id=plan.id,
+            asset_id=payload.asset_id,
+            effective_from=payload.effective_from,
+            effective_to=payload.effective_to,
+            override_interval_value=payload.override_interval_value,
+            override_interval_unit=payload.override_interval_unit,
+            is_active=payload.is_active,
+        )
+        try:
+            async with self.session.begin():
+                await self.plan_assets.create(item)
+        except IntegrityError as exc:
+            raise AppError(
+                code="MAINTENANCE_PLAN_ASSET_CONFLICT",
+                message="Asset sudah terdaftar pada plan dengan periode efektif yang sama.",
+                status_code=409,
+            ) from exc
+        return await self.get_plan(plan_id)
+
+    async def generate_schedules_from_plan(
+        self,
+        plan_id,
+        payload: MaintenancePlanGeneratePayload,
+    ) -> list[MaintenanceSchedule]:
+        plan = await self.get_plan(plan_id)
+        target_assets: list[tuple[UUID, int | None, str | None]] = []
+        if plan.asset_id is not None:
+            target_assets.append(
+                (plan.asset_id, plan.calendar_interval_value, plan.calendar_interval_unit)
+            )
+        for plan_asset in await self.plan_assets.list_active_by_plan(plan.id):
+            target_assets.append(
+                (
+                    plan_asset.asset_id,
+                    plan_asset.override_interval_value or plan.calendar_interval_value,
+                    plan_asset.override_interval_unit or plan.calendar_interval_unit,
+                )
+            )
+        # Deduplicate while preserving order
+        seen_asset_ids: set[UUID] = set()
+        normalized_targets: list[tuple[UUID, int | None, str | None]] = []
+        for asset_id, interval_value, interval_unit in target_assets:
+            if asset_id not in seen_asset_ids:
+                normalized_targets.append((asset_id, interval_value, interval_unit))
+                seen_asset_ids.add(asset_id)
+        if not normalized_targets:
+            raise AppError(
+                code="MAINTENANCE_PLAN_TARGETS_EMPTY",
+                message="Maintenance plan belum memiliki asset target untuk digenerate.",
+                status_code=422,
+            )
+
+        created_ids: list[UUID] = []
+        try:
+            async with self.session.begin():
+                for index, (asset_id, _, _) in enumerate(normalized_targets, start=1):
+                    asset = await self._get_asset_or_raise(asset_id)
+                    start_at = payload.scheduled_start_at
+                    duration_minutes = plan.estimated_duration_minutes or 60
+                    end_at = start_at + timedelta(minutes=duration_minutes)
+                    await self._ensure_schedule_no_conflict(
+                        asset_id=asset_id,
+                        scheduled_start_at=start_at,
+                        scheduled_end_at=end_at,
+                        maintenance_team_id=plan.default_team_id,
+                        vendor_partner_id=plan.default_vendor_partner_id,
+                        error_code="MAINTENANCE_PLAN_GENERATION_CONFLICT",
+                    )
+                    schedule = MaintenanceSchedule(
+                        schedule_number=f"{payload.schedule_prefix}-{plan.plan_code}-{index:03d}",
+                        maintenance_plan_id=plan.id,
+                        maintenance_request_id=None,
+                        work_order_id=None,
+                        asset_id=asset_id,
+                        schedule_source="PREVENTIVE_PLAN",
+                        scheduled_start_at=start_at,
+                        scheduled_end_at=end_at,
+                        maintenance_team_id=plan.default_team_id,
+                        vendor_partner_id=plan.default_vendor_partner_id,
+                        maintenance_contract_id=plan.maintenance_contract_id,
+                        status=MaintenanceScheduleStatus.PLANNED.value,
+                        created_by=payload.created_by,
+                        created_at=datetime.now(UTC if start_at.tzinfo else None),
+                    )
+                    created = await self.schedules.create(schedule)
+                    created_ids.append(created.id)
+
+                    if payload.create_work_orders is True or (
+                        payload.create_work_orders is None and plan.auto_create_work_order
+                    ):
+                        work_order = MaintenanceWorkOrder(
+                            work_order_number=f"WO-{plan.plan_code}-{index:03d}",
+                            company_id=asset.company_id,
+                            asset_id=asset_id,
+                            maintenance_type=plan.maintenance_type,
+                            priority_id=plan.default_priority_id,
+                            title=plan.plan_name,
+                            scope_of_work=f"Generated from plan {plan.plan_code}.",
+                            maintenance_plan_id=plan.id,
+                            maintenance_team_id=plan.default_team_id,
+                            execution_mode="INTERNAL"
+                            if plan.default_vendor_partner_id is None
+                            else "VENDOR",
+                            vendor_partner_id=plan.default_vendor_partner_id,
+                            maintenance_contract_id=plan.maintenance_contract_id,
+                            planned_start_at=start_at,
+                            planned_end_at=end_at,
+                            requires_verification=True,
+                            status=(
+                                MaintenanceWorkOrderStatus.WAITING_APPROVAL.value
+                                if plan.requires_approval
+                                else MaintenanceWorkOrderStatus.APPROVED.value
+                            ),
+                            created_by=payload.created_by,
+                            updated_by=payload.created_by,
+                        )
+                        created_wo = await self.work_orders.create(work_order)
+                        await self.schedules.update(created, work_order_id=created_wo.id)
+
+                if plan.trigger_type.startswith("CALENDAR") and plan.next_due_date is not None:
+                    next_due_date = plan.next_due_date
+                    if plan.calendar_interval_value and plan.calendar_interval_unit:
+                        next_due_date = self._increment_due_date(
+                            plan.next_due_date,
+                            plan.calendar_interval_value,
+                            plan.calendar_interval_unit,
+                        )
+                    await self.plans.update(plan, next_due_date=next_due_date)
+        except IntegrityError as exc:
+            raise AppError(
+                code="MAINTENANCE_PLAN_GENERATION_CONFLICT",
+                message="Generate schedule dari plan menimbulkan konflik data.",
+                status_code=409,
+            ) from exc
+
+        items = [await self.get_schedule(schedule_id) for schedule_id in created_ids]
+        return items
 
     async def create_team(self, payload: MaintenanceTeamCreate) -> MaintenanceTeam:
         if payload.default_location_id is not None:
@@ -788,6 +1039,14 @@ class MaintenanceService:
                 )
         return await self.get_work_order(work_order_id)
 
+    async def get_asset_maintenance_history(
+        self,
+        asset_id,
+    ) -> list[AssetMaintenanceHistoryItemRead]:
+        await self._get_asset_or_raise(asset_id)
+        items = await self.work_orders.list_by_asset(asset_id)
+        return [AssetMaintenanceHistoryItemRead.from_model(item) for item in items]
+
     async def _get_asset_or_raise(self, asset_id):
         asset = await self.assets.get(asset_id)
         if asset is None:
@@ -829,6 +1088,7 @@ class MaintenanceService:
         maintenance_team_id,
         vendor_partner_id,
         exclude_schedule_id=None,
+        error_code: str = "MAINTENANCE_SCHEDULE_OVERLAP",
     ) -> None:
         overlaps = await self.schedules.list_active_overlaps(
             asset_id=asset_id,
@@ -840,10 +1100,21 @@ class MaintenanceService:
         )
         if overlaps:
             raise AppError(
-                code="MAINTENANCE_SCHEDULE_OVERLAP",
+                code=error_code,
                 message=(
                     "Jadwal bentrok dengan asset, tim, atau vendor pada rentang waktu yang sama."
                 ),
                 status_code=409,
                 details={"conflict_count": len(overlaps)},
             )
+
+    def _increment_due_date(self, current_due_date, interval_value: int, interval_unit: str):
+        if interval_unit == "DAY":
+            return current_due_date + timedelta(days=interval_value)
+        if interval_unit == "WEEK":
+            return current_due_date + timedelta(weeks=interval_value)
+        if interval_unit == "MONTH":
+            return current_due_date + timedelta(days=30 * interval_value)
+        if interval_unit == "YEAR":
+            return current_due_date + timedelta(days=365 * interval_value)
+        return current_due_date

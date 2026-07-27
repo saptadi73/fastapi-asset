@@ -5,8 +5,16 @@ from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_session
+from app.modules.attachments.constants import AttachmentEntityType
+from app.modules.attachments.schemas import AttachmentCreate, AttachmentRead
+from app.modules.attachments.service import AttachmentService
 from app.modules.maintenance.schemas import (
     MaintenanceConvertToWorkOrderPayload,
+    MaintenancePlanAssetCreate,
+    MaintenancePlanCreate,
+    MaintenancePlanGeneratePayload,
+    MaintenancePlanListItemRead,
+    MaintenancePlanRead,
     MaintenancePriorityCreate,
     MaintenancePriorityRead,
     MaintenanceRequestActionPayload,
@@ -65,6 +73,101 @@ async def list_maintenance_priorities(
         message="Daftar maintenance priority berhasil diambil.",
         data=[
             MaintenancePriorityRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
+    )
+
+
+@router.post("/plans", status_code=status.HTTP_201_CREATED)
+async def create_maintenance_plan(
+    request: Request,
+    payload: MaintenancePlanCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.create_plan(payload)
+    return success_response(
+        request=request,
+        message="Maintenance plan berhasil dibuat.",
+        data=MaintenancePlanRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get("/plans")
+async def list_maintenance_plans(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    search: str | None = None,
+    sort: str = Query(default="plan_code", pattern="^(plan_code|plan_name|maintenance_type)$"),
+    order: str = Query(default="asc", pattern="^(asc|desc)$"),
+) -> dict:
+    service = MaintenanceService(session)
+    pagination = PaginationParams(
+        page=page,
+        page_size=page_size,
+        search=search,
+        sort=sort,
+        order=order,
+    )
+    items, total_items = await service.list_plans(pagination)
+    return success_response(
+        request=request,
+        message="Daftar maintenance plan berhasil diambil.",
+        data=[
+            MaintenancePlanListItemRead.from_model(item).model_dump(mode="json")
+            for item in items
+        ],
+        pagination=PaginationMeta.create(page=page, page_size=page_size, total_items=total_items),
+    )
+
+
+@router.get("/plans/{plan_id}")
+async def get_maintenance_plan(
+    request: Request,
+    plan_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.get_plan(plan_id)
+    return success_response(
+        request=request,
+        message="Detail maintenance plan berhasil diambil.",
+        data=MaintenancePlanRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post("/plans/{plan_id}/assets", status_code=status.HTTP_201_CREATED)
+async def add_maintenance_plan_asset(
+    request: Request,
+    plan_id: UUID,
+    payload: MaintenancePlanAssetCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.add_plan_asset(plan_id, payload)
+    return success_response(
+        request=request,
+        message="Asset target maintenance plan berhasil ditambahkan.",
+        data=MaintenancePlanRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post("/plans/{plan_id}/generate")
+async def generate_maintenance_plan_schedules(
+    request: Request,
+    plan_id: UUID,
+    payload: MaintenancePlanGeneratePayload,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.generate_schedules_from_plan(plan_id, payload)
+    return success_response(
+        request=request,
+        message="Schedule dari maintenance plan berhasil digenerate.",
+        data=[
+            MaintenanceScheduleRead.model_validate(item).model_dump(mode="json")
             for item in items
         ],
     )
@@ -283,6 +386,92 @@ async def convert_request_to_work_order(
         request=request,
         message="Maintenance request berhasil dikonversi menjadi work order.",
         data=MaintenanceWorkOrderRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get("/requests/{request_id}/attachments")
+async def list_maintenance_request_attachments(
+    request: Request,
+    request_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AttachmentService(session)
+    items = await service.list_entity_attachments(
+        entity_type=AttachmentEntityType.MAINTENANCE_REQUEST.value,
+        entity_id=request_id,
+    )
+    return success_response(
+        request=request,
+        message="Daftar attachment maintenance request berhasil diambil.",
+        data=[
+            AttachmentRead.model_validate(item).model_dump(mode="json", by_alias=True)
+            for item in items
+        ],
+    )
+
+
+@router.post("/requests/{request_id}/attachments", status_code=status.HTTP_201_CREATED)
+async def create_maintenance_request_attachment(
+    request: Request,
+    request_id: UUID,
+    payload: AttachmentCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AttachmentService(session)
+    enriched_payload = payload.model_copy(
+        update={
+            "entity_type": AttachmentEntityType.MAINTENANCE_REQUEST,
+            "entity_id": request_id,
+        }
+    )
+    item = await service.create_attachment(enriched_payload)
+    return success_response(
+        request=request,
+        message="Attachment maintenance request berhasil dibuat.",
+        data=AttachmentRead.model_validate(item).model_dump(mode="json", by_alias=True),
+    )
+
+
+@router.get("/work-orders/{work_order_id}/attachments")
+async def list_maintenance_work_order_attachments(
+    request: Request,
+    work_order_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AttachmentService(session)
+    items = await service.list_entity_attachments(
+        entity_type=AttachmentEntityType.MAINTENANCE_WORK_ORDER.value,
+        entity_id=work_order_id,
+    )
+    return success_response(
+        request=request,
+        message="Daftar attachment maintenance work order berhasil diambil.",
+        data=[
+            AttachmentRead.model_validate(item).model_dump(mode="json", by_alias=True)
+            for item in items
+        ],
+    )
+
+
+@router.post("/work-orders/{work_order_id}/attachments", status_code=status.HTTP_201_CREATED)
+async def create_maintenance_work_order_attachment(
+    request: Request,
+    work_order_id: UUID,
+    payload: AttachmentCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AttachmentService(session)
+    enriched_payload = payload.model_copy(
+        update={
+            "entity_type": AttachmentEntityType.MAINTENANCE_WORK_ORDER,
+            "entity_id": work_order_id,
+        }
+    )
+    item = await service.create_attachment(enriched_payload)
+    return success_response(
+        request=request,
+        message="Attachment maintenance work order berhasil dibuat.",
+        data=AttachmentRead.model_validate(item).model_dump(mode="json", by_alias=True),
     )
 
 

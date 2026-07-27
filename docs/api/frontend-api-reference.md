@@ -180,7 +180,8 @@ Query:
 
 ### `POST /attachments`
 
-Membuat metadata file dan attachment generik untuk `ASSET` atau `ASSET_TRANSFER`.
+Membuat metadata file dan attachment generik untuk `ASSET`,
+`ASSET_TRANSFER`, `MAINTENANCE_REQUEST`, atau `MAINTENANCE_WORK_ORDER`.
 
 ### `GET /attachments/{attachment_id}`
 
@@ -202,6 +203,35 @@ Mengambil seluruh attachment untuk asset tertentu.
 ### `POST /attachments/assets/{asset_id}`
 
 Membuat attachment langsung untuk asset tertentu.
+
+### `GET /maintenance/requests/{request_id}/attachments`
+
+Mengambil seluruh attachment untuk maintenance request tertentu.
+
+### `POST /maintenance/requests/{request_id}/attachments`
+
+Membuat attachment langsung untuk maintenance request tertentu.
+
+Kategori yang direkomendasikan:
+
+- `DAMAGE_PHOTO`
+- `OTHER`
+
+### `GET /maintenance/work-orders/{work_order_id}/attachments`
+
+Mengambil seluruh attachment untuk maintenance work order tertentu.
+
+### `POST /maintenance/work-orders/{work_order_id}/attachments`
+
+Membuat attachment langsung untuk maintenance work order tertentu.
+
+Kategori yang direkomendasikan:
+
+- `BEFORE_MAINTENANCE_PHOTO`
+- `DURING_MAINTENANCE_PHOTO`
+- `AFTER_MAINTENANCE_PHOTO`
+- `MAINTENANCE_REPORT`
+- `OTHER`
 
 ### `GET /attachments/assets/{asset_id}/photos`
 
@@ -426,6 +456,74 @@ Contoh request:
 ### `GET /maintenance/priorities`
 
 Mengambil daftar priority untuk dropdown triage dan work order.
+
+### `POST /maintenance/plans`
+
+Membuat preventive maintenance plan.
+
+Aturan backend yang sudah aktif:
+
+- minimal salah satu dari `asset_id` atau `asset_category_id` wajib diisi
+- untuk `trigger_type = CALENDAR`, `calendar_interval_value` dan
+  `calendar_interval_unit` wajib diisi
+- `effective_to` tidak boleh lebih kecil dari `effective_from`
+
+Contoh request:
+
+```json
+{
+  "plan_code": "PM-CHILLER-001",
+  "plan_name": "PM Bulanan Chiller",
+  "asset_id": "11111111-1111-1111-1111-111111111111",
+  "maintenance_type": "PREVENTIVE",
+  "trigger_type": "CALENDAR",
+  "calendar_interval_value": 30,
+  "calendar_interval_unit": "DAY",
+  "default_priority_id": "22222222-2222-2222-2222-222222222222",
+  "default_team_id": "33333333-3333-3333-3333-333333333333",
+  "estimated_duration_minutes": 180,
+  "effective_from": "2026-07-27",
+  "next_due_date": "2026-08-26",
+  "auto_create_work_order": true
+}
+```
+
+### `GET /maintenance/plans`
+
+List maintenance plan.
+
+Query:
+
+- `page`
+- `page_size`
+- `search`
+- `sort`: `plan_code`, `plan_name`, `maintenance_type`
+- `order`: `asc`, `desc`
+
+### `GET /maintenance/plans/{plan_id}`
+
+Mengambil detail maintenance plan beserta target asset turunannya.
+
+### `POST /maintenance/plans/{plan_id}/assets`
+
+Menambahkan asset target tambahan ke plan.
+
+Aturan backend yang sudah aktif:
+
+- `effective_to` tidak boleh lebih kecil dari `effective_from`
+- kombinasi `maintenance_plan_id`, `asset_id`, dan `effective_from` harus unik
+
+### `POST /maintenance/plans/{plan_id}/generate`
+
+Menghasilkan maintenance schedule dari plan aktif.
+
+Perilaku backend:
+
+- target asset digabung dari `plan.asset_id` dan daftar `plan_assets` aktif
+- jika `auto_create_work_order = true` pada plan, backend dapat langsung
+  membuat work order turunan
+- benturan jadwal asset/tim/vendor akan ditolak
+- `next_due_date` plan akan dimajukan sesuai interval kalender bila tersedia
 
 ### `POST /maintenance/teams`
 
@@ -798,6 +896,11 @@ Mengambil timeline gabungan dari:
 - assignment;
 - perubahan status.
 
+### `GET /assets/{asset_id}/maintenance-history`
+
+Mengambil histori maintenance asset berbasis work order yang pernah terkait
+dengan asset tersebut.
+
 ## Error Code Awal
 
 - `REQUEST_VALIDATION_ERROR`
@@ -842,6 +945,15 @@ Mengambil timeline gabungan dari:
 - `MAINTENANCE_REQUEST_NOT_FOUND`
 - `MAINTENANCE_REQUEST_CONFLICT`
 - `MAINTENANCE_REQUEST_INVALID_STATUS`
+- `MAINTENANCE_PLAN_NOT_FOUND`
+- `MAINTENANCE_PLAN_CONFLICT`
+- `MAINTENANCE_PLAN_SCOPE_REQUIRED`
+- `MAINTENANCE_PLAN_TRIGGER_INVALID`
+- `MAINTENANCE_PLAN_PERIOD_INVALID`
+- `MAINTENANCE_PLAN_ASSET_CONFLICT`
+- `MAINTENANCE_PLAN_ASSET_PERIOD_INVALID`
+- `MAINTENANCE_PLAN_TARGETS_EMPTY`
+- `MAINTENANCE_PLAN_GENERATION_CONFLICT`
 - `MAINTENANCE_WORK_ORDER_NOT_FOUND`
 - `MAINTENANCE_WORK_ORDER_CONFLICT`
 - `MAINTENANCE_WORK_ORDER_INVALID_STATUS`

@@ -14,6 +14,10 @@ from app.modules.attachments.repository import (
     FileVersionRepository,
 )
 from app.modules.attachments.schemas import AttachmentCreate, AttachmentUpdate
+from app.modules.maintenance.repository import (
+    MaintenanceRequestRepository,
+    MaintenanceWorkOrderRepository,
+)
 
 
 class AttachmentService:
@@ -24,6 +28,8 @@ class AttachmentService:
         self.attachments = AttachmentRepository(session)
         self.assets = AssetRepository(session)
         self.transfers = AssetTransferRepository(session)
+        self.maintenance_requests = MaintenanceRequestRepository(session)
+        self.maintenance_work_orders = MaintenanceWorkOrderRepository(session)
 
     async def create_attachment(self, payload: AttachmentCreate) -> Attachment:
         await self._validate_entity(payload.entity_type.value, payload.entity_id)
@@ -177,6 +183,28 @@ class AttachmentService:
         if entity_type == AttachmentEntityType.ASSET_TRANSFER.value:
             transfer = await self.transfers.get(entity_id)
             if transfer is None:
+                raise AppError(
+                    code="ATTACHMENT_ENTITY_NOT_FOUND",
+                    message="Entity target attachment tidak ditemukan.",
+                    status_code=404,
+                    details={"entity_type": entity_type, "entity_id": str(entity_id)},
+                )
+            return
+
+        if entity_type == AttachmentEntityType.MAINTENANCE_REQUEST.value:
+            maintenance_request = await self.maintenance_requests.get(entity_id)
+            if maintenance_request is None:
+                raise AppError(
+                    code="ATTACHMENT_ENTITY_NOT_FOUND",
+                    message="Entity target attachment tidak ditemukan.",
+                    status_code=404,
+                    details={"entity_type": entity_type, "entity_id": str(entity_id)},
+                )
+            return
+
+        if entity_type == AttachmentEntityType.MAINTENANCE_WORK_ORDER.value:
+            work_order = await self.maintenance_work_orders.get(entity_id)
+            if work_order is None:
                 raise AppError(
                     code="ATTACHMENT_ENTITY_NOT_FOUND",
                     message="Entity target attachment tidak ditemukan.",

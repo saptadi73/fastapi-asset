@@ -14,6 +14,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -302,3 +303,81 @@ class MaintenanceSchedule(UUIDPrimaryKeyMixin, Base):
     work_order = relationship("MaintenanceWorkOrder")
     maintenance_team = relationship("MaintenanceTeam")
     vendor_partner = relationship("BusinessPartner")
+
+
+class MaintenancePlan(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_plans"
+
+    plan_code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    plan_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    asset_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("assets.id", ondelete="SET NULL")
+    )
+    asset_category_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("asset_categories.id", ondelete="SET NULL")
+    )
+    maintenance_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    trigger_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    calendar_interval_value: Mapped[int | None] = mapped_column(Integer)
+    calendar_interval_unit: Mapped[str | None] = mapped_column(String(20))
+    meter_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    meter_interval: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+    condition_rule: Mapped[dict | None] = mapped_column(JSONB)
+    default_priority_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_priorities.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    default_team_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("maintenance_teams.id", ondelete="SET NULL")
+    )
+    default_vendor_partner_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("business_partners.id", ondelete="SET NULL")
+    )
+    maintenance_contract_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    checklist_template_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    estimated_duration_minutes: Mapped[int | None] = mapped_column(Integer)
+    lead_time_days: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    auto_create_request: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    auto_create_work_order: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    requires_approval: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    effective_from: Mapped[date] = mapped_column(nullable=False)
+    effective_to: Mapped[date | None] = mapped_column(nullable=True)
+    next_due_date: Mapped[date | None] = mapped_column(nullable=True)
+    next_due_meter_value: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    asset = relationship("Asset")
+    asset_category = relationship("AssetCategory")
+    default_priority = relationship("MaintenancePriority")
+    default_team = relationship("MaintenanceTeam")
+    default_vendor_partner = relationship("BusinessPartner")
+    plan_assets: Mapped[list[MaintenancePlanAsset]] = relationship(back_populates="plan")
+
+
+class MaintenancePlanAsset(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_plan_assets"
+    __table_args__ = (
+        UniqueConstraint(
+            "maintenance_plan_id",
+            "asset_id",
+            "effective_from",
+            name="uq_maintenance_plan_assets_plan_asset_from",
+        ),
+    )
+
+    maintenance_plan_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_plans.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    asset_id: Mapped[UUID] = mapped_column(
+        ForeignKey("assets.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    effective_from: Mapped[date] = mapped_column(nullable=False)
+    effective_to: Mapped[date | None] = mapped_column(nullable=True)
+    override_interval_value: Mapped[int | None] = mapped_column(Integer)
+    override_interval_unit: Mapped[str | None] = mapped_column(String(20))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    plan: Mapped[MaintenancePlan] = relationship(back_populates="plan_assets")
+    asset = relationship("Asset")

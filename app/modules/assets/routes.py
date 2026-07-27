@@ -34,6 +34,7 @@ from app.modules.assets.schemas import (
     AssetUpdate,
 )
 from app.modules.assets.service import AssetRegistryService
+from app.modules.maintenance.service import MaintenanceService
 from app.shared.pagination import PaginationMeta, PaginationParams
 from app.shared.responses import success_response
 
@@ -562,4 +563,19 @@ async def get_asset_timeline(
             AssetTimelineEventRead.model_validate(item).model_dump(mode="json")
             for item in items
         ],
+    )
+
+
+@router.get("/assets/{asset_id}/maintenance-history")
+async def get_asset_maintenance_history(
+    request: Request,
+    asset_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.get_asset_maintenance_history(asset_id)
+    return success_response(
+        request=request,
+        message="Riwayat maintenance asset berhasil diambil.",
+        data=[item.model_dump(mode="json") for item in items],
     )
