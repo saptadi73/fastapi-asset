@@ -1877,6 +1877,29 @@ Perilaku backend:
 - `retirement_date` asset diisi dari `effective_date`
 - pada sample seed Monday, July 27, 2026, asset berakhir pada status `DISPOSED`
 
+## Asset Components
+
+### `POST /assets/{asset_id}/components`
+
+Mencatat perubahan komponen pada asset host.
+
+Perilaku backend:
+
+- `INSTALL` wajib hanya membawa `installed_component_asset_id`
+- `REMOVE` wajib hanya membawa `removed_component_asset_id`
+- `REPLACE` wajib membawa kedua field tersebut
+- komponen yang dipasang tidak boleh masih terpasang pada asset lain
+- backend mencegah self-reference dan siklus hierarchy
+- `parent_asset_id` komponen diperbarui secara transaksional
+
+### `GET /assets/{asset_id}/components`
+
+Mengambil daftar komponen yang saat ini terpasang pada asset.
+
+### `GET /assets/{asset_id}/component-history`
+
+Mengambil histori install/remove/replace komponen pada asset.
+
 ### `POST /assets/{asset_id}/status-changes`
 
 Mencatat perubahan status dan kondisi aset sambil memperbarui current state
@@ -1896,6 +1919,7 @@ Mengambil timeline gabungan dari:
 
 - perubahan lokasi;
 - assignment;
+- perubahan komponen;
 - perubahan status;
 - lifecycle review;
 - retirement request atau konfirmasi retirement.
@@ -1949,6 +1973,12 @@ Ringkasan tambahan yang sekarang tersedia per item:
 - `ASSET_RETIREMENT_INVALID_STATUS`
 - `ASSET_RETIREMENT_FINAL_STATUS_INVALID`
 - `ASSET_ALREADY_RETIRED`
+- `ASSET_COMPONENT_ACTION_INVALID`
+- `ASSET_COMPONENT_SELF_REFERENCE`
+- `ASSET_COMPONENT_NOT_INSTALLED`
+- `ASSET_COMPONENT_ALREADY_ATTACHED`
+- `ASSET_COMPONENT_CYCLE`
+- `ASSET_COMPONENT_REPLACE_SAME_ASSET`
 - `ATTACHMENT_NOT_FOUND`
 - `FILE_RECORD_NOT_FOUND`
 - `ATTACHMENT_CONFLICT`

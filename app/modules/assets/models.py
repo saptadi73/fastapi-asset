@@ -319,6 +319,10 @@ class Asset(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         back_populates="asset"
     )
     retirements: Mapped[list[AssetRetirement]] = relationship(back_populates="asset")
+    component_histories: Mapped[list[AssetComponentHistory]] = relationship(
+        back_populates="asset",
+        foreign_keys="AssetComponentHistory.asset_id",
+    )
 
 
 class AssetLocationHistory(UUIDPrimaryKeyMixin, Base):
@@ -465,3 +469,51 @@ class AssetRetirement(UUIDPrimaryKeyMixin, Base):
     sap_trans_id: Mapped[int | None] = mapped_column(Integer)
 
     asset: Mapped[Asset] = relationship(back_populates="retirements")
+
+
+class AssetComponentHistory(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "asset_component_histories"
+    __table_args__ = (
+        CheckConstraint(
+            "("
+            "(action_type = 'INSTALL' AND installed_component_asset_id IS NOT NULL "
+            "AND removed_component_asset_id IS NULL)"
+            " OR "
+            "(action_type = 'REMOVE' AND installed_component_asset_id IS NULL "
+            "AND removed_component_asset_id IS NOT NULL)"
+            " OR "
+            "(action_type = 'REPLACE' AND installed_component_asset_id IS NOT NULL "
+            "AND removed_component_asset_id IS NOT NULL)"
+            ")",
+            name="ck_asset_component_histories_action_targets",
+        ),
+    )
+
+    asset_id: Mapped[UUID] = mapped_column(
+        ForeignKey("assets.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    action_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    removed_component_asset_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("assets.id", ondelete="SET NULL")
+    )
+    installed_component_asset_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("assets.id", ondelete="SET NULL")
+    )
+    effective_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text)
+    work_order_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    reference_type: Mapped[str | None] = mapped_column(String(50))
+    reference_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    changed_by: Mapped[UUID | None] = mapped_column(nullable=True)
+
+    asset: Mapped[Asset] = relationship(
+        back_populates="component_histories",
+        foreign_keys=[asset_id],
+    )
+    removed_component_asset: Mapped[Asset | None] = relationship(
+        foreign_keys=[removed_component_asset_id]
+    )
+    installed_component_asset: Mapped[Asset | None] = relationship(
+        foreign_keys=[installed_component_asset_id]
+    )

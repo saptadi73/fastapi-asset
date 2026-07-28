@@ -23,6 +23,9 @@ from app.modules.assets.schemas import (
     AssetCategoryRead,
     AssetClassCreate,
     AssetClassRead,
+    AssetComponentChangeCreate,
+    AssetComponentHistoryRead,
+    AssetComponentRead,
     AssetCreate,
     AssetLifecycleReviewCreate,
     AssetLifecycleReviewRead,
@@ -627,6 +630,67 @@ async def get_asset_assignment_history(
         request=request,
         message="Riwayat assignment asset berhasil diambil.",
         data=[AssetAssignmentRead.model_validate(item).model_dump(mode="json") for item in items],
+    )
+
+
+@router.post(
+    "/assets/{asset_id}/components",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_asset_write)],
+)
+async def change_asset_components(
+    request: Request,
+    asset_id: UUID,
+    payload: AssetComponentChangeCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
+) -> dict:
+    service = AssetRegistryService(session)
+    item = await service.change_components(
+        asset_id,
+        payload,
+        changed_by=current_user.id,
+    )
+    return success_response(
+        request=request,
+        message="Perubahan komponen asset berhasil dicatat.",
+        data=AssetComponentHistoryRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get("/assets/{asset_id}/components", dependencies=[Depends(require_asset_read)])
+async def list_asset_components(
+    request: Request,
+    asset_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AssetRegistryService(session)
+    items = await service.list_components(asset_id)
+    return success_response(
+        request=request,
+        message="Daftar komponen asset berhasil diambil.",
+        data=[AssetComponentRead.from_model(item).model_dump(mode="json") for item in items],
+    )
+
+
+@router.get(
+    "/assets/{asset_id}/component-history",
+    dependencies=[Depends(require_asset_read)],
+)
+async def list_asset_component_history(
+    request: Request,
+    asset_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AssetRegistryService(session)
+    items = await service.list_component_history(asset_id)
+    return success_response(
+        request=request,
+        message="Riwayat komponen asset berhasil diambil.",
+        data=[
+            AssetComponentHistoryRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
     )
 
 

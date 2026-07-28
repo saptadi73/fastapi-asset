@@ -19,6 +19,10 @@ Entity utama hasil seed yang paling berguna untuk frontend:
 - `asset_id`
 - `asset_lifecycle_review_id`
 - `asset_retirement_request_id`
+- `installed_component_asset_id`
+- `replacement_component_asset_id`
+- `component_install_history_id`
+- `component_replace_history_id`
 - `asset_transfer_id`
 - `stocktake_id`
 - `maintenance_plan_id`
@@ -108,6 +112,9 @@ Endpoint:
 - `GET /api/v1/assets`
 - `GET /api/v1/assets/{asset_id}`
 - `PATCH /api/v1/assets/{asset_id}`
+- `POST /api/v1/assets/{asset_id}/components`
+- `GET /api/v1/assets/{asset_id}/components`
+- `GET /api/v1/assets/{asset_id}/component-history`
 - `POST /api/v1/assets/{asset_id}/lifecycle-reviews`
 - `GET /api/v1/assets/{asset_id}/lifecycle-reviews`
 - `POST /api/v1/assets/{asset_id}/attribute-values`
@@ -127,6 +134,7 @@ Output penting:
 - `asset_id`
 - `asset_tag_number`
 - asset sudah memiliki replacement planning fields
+- asset sudah memiliki komponen aktif hasil flow replace
 - asset sudah memiliki satu lifecycle review dengan recommendation `REPLACE`
 
 ### 5. Asset Retirement Flow
@@ -151,7 +159,27 @@ Output penting:
 - asset sample berstatus akhir `DISPOSED`
 - timeline asset memuat event lifecycle review dan retirement
 
-### 6. Lease Contract Flow
+### 6. Asset Component Flow
+
+Tujuan:
+
+- menampilkan install dan replace komponen pada asset utama;
+- memberi sample current components dan component history untuk frontend.
+
+Endpoint:
+
+- `POST /api/v1/assets/{asset_id}/components`
+- `GET /api/v1/assets/{asset_id}/components`
+- `GET /api/v1/assets/{asset_id}/component-history`
+
+Output penting:
+
+- `installed_component_asset_id`
+- `replacement_component_asset_id`
+- asset utama berakhir dengan komponen pengganti terpasang
+- histori memuat action `INSTALL` lalu `REPLACE`
+
+### 7. Lease Contract Flow
 
 Tujuan:
 
@@ -175,7 +203,7 @@ Output penting:
 - asset item lease untuk aset smoke utama
 - payment periode `2026-07-01` sampai `2026-07-31`
 
-### 7. Software License Flow
+### 8. Software License Flow
 
 Tujuan:
 
@@ -199,7 +227,7 @@ Output penting:
 - license aktif dengan `expiry_date` `2026-08-15`
 - seat sempat terpakai lalu kembali tersedia setelah release
 
-### 8. Asset Transfer
+### 9. Asset Transfer
 
 Tujuan:
 
@@ -218,7 +246,7 @@ Output penting:
 
 - `asset_transfer_id`
 
-### 9. Tracking dan Stocktake
+### 10. Tracking dan Stocktake
 
 Tujuan:
 
@@ -241,7 +269,7 @@ Output penting:
 
 - `stocktake_id`
 
-### 10. Asset Reports
+### 11. Asset Reports
 
 Tujuan:
 
@@ -253,7 +281,7 @@ Endpoint:
 - `GET /api/v1/reports/missing-assets`
 - `GET /api/v1/reports/unverified-assets`
 
-### 11. Maintenance Master Data
+### 12. Maintenance Master Data
 
 Tujuan:
 
@@ -285,7 +313,7 @@ Output penting:
 - `maintenance_checklist_template_id`
 - `maintenance_team_id`
 
-### 12. Preventive Maintenance Planning
+### 13. Preventive Maintenance Planning
 
 Tujuan:
 
@@ -436,13 +464,15 @@ Urutan call:
 2. `GET /api/v1/assets/{asset_id}/attribute-values`
 3. `GET /api/v1/assets/{asset_id}/ownerships`
 4. `GET /api/v1/assets/{asset_id}/assignment-history`
-5. `GET /api/v1/assets/{asset_id}/status-history`
-6. `GET /api/v1/assets/{asset_id}/location-history`
-7. `GET /api/v1/assets/{asset_id}/lifecycle-reviews`
-8. `GET /api/v1/assets/{asset_id}/retirement-requests`
-9. `GET /api/v1/assets/{asset_id}/timeline`
-10. `GET /api/v1/assets/{asset_id}/tracking`
-11. `GET /api/v1/assets/{asset_id}/maintenance-history`
+5. `GET /api/v1/assets/{asset_id}/components`
+6. `GET /api/v1/assets/{asset_id}/component-history`
+7. `GET /api/v1/assets/{asset_id}/status-history`
+8. `GET /api/v1/assets/{asset_id}/location-history`
+9. `GET /api/v1/assets/{asset_id}/lifecycle-reviews`
+10. `GET /api/v1/assets/{asset_id}/retirement-requests`
+11. `GET /api/v1/assets/{asset_id}/timeline`
+12. `GET /api/v1/assets/{asset_id}/tracking`
+13. `GET /api/v1/assets/{asset_id}/maintenance-history`
 
 Gunakan ID:
 
@@ -454,6 +484,7 @@ Lifecycle yang sudah tersedia di seed:
 - status berubah ke `IDLE`
 - transfer dibuat lalu selesai
 - location change tambahan dicatat
+- komponen awal di-install lalu diganti komponen pengganti
 - lifecycle review dibuat dengan recommendation `REPLACE`
 - retirement request dibuat, diapprove, lalu dikonfirmasi
 

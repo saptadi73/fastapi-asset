@@ -55,6 +55,7 @@ class AssetTimelineEventType(StrEnum):
     STATUS_CHANGE = "STATUS_CHANGE"
     LIFECYCLE_REVIEW = "LIFECYCLE_REVIEW"
     RETIREMENT = "RETIREMENT"
+    COMPONENT_CHANGE = "COMPONENT_CHANGE"
 
 
 class ReplacementRecommendation(StrEnum):
@@ -72,6 +73,12 @@ class AssetRetirementStatus(StrEnum):
     CONFIRMED = "CONFIRMED"
     REJECTED = "REJECTED"
     CANCELLED = "CANCELLED"
+
+
+class AssetComponentActionType(StrEnum):
+    INSTALL = "INSTALL"
+    REMOVE = "REMOVE"
+    REPLACE = "REPLACE"
 
 
 class AssetAttributeDataType(StrEnum):

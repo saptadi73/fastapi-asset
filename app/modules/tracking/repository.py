@@ -357,6 +357,12 @@ class AssetStocktakeResultRepository:
                 selectinload(AssetStocktakeResult.stocktake_session).selectinload(
                     AssetStocktakeSession.location
                 ),
+                selectinload(AssetStocktakeResult.stocktake_session).selectinload(
+                    AssetStocktakeSession.expected_items
+                ),
+                selectinload(AssetStocktakeResult.stocktake_session).selectinload(
+                    AssetStocktakeSession.results
+                ),
             )
             .where(AssetStocktakeResult.result_type == "MISSING")
         )

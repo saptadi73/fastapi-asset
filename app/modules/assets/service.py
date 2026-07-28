@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import AppError
 from app.modules.assets.constants import (
     AssetAttributeDataType,
+    AssetComponentActionType,
     AssetOwnerType,
     AssetRetirementStatus,
     AssetStatus,
@@ -30,6 +31,7 @@ from app.modules.assets.models import (
     AssetAttributeValue,
     AssetCategory,
     AssetClass,
+    AssetComponentHistory,
     AssetLifecycleReview,
     AssetLocation,
     AssetLocationHistory,
@@ -45,6 +47,7 @@ from app.modules.assets.repository import (
     AssetAttributeValueRepository,
     AssetCategoryRepository,
     AssetClassRepository,
+    AssetComponentHistoryRepository,
     AssetLifecycleReviewRepository,
     AssetLocationHistoryRepository,
     AssetLocationRepository,
@@ -62,6 +65,7 @@ from app.modules.assets.schemas import (
     AssetAttributeValueCreate,
     AssetCategoryCreate,
     AssetClassCreate,
+    AssetComponentChangeCreate,
     AssetCreate,
     AssetLifecycleReviewCreate,
     AssetLocationChangeCreate,
@@ -95,6 +99,7 @@ class AssetRegistryService:
         self.transfer_items = AssetTransferItemRepository(session)
         self.lifecycle_reviews = AssetLifecycleReviewRepository(session)
         self.retirements = AssetRetirementRepository(session)
+        self.component_histories = AssetComponentHistoryRepository(session)
 
     async def create_category(self, payload: AssetCategoryCreate) -> AssetCategory:
         if payload.parent_category_id:
@@ -701,6 +706,89 @@ class AssetRegistryService:
         items = await self.assignments.list_by_asset(asset_id)
         return list(items)
 
+    async def change_components(
+        self,
+        asset_id: UUID,
+        payload: AssetComponentChangeCreate,
+        *,
+        changed_by: UUID | None,
+    ) -> AssetComponentHistory:
+        asset = await self.assets.get_for_update(asset_id)
+        if asset is None:
+            raise AssetNotFoundError(str(asset_id))
+
+        removed_component: Asset | None = None
+        installed_component: Asset | None = None
+
+        if payload.removed_component_asset_id is not None:
+            removed_component = await self.assets.get_for_update(
+                payload.removed_component_asset_id
+            )
+            if removed_component is None:
+                raise AssetNotFoundError(str(payload.removed_component_asset_id))
+
+        if payload.installed_component_asset_id is not None:
+            installed_component = await self.assets.get_for_update(
+                payload.installed_component_asset_id
+            )
+            if installed_component is None:
+                raise AssetNotFoundError(str(payload.installed_component_asset_id))
+
+        self._validate_component_change(
+            host_asset=asset,
+            payload=payload,
+            removed_component=removed_component,
+            installed_component=installed_component,
+        )
+
+        history = AssetComponentHistory(
+            asset_id=asset.id,
+            action_type=payload.action_type.value,
+            removed_component_asset_id=payload.removed_component_asset_id,
+            installed_component_asset_id=payload.installed_component_asset_id,
+            effective_at=payload.effective_at,
+            reason=payload.reason,
+            work_order_id=payload.work_order_id,
+            reference_type=payload.reference_type,
+            reference_id=payload.reference_id,
+            changed_by=changed_by,
+        )
+
+        try:
+            if removed_component is not None:
+                await self.assets.update(
+                    removed_component,
+                    parent_asset_id=None,
+                    updated_by=changed_by,
+                )
+
+            if installed_component is not None:
+                await self.assets.update(
+                    installed_component,
+                    parent_asset_id=asset.id,
+                    current_location_id=asset.current_location_id,
+                    updated_by=changed_by,
+                )
+
+            await self.component_histories.create(history)
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
+
+        items = await self.component_histories.list_by_asset(asset_id)
+        return items[0]
+
+    async def list_components(self, asset_id: UUID) -> list[Asset]:
+        await self.get_asset(asset_id)
+        items = await self.assets.list_children(asset_id)
+        return list(items)
+
+    async def list_component_history(self, asset_id: UUID) -> list[AssetComponentHistory]:
+        await self.get_asset(asset_id)
+        items = await self.component_histories.list_by_asset(asset_id)
+        return list(items)
+
     async def return_assignment(
         self,
         assignment_id: UUID,
@@ -1002,6 +1090,7 @@ class AssetRegistryService:
         status_histories = await self.status_histories.list_by_asset(asset_id)
         lifecycle_reviews = await self.lifecycle_reviews.list_by_asset(asset_id)
         retirements = await self.retirements.list_by_asset(asset_id)
+        component_histories = await self.component_histories.list_by_asset(asset_id)
 
         timeline: list[AssetTimelineEventRead] = []
 
@@ -1099,6 +1188,41 @@ class AssetRegistryService:
                         ),
                         "sap_retirement_doc_entry": item.sap_retirement_doc_entry,
                         "sap_trans_id": item.sap_trans_id,
+                    },
+                )
+            )
+
+        for item in component_histories:
+            timeline.append(
+                AssetTimelineEventRead(
+                    event_type=AssetTimelineEventType.COMPONENT_CHANGE,
+                    happened_at=item.effective_at,
+                    title="Perubahan komponen asset",
+                    description=item.reason,
+                    data={
+                        "action_type": item.action_type,
+                        "removed_component_asset_id": (
+                            str(item.removed_component_asset_id)
+                            if item.removed_component_asset_id
+                            else None
+                        ),
+                        "installed_component_asset_id": (
+                            str(item.installed_component_asset_id)
+                            if item.installed_component_asset_id
+                            else None
+                        ),
+                        "removed_component_asset_code": (
+                            item.removed_component_asset.asset_code
+                            if item.removed_component_asset
+                            else None
+                        ),
+                        "installed_component_asset_code": (
+                            item.installed_component_asset.asset_code
+                            if item.installed_component_asset
+                            else None
+                        ),
+                        "work_order_id": str(item.work_order_id) if item.work_order_id else None,
+                        "changed_by": str(item.changed_by) if item.changed_by else None,
                     },
                 )
             )
@@ -1226,3 +1350,84 @@ class AssetRegistryService:
         if normalized in {"SALE", "SCRAP", "DISPOSAL"}:
             return AssetStatus.DISPOSED.value
         return AssetStatus.RETIRED.value
+
+    def _validate_component_change(
+        self,
+        *,
+        host_asset: Asset,
+        payload: AssetComponentChangeCreate,
+        removed_component: Asset | None,
+        installed_component: Asset | None,
+    ) -> None:
+        if payload.action_type == AssetComponentActionType.INSTALL:
+            if installed_component is None or removed_component is not None:
+                raise AppError(
+                    code="ASSET_COMPONENT_ACTION_INVALID",
+                    message="Action INSTALL wajib hanya membawa installed_component_asset_id.",
+                    status_code=422,
+                )
+
+        if payload.action_type == AssetComponentActionType.REMOVE:
+            if removed_component is None or installed_component is not None:
+                raise AppError(
+                    code="ASSET_COMPONENT_ACTION_INVALID",
+                    message="Action REMOVE wajib hanya membawa removed_component_asset_id.",
+                    status_code=422,
+                )
+
+        if payload.action_type == AssetComponentActionType.REPLACE:
+            if removed_component is None or installed_component is None:
+                raise AppError(
+                    code="ASSET_COMPONENT_ACTION_INVALID",
+                    message="Action REPLACE wajib membawa removed dan installed component.",
+                    status_code=422,
+                )
+
+        involved_assets = [item for item in (removed_component, installed_component) if item]
+        for component in involved_assets:
+            if component.id == host_asset.id:
+                raise AppError(
+                    code="ASSET_COMPONENT_SELF_REFERENCE",
+                    message="Asset host tidak boleh menjadi komponennya sendiri.",
+                    status_code=409,
+                )
+
+        if removed_component is not None and removed_component.parent_asset_id != host_asset.id:
+            raise AppError(
+                code="ASSET_COMPONENT_NOT_INSTALLED",
+                message="Komponen yang akan dilepas tidak terpasang pada asset host ini.",
+                status_code=409,
+            )
+
+        if installed_component is not None:
+            if installed_component.parent_asset_id is not None:
+                raise AppError(
+                    code="ASSET_COMPONENT_ALREADY_ATTACHED",
+                    message="Komponen yang akan dipasang masih terhubung ke asset lain.",
+                    status_code=409,
+                )
+            if self._creates_component_cycle(host_asset=host_asset, component=installed_component):
+                raise AppError(
+                    code="ASSET_COMPONENT_CYCLE",
+                    message="Pemasangan komponen menimbulkan siklus hierarchy asset.",
+                    status_code=409,
+                )
+
+        if (
+            removed_component is not None
+            and installed_component is not None
+            and removed_component.id == installed_component.id
+        ):
+            raise AppError(
+                code="ASSET_COMPONENT_REPLACE_SAME_ASSET",
+                message="Komponen pengganti harus berbeda dari komponen yang dilepas.",
+                status_code=409,
+            )
+
+    def _creates_component_cycle(self, *, host_asset: Asset, component: Asset) -> bool:
+        current = host_asset
+        while current is not None:
+            if current.id == component.id:
+                return True
+            current = getattr(current, "parent_asset", None)
+        return False

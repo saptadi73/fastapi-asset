@@ -362,7 +362,7 @@ Selain feature besar, berikut logic/service baseline yang perlu ditinjau lagi.
 ### F5. Asset Lifecycle Logic
 
 - [x] assignment return
-- [ ] component relationship / component install-remove flow
+- [x] component relationship / component install-remove flow
 - [x] lifecycle review and retirement recommendation
 
 ## G. Backend-to-Frontend Impact
@@ -374,7 +374,7 @@ Item backlog berikut akan paling memengaruhi frontend bila dikerjakan:
 - contract/warranty/SLA validation
 - work order hold/resume/cancel
 - attachment download/versioning
-- component install-remove flow
+- component replacement analytics dan install-remove history visualization
 
 ### Dampak tinggi ke dashboard/report UI
 
@@ -413,7 +413,7 @@ Urutan yang paling masuk akal dari sisi engineering:
 
 - lease
 - software license
-- component install-remove flow
+- replacement analytics dan SAP integration preparation
 
 ### Wave 5
 

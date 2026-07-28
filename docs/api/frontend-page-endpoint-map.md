@@ -72,7 +72,8 @@ Sample yang sebaiknya dibuka:
 Tujuan data:
 
 - ringkasan master asset;
-- tab attribute, ownership, assignment, status, location, tracking, timeline, maintenance.
+- tab attribute, ownership, assignment, components, lifecycle, status, location,
+  tracking, timeline, maintenance.
 
 Endpoint utama:
 
@@ -83,6 +84,10 @@ Endpoint tab:
 - `GET /api/v1/assets/{asset_id}/attribute-values`
 - `GET /api/v1/assets/{asset_id}/ownerships`
 - `GET /api/v1/assets/{asset_id}/assignment-history`
+- `GET /api/v1/assets/{asset_id}/components`
+- `GET /api/v1/assets/{asset_id}/component-history`
+- `GET /api/v1/assets/{asset_id}/lifecycle-reviews`
+- `GET /api/v1/assets/{asset_id}/retirement-requests`
 - `GET /api/v1/assets/{asset_id}/status-history`
 - `GET /api/v1/assets/{asset_id}/location-history`
 - `GET /api/v1/assets/{asset_id}/timeline`
@@ -96,6 +101,7 @@ Endpoint action yang sudah punya sample:
 - `POST /api/v1/assets/{asset_id}/ownerships`
 - `POST /api/v1/assets/{asset_id}/assignments`
 - `POST /api/v1/assignments/{assignment_id}/return`
+- `POST /api/v1/assets/{asset_id}/components`
 - `POST /api/v1/assets/{asset_id}/status-changes`
 - `POST /api/v1/assets/{asset_id}/location-changes`
 
@@ -106,6 +112,34 @@ Seed entity:
 - `asset_assignment_id`
 - `asset_lifecycle_review_id`
 - `asset_retirement_request_id`
+- `installed_component_asset_id`
+- `replacement_component_asset_id`
+- `component_install_history_id`
+- `component_replace_history_id`
+
+## Asset Components
+
+Tujuan data:
+
+- menampilkan komponen yang saat ini terpasang pada asset;
+- menampilkan histori install, remove, dan replace komponen.
+
+Endpoint utama:
+
+- `GET /api/v1/assets/{asset_id}/components`
+- `GET /api/v1/assets/{asset_id}/component-history`
+
+Action sample:
+
+- `POST /api/v1/assets/{asset_id}/components`
+
+Seed entity:
+
+- `asset_id`
+- `installed_component_asset_id`
+- `replacement_component_asset_id`
+- `component_install_history_id`
+- `component_replace_history_id`
 
 ## Asset Lifecycle and Retirement
 

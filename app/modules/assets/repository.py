@@ -14,6 +14,7 @@ from app.modules.assets.models import (
     AssetAttributeValue,
     AssetCategory,
     AssetClass,
+    AssetComponentHistory,
     AssetLifecycleReview,
     AssetLocation,
     AssetLocationHistory,
@@ -302,6 +303,7 @@ class AssetRepository:
                 "ownerships",
                 "lifecycle_reviews",
                 "retirements",
+                "component_histories",
             ],
         )
         return asset
@@ -321,6 +323,7 @@ class AssetRepository:
                 selectinload(Asset.ownerships),
                 selectinload(Asset.lifecycle_reviews),
                 selectinload(Asset.retirements),
+                selectinload(Asset.component_histories),
             )
             .where(Asset.id == asset_id)
         )
@@ -341,6 +344,7 @@ class AssetRepository:
                 selectinload(Asset.ownerships),
                 selectinload(Asset.lifecycle_reviews),
                 selectinload(Asset.retirements),
+                selectinload(Asset.component_histories),
             )
             .where(Asset.id == asset_id)
             .with_for_update()
@@ -360,6 +364,7 @@ class AssetRepository:
             selectinload(Asset.ownerships),
             selectinload(Asset.lifecycle_reviews),
             selectinload(Asset.retirements),
+            selectinload(Asset.component_histories),
         )
         count_stmt = select(func.count()).select_from(Asset)
 
@@ -400,9 +405,25 @@ class AssetRepository:
                 "ownerships",
                 "lifecycle_reviews",
                 "retirements",
+                "component_histories",
             ],
         )
         return asset
+
+    async def list_children(self, asset_id: UUID) -> Sequence[Asset]:
+        stmt = (
+            select(Asset)
+            .options(
+                selectinload(Asset.asset_category),
+                selectinload(Asset.asset_class),
+                selectinload(Asset.parent_asset),
+                selectinload(Asset.current_location),
+            )
+            .where(Asset.parent_asset_id == asset_id)
+            .order_by(Asset.asset_code)
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
 
 
 class AssetLocationHistoryRepository:
@@ -578,3 +599,29 @@ class AssetRetirementRepository:
             .order_by(AssetRetirement.request_date.desc(), AssetRetirement.id.desc())
         )
         return await self.session.scalar(stmt)
+
+
+class AssetComponentHistoryRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: AssetComponentHistory) -> AssetComponentHistory:
+        self.session.add(item)
+        await self.session.flush()
+        return item
+
+    async def list_by_asset(self, asset_id: UUID) -> Sequence[AssetComponentHistory]:
+        stmt = (
+            select(AssetComponentHistory)
+            .options(
+                selectinload(AssetComponentHistory.removed_component_asset),
+                selectinload(AssetComponentHistory.installed_component_asset),
+            )
+            .where(AssetComponentHistory.asset_id == asset_id)
+            .order_by(
+                AssetComponentHistory.effective_at.desc(),
+                AssetComponentHistory.id.desc(),
+            )
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()

@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.modules.assets.constants import (
     AssetAttributeDataType,
+    AssetComponentActionType,
     AssetOwnerType,
     AssetRetirementStatus,
     AssetStatus,
@@ -559,6 +560,59 @@ class AssetTimelineEventRead(BaseModel):
     title: str
     description: str | None
     data: dict
+
+
+class AssetComponentChangeCreate(BaseModel):
+    action_type: AssetComponentActionType
+    effective_at: datetime
+    installed_component_asset_id: UUID | None = None
+    removed_component_asset_id: UUID | None = None
+    reason: str | None = None
+    work_order_id: UUID | None = None
+    reference_type: str | None = Field(default=None, max_length=50)
+    reference_id: UUID | None = None
+
+
+class AssetComponentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    asset_code: str
+    asset_name: str
+    asset_status: str
+    condition_status: str
+    serial_number: str | None
+    parent_asset_id: UUID | None
+
+    @classmethod
+    def from_model(cls, asset: object) -> AssetComponentRead:
+        return cls(
+            id=asset.id,
+            asset_code=asset.asset_code,
+            asset_name=asset.asset_name,
+            asset_status=asset.asset_status,
+            condition_status=asset.condition_status,
+            serial_number=asset.serial_number,
+            parent_asset_id=asset.parent_asset_id,
+        )
+
+
+class AssetComponentHistoryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    asset_id: UUID
+    action_type: AssetComponentActionType
+    removed_component_asset_id: UUID | None
+    installed_component_asset_id: UUID | None
+    effective_at: datetime
+    reason: str | None
+    work_order_id: UUID | None
+    reference_type: str | None
+    reference_id: UUID | None
+    changed_by: UUID | None
+    removed_component_asset: AssetComponentRead | None = None
+    installed_component_asset: AssetComponentRead | None = None
 
 
 class AssetLifecycleReviewCreate(BaseModel):

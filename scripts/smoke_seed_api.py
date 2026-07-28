@@ -623,6 +623,109 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
             f"{API_PREFIX}/assets/{asset_id}",
             label="get asset after lifecycle review",
         )
+        installed_component = await runner.call(
+            "POST",
+            f"{API_PREFIX}/assets",
+            label="create installed component asset",
+            json_body={
+                "asset_code": f"CMP-A-{suffix}",
+                "asset_name": f"Impeller Component {suffix}",
+                "description": "Komponen awal untuk smoke test install",
+                "asset_category_id": category_id,
+                "asset_class_id": asset_class_id,
+                "asset_type": "COMPONENT",
+                "asset_status": "IN_SERVICE",
+                "condition_status": "GOOD",
+                "criticality_level": "MEDIUM",
+                "serial_number": f"CMP-A-SN-{suffix}",
+                "manufacturer_id": partner_id,
+                "brand": "SmokeParts",
+                "model": "IMP-A",
+                "manufacture_year": 2026,
+                "company_id": company_id,
+                "branch_id": branch_id,
+                "current_location_id": origin_location_id,
+                "tag_number": f"CMP-A-TAG-{suffix}",
+                "tracking_status": "TRACKED",
+                "in_service_date": "2026-07-10",
+            },
+        )
+        installed_component_asset_id = installed_component["data"]["id"]
+        replacement_component = await runner.call(
+            "POST",
+            f"{API_PREFIX}/assets",
+            label="create replacement component asset",
+            json_body={
+                "asset_code": f"CMP-B-{suffix}",
+                "asset_name": f"Impeller Replacement {suffix}",
+                "description": "Komponen pengganti untuk smoke test replace",
+                "asset_category_id": category_id,
+                "asset_class_id": asset_class_id,
+                "asset_type": "COMPONENT",
+                "asset_status": "IN_SERVICE",
+                "condition_status": "GOOD",
+                "criticality_level": "MEDIUM",
+                "serial_number": f"CMP-B-SN-{suffix}",
+                "manufacturer_id": partner_id,
+                "brand": "SmokeParts",
+                "model": "IMP-B",
+                "manufacture_year": 2026,
+                "company_id": company_id,
+                "branch_id": branch_id,
+                "current_location_id": origin_location_id,
+                "tag_number": f"CMP-B-TAG-{suffix}",
+                "tracking_status": "TRACKED",
+                "in_service_date": "2026-07-12",
+            },
+        )
+        replacement_component_asset_id = replacement_component["data"]["id"]
+        component_install = await runner.call(
+            "POST",
+            f"{API_PREFIX}/assets/{asset_id}/components",
+            label="install asset component",
+            json_body={
+                "action_type": "INSTALL",
+                "effective_at": "2026-07-27T07:00:00Z",
+                "installed_component_asset_id": installed_component_asset_id,
+                "reason": "Pasang komponen awal untuk smoke test",
+                "reference_type": "SMOKE_COMPONENT",
+            },
+        )
+        component_install_history_id = component_install["data"]["id"]
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/assets/{asset_id}/components",
+            label="list asset components after install",
+        )
+        component_replace = await runner.call(
+            "POST",
+            f"{API_PREFIX}/assets/{asset_id}/components",
+            label="replace asset component",
+            json_body={
+                "action_type": "REPLACE",
+                "effective_at": "2026-07-27T07:10:00Z",
+                "removed_component_asset_id": installed_component_asset_id,
+                "installed_component_asset_id": replacement_component_asset_id,
+                "reason": "Ganti komponen untuk smoke test replace",
+                "reference_type": "SMOKE_COMPONENT",
+            },
+        )
+        component_replace_history_id = component_replace["data"]["id"]
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/assets/{asset_id}/components",
+            label="list asset components after replace",
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/assets/{asset_id}/component-history",
+            label="list asset component history",
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/assets/{asset_id}",
+            label="get asset after component changes",
+        )
         await runner.call(
             "POST",
             f"{API_PREFIX}/assets/{asset_id}/attribute-values",
@@ -2055,6 +2158,10 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
         "asset_id": asset_id,
         "asset_tag_number": tag_number,
         "asset_lifecycle_review_id": lifecycle_review_id,
+        "installed_component_asset_id": installed_component_asset_id,
+        "replacement_component_asset_id": replacement_component_asset_id,
+        "component_install_history_id": component_install_history_id,
+        "component_replace_history_id": component_replace_history_id,
         "asset_assignment_id": assignment_id,
         "asset_transfer_id": transfer_id,
         "asset_retirement_request_id": retirement_request_id,
