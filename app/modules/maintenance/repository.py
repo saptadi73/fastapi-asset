@@ -32,6 +32,7 @@ from app.modules.maintenance.models import (
     MaintenanceRequestWorkOrder,
     MaintenanceRootCauseCode,
     MaintenanceSchedule,
+    MaintenanceScheduleEvent,
     MaintenanceSkill,
     MaintenanceSlaSnapshot,
     MaintenanceSymptomCode,
@@ -1255,6 +1256,25 @@ class MaintenanceWorkOrderEventRepository:
             select(MaintenanceWorkOrderEvent)
             .where(MaintenanceWorkOrderEvent.work_order_id == work_order_id)
             .order_by(MaintenanceWorkOrderEvent.event_at.asc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+
+class MaintenanceScheduleEventRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: MaintenanceScheduleEvent) -> MaintenanceScheduleEvent:
+        self.session.add(item)
+        await self.session.flush()
+        return item
+
+    async def list_by_schedule(self, schedule_id: UUID) -> Sequence[MaintenanceScheduleEvent]:
+        stmt = (
+            select(MaintenanceScheduleEvent)
+            .where(MaintenanceScheduleEvent.maintenance_schedule_id == schedule_id)
+            .order_by(MaintenanceScheduleEvent.event_at.asc(), MaintenanceScheduleEvent.id.asc())
         )
         result = await self.session.scalars(stmt)
         return result.all()

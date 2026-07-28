@@ -7,7 +7,7 @@ menggunakan response envelope yang sama agar integrasi frontend konsisten.
 ## Live Seed Reference
 
 Untuk kebutuhan frontend, backend sekarang juga menghasilkan artefak sample
-response dari live seed run pada **Monday, July 27, 2026**.
+response dari live seed run pada **Tuesday, July 28, 2026**.
 
 File yang bisa dijadikan rujukan:
 
@@ -803,8 +803,13 @@ Membuat preventive maintenance plan.
 Aturan backend yang sudah aktif:
 
 - minimal salah satu dari `asset_id` atau `asset_category_id` wajib diisi
-- untuk `trigger_type = CALENDAR`, `calendar_interval_value` dan
+- untuk `trigger_type = CALENDAR`, `CALENDAR_OR_METER`, atau
+  `CALENDAR_AND_METER`, `calendar_interval_value` dan
   `calendar_interval_unit` wajib diisi
+- untuk `trigger_type = METER`, `CALENDAR_OR_METER`, atau
+  `CALENDAR_AND_METER`, `meter_interval` wajib diisi
+- untuk `trigger_type = CONDITION`, `condition_rule` wajib diisi
+- untuk `trigger_type = PREDICTIVE`, `predictive_rule` wajib diisi
 - `effective_to` tidak boleh lebih kecil dari `effective_from`
 
 Contoh request:
@@ -862,7 +867,18 @@ Perilaku backend:
 - jika `auto_create_work_order = true` pada plan, backend dapat langsung
   membuat work order turunan
 - benturan jadwal asset/tim/vendor akan ditolak
+- payload sekarang dapat membawa `meter_reading_value`,
+  `condition_snapshot`, `predictive_snapshot`, `trigger_evaluated_at`, dan
+  `generation_reason`
+- backend mengevaluasi due sesuai `trigger_type`:
+  `CALENDAR`, `METER`, `CALENDAR_OR_METER`, `CALENDAR_AND_METER`,
+  `CONDITION`, `PREDICTIVE`, atau `MANUAL`
 - `next_due_date` plan akan dimajukan sesuai interval kalender bila tersedia
+- `next_due_meter_value` akan dimajukan sesuai `meter_interval` untuk
+  trigger berbasis meter
+- `schedule_source` akan diisi lebih spesifik:
+  `PREVENTIVE_PLAN`, `METER_TRIGGER`, `CONDITION_TRIGGER`, atau
+  `PREDICTIVE_TRIGGER`
 
 ### `POST /maintenance/teams`
 
@@ -1724,12 +1740,33 @@ Status:
 
 ### `POST /maintenance/schedules/{schedule_id}/reschedule`
 
-Mengubah waktu jadwal dan menaikkan `reschedule_count`.
+Mengubah waktu jadwal, menaikkan `reschedule_count`, dan menulis audit event
+reschedule yang menyimpan waktu lama dan waktu baru.
 
 Status yang ditolak:
 
 - `COMPLETED`
 - `CANCELLED`
+
+### `GET /maintenance/schedules/{schedule_id}/events`
+
+Mengambil history event untuk schedule.
+
+Contoh event yang bisa muncul:
+
+- `CREATED`
+- `GENERATED`
+- `CONFIRMED`
+- `RESCHEDULED`
+
+Catatan frontend:
+
+- `event_payload` pada event `RESCHEDULED` memuat `previous_scheduled_start_at`,
+  `previous_scheduled_end_at`, `new_scheduled_start_at`,
+  `new_scheduled_end_at`, dan `reschedule_count`
+- `event_payload` pada event `GENERATED` memuat konteks trigger seperti
+  `trigger_type`, `schedule_source`, `meter_reading_value`,
+  `condition_snapshot`, dan `predictive_snapshot`
 
 ## Assets
 

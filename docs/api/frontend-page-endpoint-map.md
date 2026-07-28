@@ -7,7 +7,7 @@ Dokumen ini adalah panduan cepat untuk tim frontend agar setiap halaman punya:
 - seed entity yang bisa langsung dipakai untuk uji manual;
 - artefak sample response yang relevan.
 
-Semua contoh mengacu pada live seed run tanggal **Monday, July 27, 2026**.
+Semua contoh mengacu pada live seed run tanggal **Tuesday, July 28, 2026**.
 
 ## Referensi Cepat
 
@@ -392,6 +392,16 @@ Action sample:
 - `POST /api/v1/maintenance/plans/{maintenance_plan_id}/assets`
 - `POST /api/v1/maintenance/plans/{maintenance_plan_id}/generate`
 
+Catatan frontend:
+
+- form generate schedule sebaiknya mendukung mode kalender biasa,
+  trigger meter, trigger condition, dan trigger predictive
+- untuk trigger meter, tampilkan input `meter_reading_value`
+- untuk trigger condition, tampilkan editor `condition_snapshot`
+  sederhana agar planner bisa melihat alasan due generation
+- untuk trigger predictive, tampilkan editor `predictive_snapshot`
+  dan penjelasan threshold dari `predictive_rule`
+
 Seed entity:
 
 - `maintenance_plan_id`
@@ -414,10 +424,14 @@ Action sample:
 
 - `POST /api/v1/maintenance/schedules/{maintenance_schedule_id}/confirm`
 - `POST /api/v1/maintenance/schedules/{maintenance_schedule_id}/reschedule`
+- `GET /api/v1/maintenance/schedules/{maintenance_schedule_id}/events`
 
 Seed entity:
 
 - `maintenance_schedule_id`
+- `maintenance_meter_schedule_id`
+- `maintenance_condition_schedule_id`
+- `maintenance_predictive_schedule_id`
 
 ## Maintenance Request List
 

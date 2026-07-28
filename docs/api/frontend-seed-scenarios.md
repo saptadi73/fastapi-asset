@@ -1,6 +1,6 @@
 # Frontend Seed Scenarios
 
-Dokumen ini menjelaskan bagaimana data seed live dibentuk pada **Monday, July 27, 2026**
+Dokumen ini menjelaskan bagaimana data seed live dibentuk pada **Tuesday, July 28, 2026**
 agar tim frontend bisa memahami:
 
 - endpoint mana yang menghasilkan data untuk endpoint berikutnya;
@@ -330,11 +330,24 @@ Endpoint:
 - `GET /api/v1/maintenance/schedules/{schedule_id}`
 - `POST /api/v1/maintenance/schedules/{schedule_id}/confirm`
 - `POST /api/v1/maintenance/schedules/{schedule_id}/reschedule`
+- `GET /api/v1/maintenance/schedules/{schedule_id}/events`
 
 Output penting:
 
 - `maintenance_plan_id`
 - `maintenance_schedule_id`
+
+Tambahan seed yang sekarang tersedia:
+
+- calendar plan dengan confirm + reschedule + event history
+- meter plan dengan `meter_reading_value` yang memicu `METER_TRIGGER`
+- condition plan dengan `condition_snapshot` yang memicu `CONDITION_TRIGGER`
+- predictive plan dengan `predictive_snapshot` yang memicu
+  `PREDICTIVE_TRIGGER`
+- seed entity tambahan:
+  `maintenance_meter_plan_id`, `maintenance_meter_schedule_id`,
+  `maintenance_condition_plan_id`, `maintenance_condition_schedule_id`,
+  `maintenance_predictive_plan_id`, `maintenance_predictive_schedule_id`
 
 ### 10. Maintenance Request
 

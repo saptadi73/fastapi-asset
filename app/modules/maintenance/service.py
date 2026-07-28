@@ -30,6 +30,7 @@ from app.modules.maintenance.constants import (
     MaintenanceRequestSourceType,
     MaintenanceRequestStatus,
     MaintenanceRequestType,
+    MaintenanceScheduleEventType,
     MaintenanceScheduleStatus,
     MaintenanceType,
     MaintenanceWorkOrderEventType,
@@ -73,6 +74,7 @@ from app.modules.maintenance.models import (
     MaintenanceRequestWorkOrder,
     MaintenanceRootCauseCode,
     MaintenanceSchedule,
+    MaintenanceScheduleEvent,
     MaintenanceSkill,
     MaintenanceSlaSnapshot,
     MaintenanceSymptomCode,
@@ -109,6 +111,7 @@ from app.modules.maintenance.repository import (
     MaintenanceRequestWorkOrderRepository,
     MaintenanceRootCauseCodeRepository,
     MaintenanceScheduleRepository,
+    MaintenanceScheduleEventRepository,
     MaintenanceSkillRepository,
     MaintenanceSlaSnapshotRepository,
     MaintenanceSymptomCodeRepository,
@@ -213,6 +216,7 @@ class MaintenanceService:
         self.employee_skills = EmployeeMaintenanceSkillRepository(session)
         self.work_order_required_skills = MaintenanceWorkOrderRequiredSkillRepository(session)
         self.schedules = MaintenanceScheduleRepository(session)
+        self.schedule_events = MaintenanceScheduleEventRepository(session)
         self.assets = AssetRepository(session)
         self.asset_locations = AssetLocationRepository(session)
         self.asset_status_histories = AssetStatusHistoryRepository(session)
@@ -600,17 +604,7 @@ class MaintenanceService:
                 message="Maintenance plan harus memiliki asset_id atau asset_category_id.",
                 status_code=422,
             )
-        if payload.trigger_type == MaintenancePlanTriggerType.CALENDAR and (
-            payload.calendar_interval_value is None or payload.calendar_interval_unit is None
-        ):
-            raise AppError(
-                code="MAINTENANCE_PLAN_TRIGGER_INVALID",
-                message=(
-                    "Calendar plan harus memiliki calendar_interval_value dan "
-                    "calendar_interval_unit."
-                ),
-                status_code=422,
-            )
+        self._validate_plan_trigger_configuration(payload)
         if payload.asset_id is not None:
             await self._get_asset_or_raise(payload.asset_id)
         if payload.default_team_id is not None:
@@ -636,6 +630,7 @@ class MaintenanceService:
             meter_id=payload.meter_id,
             meter_interval=payload.meter_interval,
             condition_rule=payload.condition_rule,
+            predictive_rule=payload.predictive_rule,
             default_priority_id=payload.default_priority_id,
             default_team_id=payload.default_team_id,
             default_vendor_partner_id=payload.default_vendor_partner_id,
@@ -725,6 +720,25 @@ class MaintenanceService:
         payload: MaintenancePlanGeneratePayload,
     ) -> list[MaintenanceSchedule]:
         plan = await self.get_plan(plan_id)
+        trigger_evaluated_at = payload.trigger_evaluated_at or payload.scheduled_start_at
+        due_evaluation = self._evaluate_plan_due_generation(
+            plan,
+            payload,
+            trigger_evaluated_at=trigger_evaluated_at,
+        )
+        if not due_evaluation["due"]:
+            raise AppError(
+                code="MAINTENANCE_PLAN_NOT_DUE",
+                message=due_evaluation["message"],
+                status_code=422,
+                details=due_evaluation["details"],
+            )
+        schedule_source = self._resolve_schedule_source_for_plan(
+            trigger_type=plan.trigger_type,
+            meter_reading_value=payload.meter_reading_value,
+            condition_snapshot=payload.condition_snapshot,
+            predictive_snapshot=payload.predictive_snapshot,
+        )
         target_assets: list[tuple[UUID, int | None, str | None]] = []
         if plan.asset_id is not None:
             target_assets.append(
@@ -773,7 +787,7 @@ class MaintenanceService:
                     maintenance_request_id=None,
                     work_order_id=None,
                     asset_id=asset_id,
-                    schedule_source="PREVENTIVE_PLAN",
+                    schedule_source=schedule_source,
                     scheduled_start_at=start_at,
                     scheduled_end_at=end_at,
                     maintenance_team_id=plan.default_team_id,
@@ -784,6 +798,31 @@ class MaintenanceService:
                     created_at=datetime.now(UTC if start_at.tzinfo else None),
                 )
                 created = await self.schedules.create(schedule)
+                await self._record_schedule_event(
+                    schedule_id=created.id,
+                    event_type=(
+                        MaintenanceScheduleEventType.GENERATED.value
+                        if plan.trigger_type != MaintenancePlanTriggerType.MANUAL.value
+                        else MaintenanceScheduleEventType.CREATED.value
+                    ),
+                    previous_status=None,
+                    new_status=created.status,
+                    event_at=trigger_evaluated_at,
+                    performed_by=payload.created_by,
+                    reason=payload.generation_reason,
+                    event_payload={
+                        "maintenance_plan_id": str(plan.id),
+                        "trigger_type": plan.trigger_type,
+                        "schedule_source": schedule_source,
+                        "meter_reading_value": (
+                            str(payload.meter_reading_value)
+                            if payload.meter_reading_value is not None
+                            else None
+                        ),
+                        "condition_snapshot": payload.condition_snapshot,
+                        "predictive_snapshot": payload.predictive_snapshot,
+                    },
+                )
                 created_ids.append(created.id)
 
                 if payload.create_work_orders is True or (
@@ -818,15 +857,14 @@ class MaintenanceService:
                     created_wo = await self.work_orders.create(work_order)
                     await self.schedules.update(created, work_order_id=created_wo.id)
 
-            if plan.trigger_type.startswith("CALENDAR") and plan.next_due_date is not None:
-                next_due_date = plan.next_due_date
-                if plan.calendar_interval_value and plan.calendar_interval_unit:
-                    next_due_date = self._increment_due_date(
-                        plan.next_due_date,
-                        plan.calendar_interval_value,
-                        plan.calendar_interval_unit,
-                    )
-                await self.plans.update(plan, next_due_date=next_due_date)
+            await self.plans.update(
+                plan,
+                next_due_date=self._compute_next_due_date_after_generation(plan),
+                next_due_meter_value=self._compute_next_due_meter_value_after_generation(
+                    plan,
+                    payload,
+                ),
+            )
             await self.session.commit()
         except IntegrityError as exc:
             await self.session.rollback()
@@ -1083,6 +1121,15 @@ class MaintenanceService:
         )
         try:
             await self.schedules.create(item)
+            await self._record_schedule_event(
+                schedule_id=item.id,
+                event_type=MaintenanceScheduleEventType.CREATED.value,
+                previous_status=None,
+                new_status=item.status,
+                event_at=payload.created_at,
+                performed_by=payload.created_by,
+                event_payload={"schedule_source": payload.schedule_source.value},
+            )
             await self.session.commit()
         except IntegrityError as exc:
             await self.session.rollback()
@@ -1122,10 +1169,19 @@ class MaintenanceService:
                 status_code=409,
             )
         try:
+            previous_status = item.status
             await self.schedules.update(
                 item,
                 status=MaintenanceScheduleStatus.CONFIRMED.value,
                 confirmed_at=payload.acted_at,
+            )
+            await self._record_schedule_event(
+                schedule_id=item.id,
+                event_type=MaintenanceScheduleEventType.CONFIRMED.value,
+                previous_status=previous_status,
+                new_status=MaintenanceScheduleStatus.CONFIRMED.value,
+                event_at=payload.acted_at,
+                performed_by=payload.actor_id,
             )
             await self.session.commit()
         except Exception:
@@ -1158,6 +1214,9 @@ class MaintenanceService:
             exclude_schedule_id=item.id,
         )
         try:
+            previous_status = item.status
+            previous_start_at = item.scheduled_start_at
+            previous_end_at = item.scheduled_end_at
             await self.schedules.update(
                 item,
                 scheduled_start_at=payload.scheduled_start_at,
@@ -1166,11 +1225,31 @@ class MaintenanceService:
                 reschedule_count=item.reschedule_count + 1,
                 reschedule_reason=payload.reschedule_reason,
             )
+            await self._record_schedule_event(
+                schedule_id=item.id,
+                event_type=MaintenanceScheduleEventType.RESCHEDULED.value,
+                previous_status=previous_status,
+                new_status=MaintenanceScheduleStatus.POSTPONED.value,
+                event_at=datetime.now(UTC),
+                performed_by=payload.actor_id,
+                reason=payload.reschedule_reason,
+                event_payload={
+                    "previous_scheduled_start_at": previous_start_at.isoformat(),
+                    "previous_scheduled_end_at": previous_end_at.isoformat(),
+                    "new_scheduled_start_at": payload.scheduled_start_at.isoformat(),
+                    "new_scheduled_end_at": payload.scheduled_end_at.isoformat(),
+                    "reschedule_count": item.reschedule_count + 1,
+                },
+            )
             await self.session.commit()
         except Exception:
             await self.session.rollback()
             raise
         return await self.get_schedule(schedule_id)
+
+    async def list_schedule_events(self, schedule_id) -> list[MaintenanceScheduleEvent]:
+        await self.get_schedule(schedule_id)
+        return list(await self.schedule_events.list_by_schedule(schedule_id))
 
     async def create_priority(self, payload: MaintenancePriorityCreate) -> MaintenancePriority:
         item = MaintenancePriority(**payload.model_dump())
@@ -3956,6 +4035,34 @@ class MaintenanceService:
             )
         )
 
+    async def _record_schedule_event(
+        self,
+        *,
+        schedule_id,
+        event_type: str,
+        previous_status: str | None,
+        new_status: str | None,
+        event_at,
+        performed_by=None,
+        reason: str | None = None,
+        event_payload: dict | None = None,
+    ) -> MaintenanceScheduleEvent:
+        timestamp = event_at if isinstance(event_at, datetime) else datetime.now(UTC)
+        return await self.schedule_events.create(
+            MaintenanceScheduleEvent(
+                maintenance_schedule_id=schedule_id,
+                event_type=event_type,
+                previous_status=previous_status,
+                new_status=new_status,
+                event_at=timestamp,
+                performed_by=performed_by,
+                reason=reason,
+                event_payload=event_payload,
+                created_at=timestamp,
+                updated_at=timestamp,
+            )
+        )
+
     async def _get_symptom_code_or_raise(self, symptom_code_id: UUID) -> MaintenanceSymptomCode:
         item = await self.symptom_codes.get(symptom_code_id)
         if item is None:
@@ -4170,6 +4277,271 @@ class MaintenanceService:
                 status_code=409,
                 details={"conflict_count": len(overlaps)},
             )
+
+    def _validate_plan_trigger_configuration(self, payload: MaintenancePlanCreate) -> None:
+        trigger_type = payload.trigger_type
+        requires_calendar = trigger_type in {
+            MaintenancePlanTriggerType.CALENDAR,
+            MaintenancePlanTriggerType.CALENDAR_OR_METER,
+            MaintenancePlanTriggerType.CALENDAR_AND_METER,
+        }
+        requires_meter = trigger_type in {
+            MaintenancePlanTriggerType.METER,
+            MaintenancePlanTriggerType.CALENDAR_OR_METER,
+            MaintenancePlanTriggerType.CALENDAR_AND_METER,
+        }
+        requires_condition = trigger_type == MaintenancePlanTriggerType.CONDITION
+        requires_predictive = trigger_type == MaintenancePlanTriggerType.PREDICTIVE
+        if requires_calendar and (
+            payload.calendar_interval_value is None or payload.calendar_interval_unit is None
+        ):
+            raise AppError(
+                code="MAINTENANCE_PLAN_TRIGGER_INVALID",
+                message=(
+                    "Plan dengan trigger calendar wajib memiliki "
+                    "calendar_interval_value dan calendar_interval_unit."
+                ),
+                status_code=422,
+            )
+        if requires_meter and payload.meter_interval is None:
+            raise AppError(
+                code="MAINTENANCE_PLAN_TRIGGER_INVALID",
+                message="Plan dengan trigger meter wajib memiliki meter_interval.",
+                status_code=422,
+            )
+        if requires_condition and not payload.condition_rule:
+            raise AppError(
+                code="MAINTENANCE_PLAN_TRIGGER_INVALID",
+                message="Plan dengan trigger condition wajib memiliki condition_rule.",
+                status_code=422,
+            )
+        if requires_predictive and not payload.predictive_rule:
+            raise AppError(
+                code="MAINTENANCE_PLAN_TRIGGER_INVALID",
+                message="Plan dengan trigger predictive wajib memiliki predictive_rule.",
+                status_code=422,
+            )
+
+    def _evaluate_plan_due_generation(
+        self,
+        plan: MaintenancePlan,
+        payload: MaintenancePlanGeneratePayload,
+        *,
+        trigger_evaluated_at: datetime,
+    ) -> dict[str, object]:
+        evaluation_date = trigger_evaluated_at.date()
+        calendar_due = plan.next_due_date is not None and evaluation_date >= plan.next_due_date
+        meter_due = (
+            payload.meter_reading_value is not None
+            and plan.next_due_meter_value is not None
+            and payload.meter_reading_value >= plan.next_due_meter_value
+        )
+        condition_due = self._condition_trigger_matches(
+            plan.condition_rule,
+            payload.condition_snapshot,
+        )
+        predictive_due = self._predictive_trigger_matches(
+            plan.predictive_rule,
+            payload.predictive_snapshot,
+        )
+        if plan.trigger_type == MaintenancePlanTriggerType.CALENDAR.value:
+            return self._due_result(
+                calendar_due,
+                "Plan calendar belum jatuh tempo.",
+                {"next_due_date": self._stringify_optional(plan.next_due_date)},
+            )
+        if plan.trigger_type == MaintenancePlanTriggerType.METER.value:
+            return self._due_result(
+                meter_due,
+                "Plan meter belum mencapai threshold meter.",
+                {
+                    "next_due_meter_value": self._stringify_optional(plan.next_due_meter_value),
+                    "meter_reading_value": self._stringify_optional(payload.meter_reading_value),
+                },
+            )
+        if plan.trigger_type == MaintenancePlanTriggerType.CALENDAR_OR_METER.value:
+            return self._due_result(
+                calendar_due or meter_due,
+                "Plan calendar/meter belum memenuhi salah satu trigger due.",
+                {
+                    "calendar_due": calendar_due,
+                    "meter_due": meter_due,
+                    "next_due_date": self._stringify_optional(plan.next_due_date),
+                    "next_due_meter_value": self._stringify_optional(plan.next_due_meter_value),
+                },
+            )
+        if plan.trigger_type == MaintenancePlanTriggerType.CALENDAR_AND_METER.value:
+            return self._due_result(
+                calendar_due and meter_due,
+                "Plan calendar+meter belum memenuhi kedua trigger due.",
+                {
+                    "calendar_due": calendar_due,
+                    "meter_due": meter_due,
+                    "next_due_date": self._stringify_optional(plan.next_due_date),
+                    "next_due_meter_value": self._stringify_optional(plan.next_due_meter_value),
+                },
+            )
+        if plan.trigger_type == MaintenancePlanTriggerType.CONDITION.value:
+            return self._due_result(
+                condition_due,
+                "Condition snapshot belum memenuhi condition_rule.",
+                {"condition_rule": plan.condition_rule, "condition_snapshot": payload.condition_snapshot},
+            )
+        if plan.trigger_type == MaintenancePlanTriggerType.PREDICTIVE.value:
+            return self._due_result(
+                predictive_due,
+                "Predictive snapshot belum memenuhi predictive_rule.",
+                {
+                    "predictive_rule": plan.predictive_rule,
+                    "predictive_snapshot": payload.predictive_snapshot,
+                },
+            )
+        return {"due": True, "message": "Plan manual dapat digenerate.", "details": {}}
+
+    def _due_result(self, due: bool, message: str, details: dict[str, object]) -> dict[str, object]:
+        return {"due": due, "message": message, "details": details}
+
+    def _condition_trigger_matches(
+        self,
+        condition_rule: dict | None,
+        condition_snapshot: dict | None,
+    ) -> bool:
+        if not condition_rule:
+            return False
+        snapshot = condition_snapshot or {}
+        snapshot_status = snapshot.get("condition_status")
+        trigger_statuses = condition_rule.get("trigger_on_statuses")
+        if trigger_statuses:
+            normalized_statuses = {str(value).upper() for value in trigger_statuses}
+            if snapshot_status is None:
+                return False
+            if str(snapshot_status).upper() in normalized_statuses:
+                return True
+        minimum_condition = condition_rule.get("minimum_condition")
+        if minimum_condition is not None and snapshot_status is not None:
+            ranking = {
+                ConditionStatus.NEW.value: 0,
+                ConditionStatus.GOOD.value: 1,
+                ConditionStatus.FAIR.value: 2,
+                ConditionStatus.POOR.value: 3,
+                ConditionStatus.CRITICAL.value: 4,
+                ConditionStatus.UNSERVICEABLE.value: 5,
+            }
+            return ranking.get(str(snapshot_status).upper(), -1) >= ranking.get(
+                str(minimum_condition).upper(),
+                999,
+            )
+        return False
+
+    def _predictive_trigger_matches(
+        self,
+        predictive_rule: dict | None,
+        predictive_snapshot: dict | None,
+    ) -> bool:
+        if not predictive_rule:
+            return False
+        snapshot = predictive_snapshot or {}
+        breach_detected = False
+
+        minimum_risk_score = predictive_rule.get("minimum_risk_score")
+        risk_score = snapshot.get("risk_score")
+        if (
+            minimum_risk_score is not None
+            and risk_score is not None
+            and Decimal(str(risk_score)) >= Decimal(str(minimum_risk_score))
+        ):
+            breach_detected = True
+
+        maximum_remaining_useful_life_days = predictive_rule.get(
+            "maximum_remaining_useful_life_days"
+        )
+        remaining_useful_life_days = snapshot.get("remaining_useful_life_days")
+        if (
+            maximum_remaining_useful_life_days is not None
+            and remaining_useful_life_days is not None
+            and Decimal(str(remaining_useful_life_days))
+            <= Decimal(str(maximum_remaining_useful_life_days))
+        ):
+            breach_detected = True
+
+        health_score_below = predictive_rule.get("health_score_below")
+        health_score = snapshot.get("health_score")
+        if (
+            health_score_below is not None
+            and health_score is not None
+            and Decimal(str(health_score)) <= Decimal(str(health_score_below))
+        ):
+            breach_detected = True
+
+        if predictive_rule.get("trigger_on_anomaly") and snapshot.get("anomaly_detected") is True:
+            breach_detected = True
+
+        return breach_detected
+
+    def _resolve_schedule_source_for_plan(
+        self,
+        *,
+        trigger_type: str,
+        meter_reading_value: Decimal | None,
+        condition_snapshot: dict | None,
+        predictive_snapshot: dict | None,
+    ) -> str:
+        if predictive_snapshot:
+            return "PREDICTIVE_TRIGGER"
+        if condition_snapshot:
+            return "CONDITION_TRIGGER"
+        if trigger_type in {
+            MaintenancePlanTriggerType.METER.value,
+            MaintenancePlanTriggerType.CALENDAR_OR_METER.value,
+            MaintenancePlanTriggerType.CALENDAR_AND_METER.value,
+        } and meter_reading_value is not None:
+            return "METER_TRIGGER"
+        if trigger_type == MaintenancePlanTriggerType.CONDITION.value:
+            return "CONDITION_TRIGGER"
+        if trigger_type == MaintenancePlanTriggerType.PREDICTIVE.value:
+            return "PREDICTIVE_TRIGGER"
+        return "PREVENTIVE_PLAN"
+
+    def _compute_next_due_date_after_generation(self, plan: MaintenancePlan) -> date | None:
+        if plan.trigger_type not in {
+            MaintenancePlanTriggerType.CALENDAR.value,
+            MaintenancePlanTriggerType.CALENDAR_OR_METER.value,
+            MaintenancePlanTriggerType.CALENDAR_AND_METER.value,
+        }:
+            return plan.next_due_date
+        if (
+            plan.next_due_date is None
+            or plan.calendar_interval_value is None
+            or plan.calendar_interval_unit is None
+        ):
+            return plan.next_due_date
+        return self._increment_due_date(
+            plan.next_due_date,
+            plan.calendar_interval_value,
+            plan.calendar_interval_unit,
+        )
+
+    def _compute_next_due_meter_value_after_generation(
+        self,
+        plan: MaintenancePlan,
+        payload: MaintenancePlanGeneratePayload,
+    ) -> Decimal | None:
+        if plan.trigger_type not in {
+            MaintenancePlanTriggerType.METER.value,
+            MaintenancePlanTriggerType.CALENDAR_OR_METER.value,
+            MaintenancePlanTriggerType.CALENDAR_AND_METER.value,
+        }:
+            return plan.next_due_meter_value
+        if payload.meter_reading_value is None or plan.meter_interval is None:
+            return plan.next_due_meter_value
+        return payload.meter_reading_value + plan.meter_interval
+
+    def _stringify_optional(self, value: object) -> object:
+        if isinstance(value, Decimal):
+            return str(value)
+        if isinstance(value, date):
+            return value.isoformat()
+        return value
 
     def _increment_due_date(self, current_due_date, interval_value: int, interval_unit: str):
         if interval_unit == "DAY":

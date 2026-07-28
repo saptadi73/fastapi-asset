@@ -3,7 +3,7 @@
 Dokumen ini merangkum gap antara implementasi backend saat ini dan target yang
 dijelaskan di `asset_management_sap_b1_fastapi_technical_baseline.md`.
 
-Tanggal acuan review: **Monday, July 27, 2026**.
+Tanggal acuan review: **Tuesday, July 28, 2026**.
 
 Tujuan dokumen ini:
 
@@ -316,9 +316,9 @@ Status:
 
 Status:
 
-- [ ] predictive trigger
-- [ ] condition-based trigger
-- [ ] sensor/meter driven due generation beyond current simple foundation
+- [x] predictive trigger
+- [x] condition-based trigger
+- [x] sensor/meter driven due generation beyond current simple foundation
 
 ### E3. Advanced Reliability and Optimization
 
@@ -350,9 +350,9 @@ Selain feature besar, berikut logic/service baseline yang perlu ditinjau lagi.
 
 ### F3. Schedule Logic
 
-- [ ] history atau audit yang lebih eksplisit untuk reschedule
-- [ ] support schedule source yang lebih lengkap
-- [ ] due generation untuk trigger meter/condition yang lebih matang
+- [x] history atau audit yang lebih eksplisit untuk reschedule
+- [x] support schedule source yang lebih lengkap
+- [x] due generation untuk trigger meter/condition yang lebih matang
 
 ### F4. Attachment Logic
 

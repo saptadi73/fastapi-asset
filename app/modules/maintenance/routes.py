@@ -66,6 +66,7 @@ from app.modules.maintenance.schemas import (
     MaintenanceRequestTriagePayload,
     MaintenanceScheduleConfirmPayload,
     MaintenanceScheduleCreate,
+    MaintenanceScheduleEventRead,
     MaintenanceScheduleListItemRead,
     MaintenanceScheduleRead,
     MaintenanceScheduleReschedulePayload,
@@ -2041,4 +2042,25 @@ async def reschedule_maintenance_schedule(
         request=request,
         message="Maintenance schedule berhasil di-reschedule.",
         data=MaintenanceScheduleRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get(
+    "/schedules/{schedule_id}/events",
+    dependencies=[Depends(require_maintenance_read)],
+)
+async def list_maintenance_schedule_events(
+    request: Request,
+    schedule_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.list_schedule_events(schedule_id)
+    return success_response(
+        request=request,
+        message="Daftar event maintenance schedule berhasil diambil.",
+        data=[
+            MaintenanceScheduleEventRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
     )

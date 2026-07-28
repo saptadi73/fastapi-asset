@@ -1481,6 +1481,168 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
                 "reschedule_reason": "Penyesuaian smoke test",
             },
         )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/maintenance/schedules/{schedule_id}/events",
+            label="list maintenance schedule events",
+        )
+
+        meter_plan = await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/plans",
+            label="create meter maintenance plan",
+            json_body={
+                "plan_code": f"PLAN-MTR-{suffix}",
+                "plan_name": f"Plan Meter Smoke {suffix}",
+                "asset_id": installed_component_asset_id,
+                "maintenance_type": "PREVENTIVE",
+                "trigger_type": "METER",
+                "meter_interval": "250",
+                "default_priority_id": priority_id,
+                "default_team_id": team_id,
+                "estimated_duration_minutes": 90,
+                "lead_time_days": 0,
+                "auto_create_request": False,
+                "auto_create_work_order": False,
+                "requires_approval": False,
+                "effective_from": RUN_DATE.isoformat(),
+                "next_due_meter_value": "900",
+                "is_active": True,
+            },
+        )
+        meter_plan_id = meter_plan["data"]["id"]
+        meter_generated_schedules = await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/plans/{meter_plan_id}/generate",
+            label="generate meter maintenance plan schedules",
+            json_body={
+                "scheduled_start_at": "2026-08-28T01:00:00Z",
+                "schedule_prefix": f"MTR{suffix[-4:]}",
+                "created_by": user_id,
+                "create_work_orders": False,
+                "meter_reading_value": "920",
+                "generation_reason": "Meter threshold terlampaui pada smoke test",
+            },
+        )
+        meter_schedule_id = require_first(
+            meter_generated_schedules["data"],
+            "generate meter maintenance plan schedules",
+        )["id"]
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/maintenance/schedules/{meter_schedule_id}/events",
+            label="list meter maintenance schedule events",
+        )
+
+        condition_plan = await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/plans",
+            label="create condition maintenance plan",
+            json_body={
+                "plan_code": f"PLAN-CND-{suffix}",
+                "plan_name": f"Plan Condition Smoke {suffix}",
+                "asset_id": asset_id,
+                "maintenance_type": "PREVENTIVE",
+                "trigger_type": "CONDITION",
+                "condition_rule": {
+                    "trigger_on_statuses": ["POOR", "CRITICAL", "UNSERVICEABLE"]
+                },
+                "default_priority_id": priority_id,
+                "default_team_id": team_id,
+                "estimated_duration_minutes": 60,
+                "lead_time_days": 0,
+                "auto_create_request": False,
+                "auto_create_work_order": False,
+                "requires_approval": False,
+                "effective_from": RUN_DATE.isoformat(),
+                "is_active": True,
+            },
+        )
+        condition_plan_id = condition_plan["data"]["id"]
+        condition_generated_schedules = await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/plans/{condition_plan_id}/generate",
+            label="generate condition maintenance plan schedules",
+            json_body={
+                "scheduled_start_at": "2026-08-29T01:00:00Z",
+                "schedule_prefix": f"CND{suffix[-4:]}",
+                "created_by": user_id,
+                "create_work_orders": False,
+                "condition_snapshot": {
+                    "condition_status": "POOR",
+                    "source": "smoke-test-inspection",
+                    "captured_at": "2026-07-28T09:00:00Z",
+                },
+                "generation_reason": "Inspection condition snapshot memicu plan",
+            },
+        )
+        condition_schedule_id = require_first(
+            condition_generated_schedules["data"],
+            "generate condition maintenance plan schedules",
+        )["id"]
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/maintenance/schedules/{condition_schedule_id}/events",
+            label="list condition maintenance schedule events",
+        )
+
+        predictive_plan = await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/plans",
+            label="create predictive maintenance plan",
+            json_body={
+                "plan_code": f"PLAN-PRD-{suffix}",
+                "plan_name": f"Plan Predictive Smoke {suffix}",
+                "asset_id": asset_id,
+                "maintenance_type": "PREDICTIVE",
+                "trigger_type": "PREDICTIVE",
+                "predictive_rule": {
+                    "minimum_risk_score": 75,
+                    "maximum_remaining_useful_life_days": 20,
+                    "health_score_below": 55,
+                    "trigger_on_anomaly": True,
+                },
+                "default_priority_id": priority_id,
+                "default_team_id": team_id,
+                "estimated_duration_minutes": 75,
+                "lead_time_days": 0,
+                "auto_create_request": False,
+                "auto_create_work_order": False,
+                "requires_approval": False,
+                "effective_from": RUN_DATE.isoformat(),
+                "is_active": True,
+            },
+        )
+        predictive_plan_id = predictive_plan["data"]["id"]
+        predictive_generated_schedules = await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/plans/{predictive_plan_id}/generate",
+            label="generate predictive maintenance plan schedules",
+            json_body={
+                "scheduled_start_at": "2026-08-30T01:00:00Z",
+                "schedule_prefix": f"PRD{suffix[-4:]}",
+                "created_by": user_id,
+                "create_work_orders": False,
+                "predictive_snapshot": {
+                    "risk_score": 82,
+                    "remaining_useful_life_days": 12,
+                    "health_score": 41,
+                    "anomaly_detected": True,
+                    "model_name": "pump-anomaly-v1",
+                    "predicted_at": "2026-07-28T10:00:00Z",
+                },
+                "generation_reason": "Predictive model mendeteksi anomali dan risk score tinggi",
+            },
+        )
+        predictive_schedule_id = require_first(
+            predictive_generated_schedules["data"],
+            "generate predictive maintenance plan schedules",
+        )["id"]
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/maintenance/schedules/{predictive_schedule_id}/events",
+            label="list predictive maintenance schedule events",
+        )
 
         maintenance_request = await runner.call(
             "POST",
@@ -2245,6 +2407,12 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
         "maintenance_team_id": team_id,
         "maintenance_plan_id": plan_id,
         "maintenance_schedule_id": schedule_id,
+        "maintenance_meter_plan_id": meter_plan_id,
+        "maintenance_meter_schedule_id": meter_schedule_id,
+        "maintenance_condition_plan_id": condition_plan_id,
+        "maintenance_condition_schedule_id": condition_schedule_id,
+        "maintenance_predictive_plan_id": predictive_plan_id,
+        "maintenance_predictive_schedule_id": predictive_schedule_id,
         "maintenance_request_id": request_id,
         "maintenance_batch_request_parent_id": batch_request_parent_id,
         "maintenance_request_attachment_id": request_attachment_id,

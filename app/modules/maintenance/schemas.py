@@ -1202,6 +1202,20 @@ class MaintenanceScheduleRead(BaseModel):
     maintenance_team: MaintenanceTeamRead | None = None
 
 
+class MaintenanceScheduleEventRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    maintenance_schedule_id: UUID
+    event_type: str
+    previous_status: str | None
+    new_status: str | None
+    event_at: datetime
+    performed_by: UUID | None
+    reason: str | None
+    event_payload: dict | None
+
+
 class MaintenanceScheduleListItemRead(BaseModel):
     id: UUID
     schedule_number: str
@@ -1413,6 +1427,7 @@ class MaintenancePlanCreate(BaseModel):
     meter_id: UUID | None = None
     meter_interval: Decimal | None = None
     condition_rule: dict | None = None
+    predictive_rule: dict | None = None
     default_priority_id: UUID
     default_team_id: UUID | None = None
     default_vendor_partner_id: UUID | None = None
@@ -1444,6 +1459,11 @@ class MaintenancePlanGeneratePayload(BaseModel):
     schedule_prefix: str = Field(default="SCH", max_length=20)
     created_by: UUID
     create_work_orders: bool | None = None
+    meter_reading_value: Decimal | None = None
+    condition_snapshot: dict | None = None
+    predictive_snapshot: dict | None = None
+    trigger_evaluated_at: datetime | None = None
+    generation_reason: str | None = None
 
 
 class MaintenancePlanAssetRead(BaseModel):
@@ -1475,6 +1495,7 @@ class MaintenancePlanRead(BaseModel):
     meter_id: UUID | None
     meter_interval: Decimal | None
     condition_rule: dict | None
+    predictive_rule: dict | None
     default_priority_id: UUID
     default_team_id: UUID | None
     default_vendor_partner_id: UUID | None

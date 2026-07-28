@@ -1,7 +1,7 @@
 # Frontend Functional Blueprint
 
 Dokumen ini merangkum kebutuhan fungsional frontend berdasarkan kemampuan
-backend yang sudah tersedia dan tervalidasi live pada **Monday, July 27, 2026**.
+backend yang sudah tersedia dan tervalidasi live pada **Tuesday, July 28, 2026**.
 
 Tujuan dokumen ini:
 
@@ -1028,11 +1028,20 @@ Alur utama:
 
 1. create maintenance plan
 2. assign target assets
-3. generate schedules
-4. confirm atau reschedule schedules
+3. generate schedules berdasarkan trigger calendar, meter, condition, atau predictive
+4. review due context, schedule source, lalu confirm atau reschedule schedules
 5. create atau link work orders sesuai kebutuhan operasional
 6. eksekusi work order
 7. tutup dan review maintenance history
+
+Kebutuhan layar yang sekarang masuk akal:
+
+- planner perlu form generate yang bisa menampilkan input `meter_reading_value`
+  bila trigger plan berbasis meter
+- planner perlu panel `condition_snapshot` bila trigger plan berbasis condition
+- planner perlu panel `predictive_snapshot` bila trigger plan berbasis predictive
+- detail schedule perlu tab `event history` untuk melihat `CREATED`,
+  `GENERATED`, `CONFIRMED`, dan `RESCHEDULED`
 
 ### 9.6 Checklist-to-Finding-to-Request Workflow
 

@@ -594,6 +594,30 @@ class MaintenanceSchedule(UUIDPrimaryKeyMixin, Base):
     work_order = relationship("MaintenanceWorkOrder")
     maintenance_team = relationship("MaintenanceTeam")
     vendor_partner = relationship("BusinessPartner")
+    events: Mapped[list[MaintenanceScheduleEvent]] = relationship(
+        back_populates="schedule",
+        cascade="all, delete-orphan",
+    )
+
+
+class MaintenanceScheduleEvent(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "maintenance_schedule_events"
+
+    maintenance_schedule_id: Mapped[UUID] = mapped_column(
+        ForeignKey("maintenance_schedules.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    event_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    previous_status: Mapped[str | None] = mapped_column(String(30))
+    new_status: Mapped[str | None] = mapped_column(String(30))
+    event_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    performed_by: Mapped[UUID | None] = mapped_column(nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text)
+    event_payload: Mapped[dict | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    schedule: Mapped[MaintenanceSchedule] = relationship(back_populates="events")
 
 
 class MaintenancePlan(UUIDPrimaryKeyMixin, Base):
@@ -614,6 +638,7 @@ class MaintenancePlan(UUIDPrimaryKeyMixin, Base):
     meter_id: Mapped[UUID | None] = mapped_column(nullable=True)
     meter_interval: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
     condition_rule: Mapped[dict | None] = mapped_column(JSONB)
+    predictive_rule: Mapped[dict | None] = mapped_column(JSONB)
     default_priority_id: Mapped[UUID] = mapped_column(
         ForeignKey("maintenance_priorities.id", ondelete="RESTRICT"),
         nullable=False,
