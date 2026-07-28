@@ -505,6 +505,7 @@ Tujuan data:
 - part requirement vs actual usage;
 - linked failures;
 - lifecycle action state.
+- gate checklist/RCA/cost validation sebelum complete dan close.
 
 Endpoint utama:
 

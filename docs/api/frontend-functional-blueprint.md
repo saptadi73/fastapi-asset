@@ -538,12 +538,16 @@ Frontend sebaiknya:
 - pada tab attachment, tampilkan versi aktif, histori versi, dan audit trail file.
 - gunakan flow aman `GET attachment download -> GET secure download URL`
   saat user menekan tombol download.
+- jika contract dan warranty sama-sama aktif tetapi vendor entitlement berbeda,
+  paksa user memilih vendor eksplisit saat triage.
 
 Panel tambahan yang direkomendasikan pada request detail:
 
 - contract aktif
 - warranty aktif
 - vendor hasil coverage
+- sumber vendor entitlement: `MANUAL`, `CONTRACT`, atau `WARRANTY`
+- rekomendasi execution mode dari histori SLA snapshot
 - target SLA response
 - target SLA resolution
 - histori SLA snapshot
@@ -645,9 +649,18 @@ Frontend sebaiknya:
 - pada tab attachment, sediakan version history, upload revisi file, dan audit trail.
 - untuk tombol download, frontend sebaiknya terlebih dahulu meminta secure
   download link yang berumur pendek.
+- sebelum submit `complete`, tampilkan hasil rollup `actual_part_cost` dan
+  `actual_labor_cost` dari transaksi yang sudah diinput agar payload frontend
+  tidak mismatch dengan validasi backend.
+- untuk work order `BREAKDOWN`, tampilkan gate bahwa failure dan RCA wajib
+  selesai sebelum `complete` dan `close`.
+- untuk work order `PREVENTIVE`, `INSPECTION`, `CALIBRATION`, atau work order
+  berbasis plan, tampilkan gate bahwa checklist completed wajib ada.
 
 Jika work order berasal dari request yang sudah ditriage, frontend sebaiknya
-menampilkan badge entitlement untuk contract atau warranty yang sedang melekat.
+menampilkan badge entitlement untuk contract atau warranty yang sedang melekat,
+beserta sumber vendor entitlement dan rekomendasi mode eksekusi yang tersimpan
+di SLA snapshot terakhir.
 
 ### 6.4 Maintenance Schedules
 
@@ -754,6 +767,11 @@ Aksi yang direkomendasikan:
 - update failure
 - complete RCA fields
 - add attachment
+
+Catatan UI:
+
+- bila failure berasal dari work order `BREAKDOWN`, status RCA perlu dibuat
+  sangat menonjol karena menjadi prasyarat penyelesaian work order.
 
 #### Finding Detail
 

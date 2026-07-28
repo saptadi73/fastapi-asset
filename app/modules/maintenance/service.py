@@ -20,6 +20,7 @@ from app.modules.maintenance.constants import (
     ChecklistOverallResult,
     ChecklistResponseType,
     ChecklistResultStatus,
+    MaintenanceFailureStatus,
     MaintenanceFindingSeverity,
     MaintenanceFindingStatus,
     MaintenanceFindingType,
@@ -30,6 +31,7 @@ from app.modules.maintenance.constants import (
     MaintenanceRequestStatus,
     MaintenanceRequestType,
     MaintenanceScheduleStatus,
+    MaintenanceType,
     MaintenanceWorkOrderEventType,
     MaintenanceWorkOrderStatus,
 )
@@ -2084,11 +2086,13 @@ class MaintenanceService:
         )
         changes["warranty_id"] = warranty.id if warranty else None
 
-        requested_vendor_partner_id = payload.requested_vendor_partner_id
-        if requested_vendor_partner_id is not None:
-            await self._get_partner_or_raise(requested_vendor_partner_id)
-        elif contract_coverage is not None:
-            requested_vendor_partner_id = contract_coverage.contract.vendor_partner_id
+        requested_vendor_partner_id, resolved_vendor_source = (
+            await self._resolve_entitled_vendor_partner(
+                requested_vendor_partner_id=payload.requested_vendor_partner_id,
+                contract=contract_coverage.contract if contract_coverage else None,
+                warranty=warranty,
+            )
+        )
         changes["requested_vendor_partner_id"] = requested_vendor_partner_id
 
         response_at, resolution_at = self._derive_sla_targets(
@@ -2107,9 +2111,12 @@ class MaintenanceService:
                     request=item,
                     priority=priority,
                     contract=contract_coverage.contract if contract_coverage else None,
+                    warranty=warranty,
                     response_due_at=response_at,
                     resolution_due_at=resolution_at,
                     responded_at=payload.acted_at,
+                    resolved_vendor_partner_id=requested_vendor_partner_id,
+                    resolved_vendor_source=resolved_vendor_source,
                 )
             )
             await self.session.commit()
@@ -2203,7 +2210,12 @@ class MaintenanceService:
             warranty_id=request.warranty_id,
             as_of=entitlement_date,
         )
-        vendor_partner_id = payload.vendor_partner_id or request.requested_vendor_partner_id
+        vendor_partner_id, _ = await self._resolve_entitled_vendor_partner(
+            requested_vendor_partner_id=payload.vendor_partner_id
+            or request.requested_vendor_partner_id,
+            contract=contract_coverage.contract if contract_coverage else None,
+            warranty=warranty,
+        )
         self._validate_work_order_decision_rules(
             execution_mode=payload.execution_mode.value,
             vendor_partner_id=vendor_partner_id,
@@ -2385,6 +2397,10 @@ class MaintenanceService:
                 or warranty.status != "ACTIVE"
                 or warranty.coverage_start_date > as_of
                 or warranty.coverage_end_date < as_of
+                or (
+                    warranty.claim_deadline_date is not None
+                    and warranty.claim_deadline_date < as_of
+                )
             ):
                 raise AppError(
                     code="ASSET_WARRANTY_NOT_ACTIVE",
@@ -2395,7 +2411,9 @@ class MaintenanceService:
 
         active_warranties = await self.warranties.get_active_by_asset(asset_id, as_of=as_of)
         for warranty in active_warranties:
-            if warranty.status == "ACTIVE":
+            if warranty.status == "ACTIVE" and (
+                warranty.claim_deadline_date is None or warranty.claim_deadline_date >= as_of
+            ):
                 return warranty
         return None
 
@@ -2428,9 +2446,12 @@ class MaintenanceService:
         request: MaintenanceRequest,
         priority: MaintenancePriority,
         contract: MaintenanceContract | None,
+        warranty: AssetWarranty | None,
         response_due_at: datetime | None,
         resolution_due_at: datetime | None,
         responded_at: datetime | None,
+        resolved_vendor_partner_id: UUID | None,
+        resolved_vendor_source: str | None,
     ) -> MaintenanceSlaSnapshot:
         response_target_minutes: int | None = None
         resolution_target_minutes: int | None = None
@@ -2468,6 +2489,44 @@ class MaintenanceService:
             "priority_escalation_after_minutes": priority.escalation_after_minutes,
             "contract_number": contract.contract_number if contract is not None else None,
             "contract_type": contract.contract_type if contract is not None else None,
+            "contract_vendor_partner_id": (
+                str(contract.vendor_partner_id) if contract is not None else None
+            ),
+            "contract_support_scope": (
+                {
+                    "onsite_support_included": contract.onsite_support_included,
+                    "remote_support_included": contract.remote_support_included,
+                    "labor_included": contract.labor_included,
+                    "spare_parts_included": contract.spare_parts_included,
+                }
+                if contract is not None
+                else None
+            ),
+            "warranty_id": str(warranty.id) if warranty is not None else None,
+            "warranty_provider_partner_id": (
+                str(warranty.warranty_provider_partner_id)
+                if warranty is not None and warranty.warranty_provider_partner_id is not None
+                else None
+            ),
+            "warranty_claim_deadline_date": (
+                warranty.claim_deadline_date.isoformat()
+                if warranty is not None and warranty.claim_deadline_date is not None
+                else None
+            ),
+            "warranty_coverage_end_date": (
+                warranty.coverage_end_date.isoformat() if warranty is not None else None
+            ),
+            "resolved_vendor_partner_id": (
+                str(resolved_vendor_partner_id)
+                if resolved_vendor_partner_id is not None
+                else None
+            ),
+            "resolved_vendor_source": resolved_vendor_source,
+            "recommended_execution_mode": self._recommend_execution_mode(
+                contract=contract,
+                warranty=warranty,
+                resolved_vendor_partner_id=resolved_vendor_partner_id,
+            ),
             "escalation_due_at": escalation_due_at.isoformat() if escalation_due_at else None,
             "escalation_triggered": escalation_triggered,
         }
@@ -2497,6 +2556,102 @@ class MaintenanceService:
         if request_type in preventive_request_types:
             return contract.preventive_maintenance_included
         return contract.corrective_maintenance_included
+
+    async def _resolve_entitled_vendor_partner(
+        self,
+        *,
+        requested_vendor_partner_id: UUID | None,
+        contract: MaintenanceContract | None,
+        warranty: AssetWarranty | None,
+    ) -> tuple[UUID | None, str | None]:
+        contract_vendor_id = contract.vendor_partner_id if contract is not None else None
+        warranty_vendor_id = (
+            warranty.warranty_provider_partner_id if warranty is not None else None
+        )
+        if requested_vendor_partner_id is not None:
+            await self._get_partner_or_raise(requested_vendor_partner_id)
+
+        if (
+            requested_vendor_partner_id is None
+            and contract_vendor_id is not None
+            and warranty_vendor_id is not None
+            and contract_vendor_id != warranty_vendor_id
+        ):
+            raise AppError(
+                code="MAINTENANCE_VENDOR_ENTITLEMENT_AMBIGUOUS",
+                message=(
+                    "Contract dan warranty menunjuk vendor berbeda. "
+                    "Pilih requested_vendor_partner_id secara eksplisit."
+                ),
+                status_code=422,
+            )
+
+        allowed_vendor_ids = {
+            vendor_id
+            for vendor_id in (contract_vendor_id, warranty_vendor_id)
+            if vendor_id is not None
+        }
+        if requested_vendor_partner_id is not None and allowed_vendor_ids:
+            if requested_vendor_partner_id not in allowed_vendor_ids:
+                raise AppError(
+                    code="MAINTENANCE_VENDOR_NOT_COVERED_BY_ENTITLEMENT",
+                    message=(
+                        "Vendor yang dipilih tidak sesuai dengan vendor contract "
+                        "atau warranty yang aktif."
+                    ),
+                    status_code=422,
+                )
+            chosen_vendor_id = requested_vendor_partner_id
+            chosen_vendor_source = (
+                "WARRANTY"
+                if requested_vendor_partner_id == warranty_vendor_id
+                else "CONTRACT"
+                if requested_vendor_partner_id == contract_vendor_id
+                else "MANUAL"
+            )
+        elif requested_vendor_partner_id is not None:
+            chosen_vendor_id = requested_vendor_partner_id
+            chosen_vendor_source = "MANUAL"
+        elif warranty_vendor_id is not None:
+            chosen_vendor_id = warranty_vendor_id
+            chosen_vendor_source = "WARRANTY"
+        elif contract_vendor_id is not None:
+            chosen_vendor_id = contract_vendor_id
+            chosen_vendor_source = "CONTRACT"
+        else:
+            chosen_vendor_id = None
+            chosen_vendor_source = None
+
+        if (
+            chosen_vendor_id is not None
+            and contract is not None
+            and chosen_vendor_id == contract_vendor_id
+            and not (contract.onsite_support_included or contract.remote_support_included)
+        ):
+            raise AppError(
+                code="MAINTENANCE_CONTRACT_SUPPORT_NOT_INCLUDED",
+                message=(
+                    "Contract aktif tidak mencakup onsite atau remote support, "
+                    "sehingga vendor contract tidak dapat dipilih untuk triage ini."
+                ),
+                status_code=422,
+            )
+        return chosen_vendor_id, chosen_vendor_source
+
+    def _recommend_execution_mode(
+        self,
+        *,
+        contract: MaintenanceContract | None,
+        warranty: AssetWarranty | None,
+        resolved_vendor_partner_id: UUID | None,
+    ) -> str:
+        if resolved_vendor_partner_id is None:
+            return "INTERNAL"
+        if warranty is not None:
+            return "VENDOR"
+        if contract is not None and contract.labor_included:
+            return "HYBRID"
+        return "VENDOR"
 
     async def list_work_orders(
         self,
@@ -2798,6 +2953,18 @@ class MaintenanceService:
                 message="actual_end_at tidak boleh lebih kecil dari actual_start_at.",
                 status_code=422,
             )
+        await self._validate_work_order_completion_requirements(
+            item,
+            for_close=False,
+            resolution_code=payload.resolution_code,
+        )
+        actual_part_cost = await self._calculate_actual_part_cost(item.id)
+        actual_labor_cost = await self._calculate_actual_labor_cost(item.id)
+        self._validate_work_order_completion_costs(
+            payload=payload,
+            actual_part_cost=actual_part_cost,
+            actual_labor_cost=actual_labor_cost,
+        )
         try:
             previous_status = item.status
             await self.work_orders.update(
@@ -2807,8 +2974,8 @@ class MaintenanceService:
                 completion_summary=payload.completion_summary,
                 asset_condition_after=payload.asset_condition_after,
                 resolution_code=payload.resolution_code,
-                actual_labor_cost=payload.actual_labor_cost,
-                actual_part_cost=payload.actual_part_cost,
+                actual_labor_cost=actual_labor_cost,
+                actual_part_cost=actual_part_cost,
                 actual_vendor_cost=payload.actual_vendor_cost,
                 updated_by=payload.actor_id,
             )
@@ -2820,7 +2987,12 @@ class MaintenanceService:
                 event_at=payload.acted_at,
                 performed_by=payload.actor_id,
                 reason=payload.completion_summary,
-                event_payload={"resolution_code": payload.resolution_code},
+                event_payload={
+                    "resolution_code": payload.resolution_code,
+                    "actual_part_cost": str(actual_part_cost),
+                    "actual_labor_cost": str(actual_labor_cost),
+                    "actual_vendor_cost": str(payload.actual_vendor_cost),
+                },
             )
             await self.session.commit()
         except Exception:
@@ -2889,32 +3061,7 @@ class MaintenanceService:
                 message="Work order belum memiliki data penyelesaian yang wajib.",
                 status_code=422,
             )
-        checklist_executions = await self.checklist_executions.list_by_work_order(item.id)
-        incomplete_checklists = [
-            checklist
-            for checklist in checklist_executions
-            if checklist.status != ChecklistExecutionStatus.COMPLETED.value
-        ]
-        if incomplete_checklists:
-            raise AppError(
-                code="MAINTENANCE_WORK_ORDER_CLOSE_REQUIREMENTS_INCOMPLETE",
-                message="Masih ada checklist work order yang belum selesai.",
-                status_code=422,
-            )
-        findings = await self.findings.list_by_work_order(item.id)
-        pending_follow_ups = [
-            finding
-            for finding in findings
-            if finding.requires_follow_up
-            and finding.status != MaintenanceFindingStatus.RESOLVED.value
-            and finding.generated_request_id is None
-        ]
-        if pending_follow_ups:
-            raise AppError(
-                code="MAINTENANCE_WORK_ORDER_CLOSE_REQUIREMENTS_INCOMPLETE",
-                message="Masih ada finding yang membutuhkan follow-up request.",
-                status_code=422,
-            )
+        await self._validate_work_order_completion_requirements(item, for_close=True)
         asset = await self._get_asset_or_raise(item.asset_id)
         new_condition = item.asset_condition_after or asset.condition_status
         actual_part_cost = await self._calculate_actual_part_cost(item.id)
@@ -2971,6 +3118,7 @@ class MaintenanceService:
                 event_payload={
                     "actual_part_cost": str(actual_part_cost),
                     "actual_labor_cost": str(actual_labor_cost),
+                    "actual_vendor_cost": str(item.actual_vendor_cost or Decimal("0")),
                 },
             )
             await self.session.commit()
@@ -3357,6 +3505,132 @@ class MaintenanceService:
             if log.labor_cost is not None:
                 total += log.labor_cost
         return total
+
+    async def _validate_work_order_completion_requirements(
+        self,
+        work_order: MaintenanceWorkOrder,
+        *,
+        for_close: bool,
+        resolution_code: str | None = None,
+    ) -> None:
+        checklist_executions = list(await self.checklist_executions.list_by_work_order(work_order.id))
+        completed_checklists = [
+            checklist
+            for checklist in checklist_executions
+            if checklist.status == ChecklistExecutionStatus.COMPLETED.value
+        ]
+        incomplete_checklists = [
+            checklist
+            for checklist in checklist_executions
+            if checklist.status != ChecklistExecutionStatus.COMPLETED.value
+        ]
+        if self._work_order_requires_checklist(work_order) and not completed_checklists:
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_CHECKLIST_REQUIRED",
+                message="Work order ini wajib memiliki checklist yang sudah completed.",
+                status_code=422,
+            )
+        if incomplete_checklists:
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_CLOSE_REQUIREMENTS_INCOMPLETE",
+                message="Masih ada checklist work order yang belum selesai.",
+                status_code=422,
+            )
+
+        failures = list(await self.failures.list_by_work_order(work_order.id))
+        if self._work_order_requires_failure_rca(work_order):
+            if not failures:
+                raise AppError(
+                    code="MAINTENANCE_WORK_ORDER_FAILURE_REQUIRED",
+                    message="Work order breakdown wajib memiliki minimal satu failure record.",
+                    status_code=422,
+                )
+            unresolved_failures = [
+                failure
+                for failure in failures
+                if failure.status
+                not in {
+                    MaintenanceFailureStatus.RESOLVED.value,
+                    MaintenanceFailureStatus.CLOSED.value,
+                }
+            ]
+            if unresolved_failures:
+                raise AppError(
+                    code="MAINTENANCE_WORK_ORDER_FAILURE_NOT_RESOLVED",
+                    message="Semua failure pada work order breakdown harus RESOLVED atau CLOSED.",
+                    status_code=422,
+                )
+            missing_rca_failures = [
+                failure
+                for failure in failures
+                if not (failure.root_cause_code_id is not None or failure.root_cause_description)
+            ]
+            if missing_rca_failures:
+                raise AppError(
+                    code="MAINTENANCE_WORK_ORDER_RCA_REQUIRED",
+                    message="Semua failure pada work order breakdown wajib memiliki root cause.",
+                    status_code=422,
+                )
+            if not (resolution_code or work_order.resolution_code):
+                raise AppError(
+                    code="MAINTENANCE_WORK_ORDER_RESOLUTION_CODE_REQUIRED",
+                    message="Work order breakdown wajib memiliki resolution_code sebelum selesai.",
+                    status_code=422,
+                )
+
+        if for_close:
+            findings = await self.findings.list_by_work_order(work_order.id)
+            pending_follow_ups = [
+                finding
+                for finding in findings
+                if finding.requires_follow_up
+                and finding.status != MaintenanceFindingStatus.RESOLVED.value
+                and finding.generated_request_id is None
+            ]
+            if pending_follow_ups:
+                raise AppError(
+                    code="MAINTENANCE_WORK_ORDER_CLOSE_REQUIREMENTS_INCOMPLETE",
+                    message="Masih ada finding yang membutuhkan follow-up request.",
+                    status_code=422,
+                )
+
+    def _validate_work_order_completion_costs(
+        self,
+        *,
+        payload: MaintenanceWorkOrderCompletePayload,
+        actual_part_cost: Decimal,
+        actual_labor_cost: Decimal,
+    ) -> None:
+        if payload.actual_part_cost != actual_part_cost:
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_PART_COST_MISMATCH",
+                message="actual_part_cost harus sama dengan rollup transaksi part work order.",
+                status_code=422,
+                details={
+                    "expected_actual_part_cost": str(actual_part_cost),
+                    "submitted_actual_part_cost": str(payload.actual_part_cost),
+                },
+            )
+        if payload.actual_labor_cost != actual_labor_cost:
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_LABOR_COST_MISMATCH",
+                message="actual_labor_cost harus sama dengan rollup labor log work order.",
+                status_code=422,
+                details={
+                    "expected_actual_labor_cost": str(actual_labor_cost),
+                    "submitted_actual_labor_cost": str(payload.actual_labor_cost),
+                },
+            )
+
+    def _work_order_requires_checklist(self, work_order: MaintenanceWorkOrder) -> bool:
+        return work_order.maintenance_plan_id is not None or work_order.maintenance_type in {
+            MaintenanceType.PREVENTIVE.value,
+            MaintenanceType.INSPECTION.value,
+            MaintenanceType.CALIBRATION.value,
+        }
+
+    def _work_order_requires_failure_rca(self, work_order: MaintenanceWorkOrder) -> bool:
+        return work_order.maintenance_type == MaintenanceType.BREAKDOWN.value
 
     async def _record_work_order_event(
         self,

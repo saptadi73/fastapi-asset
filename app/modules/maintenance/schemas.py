@@ -305,9 +305,9 @@ class MaintenanceWorkOrderCompletePayload(BaseModel):
     completion_summary: str
     asset_condition_after: str | None = Field(default=None, max_length=30)
     resolution_code: str | None = Field(default=None, max_length=30)
-    actual_labor_cost: Decimal = Decimal("0")
-    actual_part_cost: Decimal = Decimal("0")
-    actual_vendor_cost: Decimal = Decimal("0")
+    actual_labor_cost: Decimal = Field(default=Decimal("0"), ge=0)
+    actual_part_cost: Decimal = Field(default=Decimal("0"), ge=0)
+    actual_vendor_cost: Decimal = Field(default=Decimal("0"), ge=0)
 
 
 class MaintenanceWorkOrderVerifyPayload(BaseModel):

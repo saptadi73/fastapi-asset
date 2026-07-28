@@ -336,17 +336,17 @@ Selain feature besar, berikut logic/service baseline yang perlu ditinjau lagi.
 
 ### F1. Maintenance Request Logic
 
-- [ ] cek coverage contract/warranty saat triage
-- [ ] cek pilihan internal vs vendor berdasarkan entitlement
-- [ ] cek SLA mapping otomatis dari priority/contract
+- [x] cek coverage contract/warranty saat triage
+- [x] cek pilihan internal vs vendor berdasarkan entitlement
+- [x] cek SLA mapping otomatis dari priority/contract
 - [ ] dukung multi-asset request bila memang tetap dibutuhkan
 
 ### F2. Work Order Logic
 
 - [ ] state machine lengkap termasuk hold/resume/cancel
-- [ ] cost rollup yang lebih ketat untuk semua action akhir
-- [ ] validasi mandatory checklist untuk jenis pekerjaan tertentu
-- [ ] validasi mandatory failure/RCA untuk breakdown tertentu
+- [x] cost rollup yang lebih ketat untuk semua action akhir
+- [x] validasi mandatory checklist untuk jenis pekerjaan tertentu
+- [x] validasi mandatory failure/RCA untuk breakdown tertentu
 
 ### F3. Schedule Logic
 

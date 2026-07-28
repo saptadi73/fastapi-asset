@@ -356,6 +356,8 @@ Endpoint:
 Output penting:
 
 - `maintenance_request_id`
+- sample triage menghasilkan SLA snapshot yang memuat vendor entitlement source
+  dan recommended execution mode untuk referensi UI frontend
 
 ### 11. Work Order Lifecycle
 
@@ -573,6 +575,7 @@ Lifecycle yang sudah tersedia di seed:
 - in progress
 - vendor personnel checked in and checked out
 - planned part created and synchronized after part usage
+- actual part dan labor cost tervalidasi terhadap rollup transaksi saat complete
 - completed
 - verification
 - closed

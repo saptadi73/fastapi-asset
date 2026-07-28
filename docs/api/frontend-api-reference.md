@@ -944,11 +944,17 @@ Kemampuan backend yang sekarang aktif:
 
 - validasi contract aktif terhadap asset dan tanggal triage
 - validasi warranty aktif terhadap asset dan tanggal triage
+- validasi `claim_deadline_date` warranty agar entitlement claim tidak dipakai
+  setelah lewat masa klaim
 - auto-resolve contract aktif bila payload tidak mengirim contract tetapi asset
   punya coverage yang cocok
 - auto-resolve warranty aktif bila payload tidak mengirim warranty tetapi asset
   punya warranty aktif
-- default vendor dari contract bila frontend tidak mengirim vendor
+- validasi vendor agar tetap sesuai vendor entitlement contract atau warranty
+- bila contract dan warranty menunjuk vendor berbeda, frontend wajib mengirim
+  `requested_vendor_partner_id` eksplisit
+- default vendor dari warranty lebih dulu, lalu contract, bila frontend tidak
+  mengirim vendor
 - default SLA target dari contract atau priority bila frontend tidak mengirim
   target manual
 
@@ -962,6 +968,12 @@ Use case frontend:
 - audit target historis walaupun master priority atau contract berubah
 - indikator escalation dasar berdasarkan `snapshot_payload.escalation_due_at`
   dan `snapshot_payload.escalation_triggered`
+- badge vendor entitlement dan rekomendasi mode eksekusi dari
+  `snapshot_payload.resolved_vendor_source` dan
+  `snapshot_payload.recommended_execution_mode`
+- panel contract support scope dari `snapshot_payload.contract_support_scope`
+- panel warranty claim context dari
+  `snapshot_payload.warranty_claim_deadline_date`
 
 ### `POST /maintenance/requests/{request_id}/approve`
 
@@ -995,6 +1007,8 @@ Validasi tambahan:
 - `maintenance_contract_id` dan `warranty_id` diwariskan ke work order
 - `vendor_partner_id` akan default ke vendor hasil triage bila frontend tidak
   mengirim vendor eksplisit
+- bila frontend mengirim `vendor_partner_id`, backend akan memvalidasi bahwa
+  vendor tersebut masih cocok dengan entitlement contract atau warranty aktif
 
 ### `POST /maintenance/work-orders`
 
@@ -1112,6 +1126,18 @@ Status:
 - `IN_PROGRESS` -> `COMPLETED`
 - `ON_HOLD` -> `COMPLETED`
 
+Validasi tambahan yang sudah aktif:
+
+- untuk work order `PREVENTIVE`, `INSPECTION`, `CALIBRATION`, atau work order
+  yang berasal dari `maintenance_plan`, minimal harus ada satu checklist dengan
+  status `COMPLETED`
+- untuk work order `BREAKDOWN`, minimal harus ada satu failure, seluruh failure
+  harus `RESOLVED` atau `CLOSED`, dan RCA wajib terisi
+- `actual_part_cost` harus sama dengan rollup transaksi part work order
+- `actual_labor_cost` harus sama dengan rollup labor log work order
+- `actual_vendor_cost` tetap dikirim dari payload karena belum punya rollup
+  transaksi vendor terpisah
+
 ### `POST /maintenance/work-orders/{work_order_id}/verify`
 
 Status:
@@ -1130,7 +1156,10 @@ mengembalikan status aset ke `IN_SERVICE`.
 
 Validasi tambahan yang sudah aktif:
 
+- bila tipe work order mewajibkan checklist, checklist completed harus sudah ada
 - checklist work order yang sudah dibuat harus berada pada status `COMPLETED`
+- untuk work order `BREAKDOWN`, seluruh failure harus sudah memiliki RCA dan
+  status akhir `RESOLVED` atau `CLOSED`
 - finding yang `requires_follow_up = true` harus sudah memiliki follow-up
   request atau sudah selesai
 - biaya aktual part dan labor akan dihitung ulang dari log operasional
