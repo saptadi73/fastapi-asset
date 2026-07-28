@@ -11,6 +11,7 @@ from app.modules.assets.models import Asset
 from app.modules.maintenance.models import (
     AssetFailure,
     AssetWarranty,
+    AssetWarrantyClaim,
     EmployeeMaintenanceSkill,
     MaintenanceChecklistExecution,
     MaintenanceChecklistResult,
@@ -103,6 +104,25 @@ class MaintenanceContractRepository:
         )
         return result.all()
 
+    async def list_expiring(self, *, date_from: date, date_to: date) -> Sequence[MaintenanceContract]:
+        stmt = (
+            select(MaintenanceContract)
+            .options(
+                selectinload(MaintenanceContract.vendor_partner),
+                selectinload(MaintenanceContract.coverages).selectinload(
+                    MaintenanceContractAsset.asset
+                ),
+            )
+            .where(
+                MaintenanceContract.end_date >= date_from,
+                MaintenanceContract.end_date <= date_to,
+                not_(MaintenanceContract.status.in_(["CANCELLED", "CLOSED", "EXPIRED"])),
+            )
+            .order_by(MaintenanceContract.end_date.asc(), MaintenanceContract.contract_number.asc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
 
 class MaintenanceContractAssetRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -162,6 +182,48 @@ class MaintenanceContractAssetRepository:
         )
         return await self.session.scalar(stmt)
 
+    async def list_by_contract(
+        self,
+        maintenance_contract_id: UUID,
+    ) -> Sequence[MaintenanceContractAsset]:
+        stmt = (
+            select(MaintenanceContractAsset)
+            .options(
+                selectinload(MaintenanceContractAsset.contract).selectinload(
+                    MaintenanceContract.vendor_partner
+                ),
+                selectinload(MaintenanceContractAsset.asset),
+            )
+            .where(MaintenanceContractAsset.maintenance_contract_id == maintenance_contract_id)
+            .order_by(
+                MaintenanceContractAsset.coverage_start_date.asc(),
+                MaintenanceContractAsset.coverage_end_date.asc(),
+            )
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+    async def list_overlapping_coverages(
+        self,
+        maintenance_contract_id: UUID,
+        asset_id: UUID,
+        *,
+        coverage_start_date: date,
+        coverage_end_date: date,
+    ) -> Sequence[MaintenanceContractAsset]:
+        stmt = (
+            select(MaintenanceContractAsset)
+            .options(selectinload(MaintenanceContractAsset.asset))
+            .where(
+                MaintenanceContractAsset.maintenance_contract_id == maintenance_contract_id,
+                MaintenanceContractAsset.asset_id == asset_id,
+                MaintenanceContractAsset.coverage_start_date <= coverage_end_date,
+                MaintenanceContractAsset.coverage_end_date >= coverage_start_date,
+            )
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
 
 class AssetWarrantyRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -218,6 +280,70 @@ class AssetWarrantyRepository:
                 AssetWarranty.coverage_end_date >= as_of,
             )
             .order_by(AssetWarranty.coverage_start_date.desc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+    async def list_expiring(self, *, date_from: date, date_to: date) -> Sequence[AssetWarranty]:
+        stmt = (
+            select(AssetWarranty)
+            .options(
+                selectinload(AssetWarranty.asset),
+                selectinload(AssetWarranty.warranty_provider_partner),
+            )
+            .where(
+                AssetWarranty.coverage_end_date >= date_from,
+                AssetWarranty.coverage_end_date <= date_to,
+                not_(AssetWarranty.status.in_(["CANCELLED", "EXPIRED"])),
+            )
+            .order_by(AssetWarranty.coverage_end_date.asc(), AssetWarranty.created_at.asc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+    async def list_overlapping(
+        self,
+        asset_id: UUID,
+        *,
+        coverage_start_date: date,
+        coverage_end_date: date,
+    ) -> Sequence[AssetWarranty]:
+        stmt = (
+            select(AssetWarranty)
+            .options(selectinload(AssetWarranty.asset))
+            .where(
+                AssetWarranty.asset_id == asset_id,
+                AssetWarranty.coverage_start_date <= coverage_end_date,
+                AssetWarranty.coverage_end_date >= coverage_start_date,
+            )
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+
+class AssetWarrantyClaimRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: AssetWarrantyClaim) -> AssetWarrantyClaim:
+        self.session.add(item)
+        await self.session.flush()
+        await self.session.refresh(
+            item,
+            attribute_names=["asset", "replacement_asset", "warranty"],
+        )
+        return item
+
+    async def list_by_warranty(self, warranty_id: UUID) -> Sequence[AssetWarrantyClaim]:
+        stmt = (
+            select(AssetWarrantyClaim)
+            .options(
+                selectinload(AssetWarrantyClaim.asset),
+                selectinload(AssetWarrantyClaim.replacement_asset),
+                selectinload(AssetWarrantyClaim.warranty),
+            )
+            .where(AssetWarrantyClaim.warranty_id == warranty_id)
+            .order_by(AssetWarrantyClaim.claim_date.desc(), AssetWarrantyClaim.created_at.desc())
         )
         result = await self.session.scalars(stmt)
         return result.all()

@@ -192,8 +192,8 @@ Tahap ini cocok setelah backlog prioritas MVP+ mulai tertutup.
 Status:
 
 - [x] asset warranties
-- [ ] warranty claims
-- [ ] expiry monitoring
+- [x] warranty claims
+- [x] expiry monitoring
 
 Manfaat:
 
@@ -206,8 +206,8 @@ Status:
 
 - [x] maintenance contracts
 - [x] maintenance contract assets
-- [ ] coverage start/end
-- [ ] preventive/corrective inclusion flags
+- [x] coverage start/end
+- [x] preventive/corrective inclusion flags
 
 Manfaat:
 
@@ -339,7 +339,7 @@ Selain feature besar, berikut logic/service baseline yang perlu ditinjau lagi.
 - [x] cek coverage contract/warranty saat triage
 - [x] cek pilihan internal vs vendor berdasarkan entitlement
 - [x] cek SLA mapping otomatis dari priority/contract
-- [ ] dukung multi-asset request bila memang tetap dibutuhkan
+- [x] dukung multi-asset request bila memang tetap dibutuhkan
 
 ### F2. Work Order Logic
 

@@ -22,6 +22,8 @@ from app.modules.maintenance.schemas import (
     AssetFailureRead,
     AssetFailureUpdate,
     AssetWarrantyCreate,
+    AssetWarrantyClaimCreate,
+    AssetWarrantyClaimRead,
     AssetWarrantyRead,
     EmployeeMaintenanceSkillCreate,
     EmployeeMaintenanceSkillRead,
@@ -40,6 +42,7 @@ from app.modules.maintenance.schemas import (
     MaintenanceFailureAnalysisReportRead,
     MaintenanceFindingCreateRequestPayload,
     MaintenanceFindingRead,
+    MaintenanceEntitlementExpiryReportRead,
     MaintenanceLaborLogCreate,
     MaintenanceMasterCodeCreate,
     MaintenanceMasterCodeRead,
@@ -55,6 +58,7 @@ from app.modules.maintenance.schemas import (
     MaintenancePriorityRead,
     MaintenanceReliabilityReportRead,
     MaintenanceRequestActionPayload,
+    MaintenanceRequestBatchCreate,
     MaintenanceRequestCreate,
     MaintenanceRequestListItemRead,
     MaintenanceRequestRead,
@@ -245,6 +249,44 @@ async def get_asset_warranty(
         request=request,
         message="Detail asset warranty berhasil diambil.",
         data=AssetWarrantyRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post(
+    "/warranties/{warranty_id}/claims",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def create_asset_warranty_claim(
+    request: Request,
+    warranty_id: UUID,
+    payload: AssetWarrantyClaimCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.create_warranty_claim(warranty_id, payload)
+    return success_response(
+        request=request,
+        message="Asset warranty claim berhasil dibuat.",
+        data=AssetWarrantyClaimRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get("/warranties/{warranty_id}/claims", dependencies=[Depends(require_maintenance_read)])
+async def list_asset_warranty_claims(
+    request: Request,
+    warranty_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.list_warranty_claims(warranty_id)
+    return success_response(
+        request=request,
+        message="Daftar asset warranty claim berhasil diambil.",
+        data=[
+            AssetWarrantyClaimRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
     )
 
 
@@ -661,6 +703,28 @@ async def list_employee_maintenance_skills(
 
 
 @router.post(
+    "/requests/batch",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_maintenance_write)],
+)
+async def create_maintenance_requests_batch(
+    request: Request,
+    payload: MaintenanceRequestBatchCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = MaintenanceService(session)
+    items = await service.create_requests_batch(payload)
+    return success_response(
+        request=request,
+        message="Batch maintenance request berhasil dibuat.",
+        data=[
+            MaintenanceRequestRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
+    )
+
+
+@router.post(
     "/requests",
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_maintenance_write)],
@@ -706,6 +770,23 @@ async def list_maintenance_requests(
             for item in items
         ],
         pagination=PaginationMeta.create(page=page, page_size=page_size, total_items=total_items),
+    )
+
+
+@router.get("/entitlements/expiring", dependencies=[Depends(require_maintenance_read)])
+async def get_expiring_entitlements(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    days_ahead: int = Query(default=30, ge=1, le=365),
+) -> dict:
+    service = MaintenanceService(session)
+    item = await service.get_entitlement_expiry_report(days_ahead=days_ahead)
+    return success_response(
+        request=request,
+        message="Report entitlement expiry berhasil diambil.",
+        data=MaintenanceEntitlementExpiryReportRead.model_validate(item).model_dump(
+            mode="json"
+        ),
     )
 
 

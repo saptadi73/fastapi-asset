@@ -344,6 +344,7 @@ Tujuan:
 
 Endpoint:
 
+- `POST /api/v1/maintenance/requests/batch`
 - `POST /api/v1/maintenance/requests`
 - `GET /api/v1/maintenance/requests`
 - `GET /api/v1/maintenance/requests/{request_id}`
@@ -356,8 +357,15 @@ Endpoint:
 Output penting:
 
 - `maintenance_request_id`
+- `maintenance_batch_request_parent_id`
 - sample triage menghasilkan SLA snapshot yang memuat vendor entitlement source
   dan recommended execution mode untuk referensi UI frontend
+
+Tambahan seed yang sekarang tersedia:
+
+- asset warranty claim
+- entitlement expiry report
+- batch request multi-asset dengan parent-child traceability
 
 ### 11. Work Order Lifecycle
 

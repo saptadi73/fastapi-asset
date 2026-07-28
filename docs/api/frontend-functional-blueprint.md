@@ -511,6 +511,7 @@ Tab yang direkomendasikan:
 
 Aksi yang direkomendasikan:
 
+- create batch request multi-asset
 - submit
 - triage
 - approve
@@ -540,11 +541,15 @@ Frontend sebaiknya:
   saat user menekan tombol download.
 - jika contract dan warranty sama-sama aktif tetapi vendor entitlement berbeda,
   paksa user memilih vendor eksplisit saat triage.
+- untuk skenario gangguan massal atau inspeksi gabungan, sediakan mode batch
+  request yang membuat beberapa request asset-spesifik dalam satu submit.
 
 Panel tambahan yang direkomendasikan pada request detail:
 
 - contract aktif
 - warranty aktif
+- histori warranty claim
+- warning expiry warranty/contract bila mendekati tanggal akhir
 - vendor hasil coverage
 - sumber vendor entitlement: `MANUAL`, `CONTRACT`, atau `WARRANTY`
 - rekomendasi execution mode dari histori SLA snapshot

@@ -1371,6 +1371,31 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
             f"{API_PREFIX}/maintenance/warranties/{warranty_id}",
             label="get asset warranty",
         )
+        warranty_claim = await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/warranties/{warranty_id}/claims",
+            label="create asset warranty claim",
+            json_body={
+                "claim_number": f"CLM-{uuid4().hex[:20].upper()}",
+                "claim_date": "2026-07-28",
+                "problem_description": "Klaim bearing dan motor assembly untuk smoke test.",
+                "claim_status": "SUBMITTED",
+                "cost_covered": "1250000",
+                "cost_not_covered": "150000",
+            },
+        )
+        warranty_claim_id = warranty_claim["data"]["id"]
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/maintenance/warranties/{warranty_id}/claims",
+            label="list asset warranty claims",
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/maintenance/entitlements/expiring",
+            label="get maintenance entitlement expiry report",
+            params={"days_ahead": 120},
+        )
 
         plan = await runner.call(
             "POST",
@@ -1482,6 +1507,42 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
             },
         )
         request_id = maintenance_request["data"]["id"]
+        batch_requests = await runner.call(
+            "POST",
+            f"{API_PREFIX}/maintenance/requests/batch",
+            label="create maintenance request batch",
+            json_body={
+                "company_id": company_id,
+                "request_type": "CORRECTIVE",
+                "source_type": "MANUAL",
+                "requested_by_employee_id": user_id,
+                "reported_by_name": "Smoke Planner",
+                "reported_at": "2026-07-28T08:00:00Z",
+                "priority_id": priority_id,
+                "created_by": user_id,
+                "updated_by": user_id,
+                "items": [
+                    {
+                        "request_number": f"MRB-A-{suffix}",
+                        "asset_id": asset_id,
+                        "title": "Batch request asset utama",
+                        "problem_description": "Inspeksi corrective gabungan pada asset utama.",
+                        "asset_location_id": origin_location_id,
+                    },
+                    {
+                        "request_number": f"MRB-B-{suffix}",
+                        "asset_id": installed_component_asset_id,
+                        "title": "Batch request asset komponen",
+                        "problem_description": "Inspeksi corrective gabungan pada komponen.",
+                        "asset_location_id": origin_location_id,
+                    },
+                ],
+            },
+        )
+        batch_request_parent_id = require_first(
+            batch_requests["data"],
+            "create maintenance request batch",
+        )["id"]
         await runner.call(
             "GET",
             f"{API_PREFIX}/maintenance/requests",
@@ -2178,12 +2239,14 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
         "maintenance_failure_mode_id": failure_mode_id,
         "maintenance_root_cause_code_id": root_cause_id,
         "asset_warranty_id": warranty_id,
+        "asset_warranty_claim_id": warranty_claim_id,
         "maintenance_checklist_template_id": checklist_template_id,
         "maintenance_checklist_template_item_id": checklist_template_item_id,
         "maintenance_team_id": team_id,
         "maintenance_plan_id": plan_id,
         "maintenance_schedule_id": schedule_id,
         "maintenance_request_id": request_id,
+        "maintenance_batch_request_parent_id": batch_request_parent_id,
         "maintenance_request_attachment_id": request_attachment_id,
         "maintenance_work_order_id": work_order_id,
         "maintenance_cancelled_work_order_id": cancellable_work_order_id,

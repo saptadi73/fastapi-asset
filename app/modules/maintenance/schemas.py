@@ -168,6 +168,67 @@ class AssetWarrantyRead(BaseModel):
     asset: MaintenanceAssetReferenceRead
 
 
+class AssetWarrantyClaimCreate(BaseModel):
+    claim_number: str = Field(max_length=100)
+    claim_date: date
+    problem_description: str
+    claim_status: str = Field(max_length=30)
+    resolution_description: str | None = None
+    resolved_at: datetime | None = None
+    replacement_asset_id: UUID | None = None
+    cost_covered: Decimal | None = Field(default=None, ge=0)
+    cost_not_covered: Decimal | None = Field(default=None, ge=0)
+
+
+class AssetWarrantyClaimRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    warranty_id: UUID
+    asset_id: UUID
+    claim_number: str
+    claim_date: date
+    problem_description: str
+    claim_status: str
+    resolution_description: str | None
+    resolved_at: datetime | None
+    replacement_asset_id: UUID | None
+    cost_covered: Decimal | None
+    cost_not_covered: Decimal | None
+    created_at: datetime
+    updated_at: datetime
+    asset: MaintenanceAssetReferenceRead
+
+
+class MaintenanceEntitlementExpiryItemRead(BaseModel):
+    entity_type: str
+    entity_id: UUID
+    asset_id: UUID | None
+    asset_code: str | None
+    asset_name: str | None
+    reference_number: str | None
+    provider_partner_id: UUID | None
+    starts_at: date | None
+    ends_at: date
+    days_remaining: int
+    status: str
+    notes: str | None = None
+    coverage_scope: str | None = None
+    contract_type: str | None = None
+    coverage_level: str | None = None
+    preventive_maintenance_included: bool | None = None
+    corrective_maintenance_included: bool | None = None
+
+
+class MaintenanceEntitlementExpiryReportRead(BaseModel):
+    generated_at: datetime
+    days_ahead: int
+    warranty_count: int
+    contract_coverage_count: int
+    warranties: list[MaintenanceEntitlementExpiryItemRead]
+    contract_coverages: list[MaintenanceEntitlementExpiryItemRead]
+
+
 class MaintenanceMasterCodeCreate(BaseModel):
     code: str = Field(max_length=50)
     name: str = Field(max_length=150)
@@ -223,6 +284,38 @@ class MaintenanceRequestCreate(BaseModel):
     required_resolution_at: datetime | None = None
     created_by: UUID
     updated_by: UUID | None = None
+
+
+class MaintenanceRequestBatchItemCreate(BaseModel):
+    request_number: str = Field(max_length=50)
+    asset_id: UUID
+    title: str = Field(max_length=200)
+    problem_description: str
+    asset_location_id: UUID | None = None
+    operating_condition: str | None = None
+    requested_vendor_partner_id: UUID | None = None
+    maintenance_contract_id: UUID | None = None
+    warranty_id: UUID | None = None
+
+
+class MaintenanceRequestBatchCreate(BaseModel):
+    company_id: UUID
+    request_type: MaintenanceRequestType
+    source_type: MaintenanceRequestSourceType
+    requested_by_employee_id: UUID | None = None
+    reported_by_name: str | None = Field(default=None, max_length=150)
+    reported_at: datetime
+    priority_id: UUID
+    is_asset_stopped: bool = False
+    downtime_started_at: datetime | None = None
+    safety_impact: bool = False
+    environmental_impact: bool = False
+    production_impact: bool = False
+    required_response_at: datetime | None = None
+    required_resolution_at: datetime | None = None
+    created_by: UUID
+    updated_by: UUID | None = None
+    items: list[MaintenanceRequestBatchItemCreate] = Field(min_length=2)
 
 
 class MaintenanceRequestTriagePayload(BaseModel):

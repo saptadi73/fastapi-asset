@@ -52,6 +52,7 @@ from app.modules.maintenance.exceptions import (
 from app.modules.maintenance.models import (
     AssetFailure,
     AssetWarranty,
+    AssetWarrantyClaim,
     EmployeeMaintenanceSkill,
     MaintenanceChecklistExecution,
     MaintenanceChecklistResult,
@@ -86,6 +87,7 @@ from app.modules.maintenance.models import (
 from app.modules.maintenance.repository import (
     AssetFailureRepository,
     AssetWarrantyRepository,
+    AssetWarrantyClaimRepository,
     EmployeeMaintenanceSkillRepository,
     MaintenanceChecklistExecutionRepository,
     MaintenanceChecklistResultRepository,
@@ -123,7 +125,10 @@ from app.modules.maintenance.schemas import (
     AssetFailureUpdate,
     AssetMaintenanceHistoryItemRead,
     AssetWarrantyCreate,
+    AssetWarrantyClaimCreate,
     EmployeeMaintenanceSkillCreate,
+    MaintenanceEntitlementExpiryItemRead,
+    MaintenanceEntitlementExpiryReportRead,
     MaintenanceBacklogReportRead,
     MaintenanceChecklistExecutionStartPayload,
     MaintenanceChecklistResultEntryCreate,
@@ -148,6 +153,7 @@ from app.modules.maintenance.schemas import (
     MaintenancePriorityCreate,
     MaintenanceReliabilityReportRead,
     MaintenanceRequestActionPayload,
+    MaintenanceRequestBatchCreate,
     MaintenanceRequestCreate,
     MaintenanceRequestRejectPayload,
     MaintenanceRequestTriagePayload,
@@ -177,6 +183,7 @@ class MaintenanceService:
         self.contracts = MaintenanceContractRepository(session)
         self.contract_assets = MaintenanceContractAssetRepository(session)
         self.warranties = AssetWarrantyRepository(session)
+        self.warranty_claims = AssetWarrantyClaimRepository(session)
         self.plans = MaintenancePlanRepository(session)
         self.plan_assets = MaintenancePlanAssetRepository(session)
         self.checklist_templates = MaintenanceChecklistTemplateRepository(session)
@@ -270,6 +277,18 @@ class MaintenanceService:
                 message="Periode coverage asset harus berada di dalam periode contract.",
                 status_code=422,
             )
+        overlapping_coverages = await self.contract_assets.list_overlapping_coverages(
+            contract.id,
+            payload.asset_id,
+            coverage_start_date=payload.coverage_start_date,
+            coverage_end_date=payload.coverage_end_date,
+        )
+        if overlapping_coverages:
+            raise AppError(
+                code="MAINTENANCE_CONTRACT_COVERAGE_OVERLAP",
+                message="Coverage asset contract overlap dengan coverage lain pada contract yang sama.",
+                status_code=422,
+            )
         item = MaintenanceContractAsset(
             maintenance_contract_id=contract.id,
             **payload.model_dump(),
@@ -322,6 +341,17 @@ class MaintenanceService:
                 message="claim_deadline_date warranty tidak valid.",
                 status_code=422,
             )
+        overlapping_warranties = await self.warranties.list_overlapping(
+            payload.asset_id,
+            coverage_start_date=payload.coverage_start_date,
+            coverage_end_date=payload.coverage_end_date,
+        )
+        if overlapping_warranties:
+            raise AppError(
+                code="ASSET_WARRANTY_OVERLAP",
+                message="Warranty overlap dengan warranty lain pada periode yang sama.",
+                status_code=422,
+            )
         item = AssetWarranty(**payload.model_dump())
         try:
             await self.warranties.create(item)
@@ -330,6 +360,152 @@ class MaintenanceService:
             await self.session.rollback()
             raise
         return await self.get_warranty(item.id)
+
+    async def create_warranty_claim(
+        self,
+        warranty_id: UUID,
+        payload: AssetWarrantyClaimCreate,
+    ) -> AssetWarrantyClaim:
+        warranty = await self.get_warranty(warranty_id)
+        if payload.claim_date < warranty.coverage_start_date or payload.claim_date > warranty.coverage_end_date:
+            raise AppError(
+                code="ASSET_WARRANTY_CLAIM_DATE_OUTSIDE_COVERAGE",
+                message="claim_date harus berada di dalam periode coverage warranty.",
+                status_code=422,
+            )
+        if (
+            warranty.claim_deadline_date is not None
+            and payload.claim_date > warranty.claim_deadline_date
+        ):
+            raise AppError(
+                code="ASSET_WARRANTY_CLAIM_DEADLINE_EXCEEDED",
+                message="claim_date melewati claim_deadline_date warranty.",
+                status_code=422,
+            )
+        if payload.replacement_asset_id is not None:
+            if payload.replacement_asset_id == warranty.asset_id:
+                raise AppError(
+                    code="ASSET_WARRANTY_CLAIM_REPLACEMENT_INVALID",
+                    message="replacement_asset_id tidak boleh sama dengan asset yang diklaim.",
+                    status_code=422,
+                )
+            await self._get_asset_or_raise(payload.replacement_asset_id)
+        created_timestamp = datetime.now(UTC)
+        item = AssetWarrantyClaim(
+            warranty_id=warranty.id,
+            asset_id=warranty.asset_id,
+            claim_number=payload.claim_number,
+            claim_date=payload.claim_date,
+            problem_description=payload.problem_description,
+            claim_status=payload.claim_status,
+            resolution_description=payload.resolution_description,
+            resolved_at=payload.resolved_at,
+            replacement_asset_id=payload.replacement_asset_id,
+            cost_covered=payload.cost_covered,
+            cost_not_covered=payload.cost_not_covered,
+            created_at=created_timestamp,
+            updated_at=created_timestamp,
+        )
+        try:
+            await self.warranty_claims.create(item)
+            await self.session.commit()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise AppError(
+                code="ASSET_WARRANTY_CLAIM_CONFLICT",
+                message="Claim number warranty sudah digunakan.",
+                status_code=409,
+                details={"db_error": str(exc.orig)},
+            ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
+        return item
+
+    async def list_warranty_claims(self, warranty_id: UUID) -> list[AssetWarrantyClaim]:
+        await self.get_warranty(warranty_id)
+        return list(await self.warranty_claims.list_by_warranty(warranty_id))
+
+    async def get_entitlement_expiry_report(
+        self,
+        *,
+        days_ahead: int,
+    ) -> MaintenanceEntitlementExpiryReportRead:
+        generated_at = datetime.now(UTC)
+        date_from = generated_at.date()
+        date_to = date_from + timedelta(days=days_ahead)
+        warranties = list(await self.warranties.list_expiring(date_from=date_from, date_to=date_to))
+        contracts = list(await self.contracts.list_expiring(date_from=date_from, date_to=date_to))
+        warranty_items = [
+            MaintenanceEntitlementExpiryItemRead(
+                entity_type="WARRANTY",
+                entity_id=item.id,
+                asset_id=item.asset_id,
+                asset_code=item.asset.asset_code if item.asset is not None else None,
+                asset_name=item.asset.asset_name if item.asset is not None else None,
+                reference_number=item.warranty_number,
+                provider_partner_id=item.warranty_provider_partner_id,
+                starts_at=item.coverage_start_date,
+                ends_at=item.coverage_end_date,
+                days_remaining=(item.coverage_end_date - date_from).days,
+                status=item.status,
+                notes=item.notes,
+                coverage_scope=item.coverage_scope,
+            )
+            for item in warranties
+        ]
+        contract_coverage_items: list[MaintenanceEntitlementExpiryItemRead] = []
+        for contract in contracts:
+            coverages = list(await self.contract_assets.list_by_contract(contract.id))
+            if coverages:
+                for coverage in coverages:
+                    contract_coverage_items.append(
+                        MaintenanceEntitlementExpiryItemRead(
+                            entity_type="MAINTENANCE_CONTRACT_COVERAGE",
+                            entity_id=coverage.id,
+                            asset_id=coverage.asset_id,
+                            asset_code=coverage.asset.asset_code if coverage.asset is not None else None,
+                            asset_name=coverage.asset.asset_name if coverage.asset is not None else None,
+                            reference_number=contract.contract_number,
+                            provider_partner_id=contract.vendor_partner_id,
+                            starts_at=coverage.coverage_start_date,
+                            ends_at=coverage.coverage_end_date,
+                            days_remaining=(coverage.coverage_end_date - date_from).days,
+                            status=contract.status,
+                            notes=coverage.specific_exclusions,
+                            contract_type=contract.contract_type,
+                            coverage_level=coverage.coverage_level,
+                            preventive_maintenance_included=contract.preventive_maintenance_included,
+                            corrective_maintenance_included=contract.corrective_maintenance_included,
+                        )
+                    )
+            else:
+                contract_coverage_items.append(
+                    MaintenanceEntitlementExpiryItemRead(
+                        entity_type="MAINTENANCE_CONTRACT",
+                        entity_id=contract.id,
+                        asset_id=None,
+                        asset_code=None,
+                        asset_name=None,
+                        reference_number=contract.contract_number,
+                        provider_partner_id=contract.vendor_partner_id,
+                        starts_at=contract.start_date,
+                        ends_at=contract.end_date,
+                        days_remaining=(contract.end_date - date_from).days,
+                        status=contract.status,
+                        contract_type=contract.contract_type,
+                        preventive_maintenance_included=contract.preventive_maintenance_included,
+                        corrective_maintenance_included=contract.corrective_maintenance_included,
+                    )
+                )
+        return MaintenanceEntitlementExpiryReportRead(
+            generated_at=generated_at,
+            days_ahead=days_ahead,
+            warranty_count=len(warranty_items),
+            contract_coverage_count=len(contract_coverage_items),
+            warranties=warranty_items,
+            contract_coverages=contract_coverage_items,
+        )
 
     async def list_asset_warranties(self, asset_id: UUID) -> list[AssetWarranty]:
         await self._get_asset_or_raise(asset_id)
@@ -1988,6 +2164,92 @@ class MaintenanceService:
             await self.session.rollback()
             raise
         return await self.get_request(item.id)
+
+    async def create_requests_batch(
+        self,
+        payload: MaintenanceRequestBatchCreate,
+    ) -> list[MaintenanceRequest]:
+        priority = await self._get_priority_or_raise(payload.priority_id)
+        if len({item.asset_id for item in payload.items}) != len(payload.items):
+            raise AppError(
+                code="MAINTENANCE_REQUEST_BATCH_DUPLICATE_ASSET",
+                message="Setiap asset dalam batch request harus unik.",
+                status_code=422,
+            )
+        if len({item.request_number for item in payload.items}) != len(payload.items):
+            raise AppError(
+                code="MAINTENANCE_REQUEST_BATCH_DUPLICATE_NUMBER",
+                message="Setiap request_number dalam batch request harus unik.",
+                status_code=422,
+            )
+        created_items: list[MaintenanceRequest] = []
+        parent_request_id: UUID | None = None
+        try:
+            for entry in payload.items:
+                asset = await self._get_asset_or_raise(entry.asset_id)
+                if entry.asset_location_id is not None:
+                    await self._get_location_or_raise(entry.asset_location_id)
+                if entry.requested_vendor_partner_id is not None:
+                    await self._get_partner_or_raise(entry.requested_vendor_partner_id)
+                if entry.maintenance_contract_id is not None:
+                    await self._resolve_contract_coverage(
+                        asset.id,
+                        contract_id=entry.maintenance_contract_id,
+                        as_of=payload.reported_at.date(),
+                        request_type=payload.request_type.value,
+                    )
+                if entry.warranty_id is not None:
+                    await self._resolve_warranty_coverage(
+                        asset.id,
+                        warranty_id=entry.warranty_id,
+                        as_of=payload.reported_at.date(),
+                    )
+                item = await self.requests.create(
+                    MaintenanceRequest(
+                        request_number=entry.request_number,
+                        company_id=payload.company_id,
+                        asset_id=asset.id,
+                        parent_request_id=parent_request_id,
+                        request_type=payload.request_type.value,
+                        source_type=payload.source_type.value,
+                        requested_by_employee_id=payload.requested_by_employee_id,
+                        reported_by_name=payload.reported_by_name,
+                        reported_at=payload.reported_at,
+                        title=entry.title,
+                        problem_description=entry.problem_description,
+                        priority_id=priority.id,
+                        asset_location_id=entry.asset_location_id,
+                        operating_condition=entry.operating_condition,
+                        is_asset_stopped=payload.is_asset_stopped,
+                        downtime_started_at=payload.downtime_started_at,
+                        safety_impact=payload.safety_impact,
+                        environmental_impact=payload.environmental_impact,
+                        production_impact=payload.production_impact,
+                        maintenance_contract_id=entry.maintenance_contract_id,
+                        warranty_id=entry.warranty_id,
+                        requested_vendor_partner_id=entry.requested_vendor_partner_id,
+                        status=MaintenanceRequestStatus.DRAFT.value,
+                        required_response_at=payload.required_response_at,
+                        required_resolution_at=payload.required_resolution_at,
+                        created_by=payload.created_by,
+                        updated_by=payload.updated_by or payload.created_by,
+                    )
+                )
+                created_items.append(item)
+                if parent_request_id is None:
+                    parent_request_id = item.id
+            await self.session.commit()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise AppError(
+                code="MAINTENANCE_REQUEST_BATCH_CONFLICT",
+                message="Batch request menimbulkan konflik request number.",
+                status_code=409,
+            ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
+        return [await self.get_request(item.id) for item in created_items]
 
     async def list_requests(
         self,

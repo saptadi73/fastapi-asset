@@ -720,6 +720,17 @@ Aturan backend yang sudah aktif:
 
 Membuat master warranty untuk asset.
 
+### `POST /maintenance/warranties/{warranty_id}/claims`
+
+Membuat claim warranty untuk satu warranty tertentu.
+
+Validasi backend:
+
+- `claim_date` harus berada di dalam periode coverage warranty
+- `claim_date` tidak boleh melewati `claim_deadline_date` bila deadline tersedia
+- `replacement_asset_id` tidak boleh sama dengan asset yang diklaim
+- `cost_covered` dan `cost_not_covered` tidak boleh negatif
+
 ### `GET /maintenance/assets/{asset_id}/warranties`
 
 Mengambil seluruh warranty milik asset tertentu.
@@ -727,6 +738,25 @@ Mengambil seluruh warranty milik asset tertentu.
 ### `GET /maintenance/warranties/{warranty_id}`
 
 Mengambil detail satu warranty.
+
+### `GET /maintenance/warranties/{warranty_id}/claims`
+
+Mengambil histori claim warranty untuk satu warranty.
+
+### `GET /maintenance/entitlements/expiring`
+
+Mengambil report entitlement yang akan segera berakhir.
+
+Query:
+
+- `days_ahead`: default `30`, minimum `1`, maksimum `365`
+
+Use case frontend:
+
+- dashboard expiry warranty
+- dashboard expiry maintenance contract coverage
+- reminder renewal atau extension contract
+- panel operasional untuk melihat coverage yang hampir habis
 
 ### `POST /maintenance/symptom-codes`
 
@@ -898,6 +928,19 @@ Catatan entitlement:
 
 - request tetap dapat dibuat tanpa contract atau warranty
 - penentuan coverage aktif diproses pada tahap triage
+
+### `POST /maintenance/requests/batch`
+
+Membuat beberapa maintenance request sekaligus untuk banyak asset.
+
+Perilaku backend:
+
+- tiap `asset_id` dalam batch harus unik
+- tiap `request_number` dalam batch harus unik
+- request pertama menjadi parent, request berikutnya memakai
+  `parent_request_id` ke request pertama
+- bila item batch mengirim `maintenance_contract_id` atau `warranty_id`,
+  backend memvalidasi entitlement terhadap asset item tersebut
 
 ### `GET /maintenance/requests`
 

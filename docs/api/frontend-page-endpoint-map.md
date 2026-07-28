@@ -353,6 +353,8 @@ Endpoint:
 - `GET /api/v1/maintenance/contracts/{maintenance_contract_id}`
 - `GET /api/v1/maintenance/assets/{asset_id}/warranties`
 - `GET /api/v1/maintenance/warranties/{asset_warranty_id}`
+- `GET /api/v1/maintenance/warranties/{asset_warranty_id}/claims`
+- `GET /api/v1/maintenance/entitlements/expiring`
 - `GET /api/v1/maintenance/symptom-codes`
 - `GET /api/v1/maintenance/failure-modes`
 - `GET /api/v1/maintenance/root-cause-codes`
@@ -368,6 +370,7 @@ Seed entity:
 - `maintenance_failure_mode_id`
 - `maintenance_root_cause_code_id`
 - `asset_warranty_id`
+- `asset_warranty_claim_id`
 - `maintenance_team_id`
 - `maintenance_checklist_template_id`
 
@@ -460,6 +463,7 @@ Endpoint utama:
 
 Action sample:
 
+- `POST /api/v1/maintenance/requests/batch`
 - `POST /api/v1/maintenance/requests/{maintenance_request_id}/attachments`
 - `GET /api/v1/attachments/{attachment_id}`
 - `GET /api/v1/attachments/{attachment_id}/download`

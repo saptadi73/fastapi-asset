@@ -127,6 +127,35 @@ class AssetWarranty(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     asset = relationship("Asset")
     warranty_provider_partner = relationship("BusinessPartner")
+    claims: Mapped[list[AssetWarrantyClaim]] = relationship(back_populates="warranty")
+
+
+class AssetWarrantyClaim(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "asset_warranty_claims"
+
+    warranty_id: Mapped[UUID] = mapped_column(
+        ForeignKey("asset_warranties.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    asset_id: Mapped[UUID] = mapped_column(
+        ForeignKey("assets.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    claim_number: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    claim_date: Mapped[date] = mapped_column(nullable=False)
+    problem_description: Mapped[str] = mapped_column(Text, nullable=False)
+    claim_status: Mapped[str] = mapped_column(String(30), nullable=False)
+    resolution_description: Mapped[str | None] = mapped_column(Text)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    replacement_asset_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("assets.id", ondelete="SET NULL")
+    )
+    cost_covered: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+    cost_not_covered: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+
+    warranty: Mapped[AssetWarranty] = relationship(back_populates="claims")
+    asset = relationship("Asset", foreign_keys=[asset_id])
+    replacement_asset = relationship("Asset", foreign_keys=[replacement_asset_id])
 
 
 class MaintenanceRequest(UUIDPrimaryKeyMixin, TimestampMixin, Base):
