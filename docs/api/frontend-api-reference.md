@@ -1770,6 +1770,62 @@ Perilaku backend:
 
 Mengambil daftar payment lease contract.
 
+## Software License Domain
+
+### `POST /software-products`
+
+Membuat master software product.
+
+### `GET /software-products`
+
+Mengambil daftar software product untuk form pembuatan lisensi dan master data.
+
+### `POST /software-licenses`
+
+Membuat software license baru.
+
+Perilaku backend:
+
+- `expiry_date` tidak boleh lebih kecil dari `start_date`
+- `license_key_encrypted` disimpan, tetapi tidak diekspos di response biasa
+- `used_quantity` dihitung dari assignment aktif, bukan dari input user
+
+### `GET /software-licenses`
+
+Mengambil daftar software license dengan indikator:
+
+- `available_quantity`
+- `capacity_full`
+- `expires_soon`
+
+Catatan tanggal:
+
+- indikator `expires_soon` pada sample seed dihitung terhadap Monday, July 27, 2026
+
+### `GET /software-licenses/{license_id}`
+
+Mengambil detail software license beserta assignment aktif dan histori release.
+
+### `POST /software-licenses/{license_id}/assignments`
+
+Mencatat assignment software license ke asset atau named user.
+
+Perilaku backend:
+
+- target harus tepat satu: `asset_id` atau `employee_id`
+- assignment ditolak bila kapasitas license penuh
+- assignment ditolak bila license belum aktif atau sudah expired pada tanggal
+  assignment
+
+### `POST /software-license-assignments/{assignment_id}/release`
+
+Merelease assignment software license yang masih aktif.
+
+Perilaku backend:
+
+- `released_at` tidak boleh lebih kecil dari `assigned_at`
+- `used_quantity` license akan dihitung ulang otomatis setelah release
+
 ### `POST /assets/{asset_id}/status-changes`
 
 Mencatat perubahan status dan kondisi aset sambil memperbarui current state

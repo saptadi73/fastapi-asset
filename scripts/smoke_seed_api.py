@@ -697,6 +697,87 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
             f"{API_PREFIX}/lease-contracts/{lease_contract_id}/payments",
             label="list lease contract payments",
         )
+        software_product = await runner.call(
+            "POST",
+            f"{API_PREFIX}/software-products",
+            label="create software product",
+            json_body={
+                "product_code": f"SW-{suffix}",
+                "product_name": "CMMS Desktop Agent",
+                "publisher_partner_id": partner_id,
+                "publisher_name": "Smoke Publisher",
+                "product_type": "DESKTOP_APP",
+                "version": "2026.7",
+                "edition": "Enterprise",
+                "is_active": True,
+            },
+        )
+        software_product_id = software_product["data"]["id"]
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/software-products",
+            label="list software products",
+        )
+        software_license = await runner.call(
+            "POST",
+            f"{API_PREFIX}/software-licenses",
+            label="create software license",
+            json_body={
+                "software_product_id": software_product_id,
+                "license_number": f"LIC-{suffix}",
+                "license_key_encrypted": "enc-smoke-license-key",
+                "license_model": "NAMED_USER",
+                "license_metric": "USER",
+                "license_quantity": 2,
+                "purchase_date": "2026-07-01",
+                "activation_date": "2026-07-05",
+                "start_date": "2026-07-05",
+                "expiry_date": "2026-08-15",
+                "renewal_type": "ANNUAL",
+                "auto_renewal": False,
+                "renewal_notice_days": 30,
+                "subscription_cost": "1200000",
+                "currency_code": "IDR",
+                "supplier_id": partner_id,
+                "status": "ACTIVE",
+            },
+        )
+        software_license_id = software_license["data"]["id"]
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/software-licenses",
+            label="list software licenses",
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/software-licenses/{software_license_id}",
+            label="get software license",
+        )
+        software_assignment = await runner.call(
+            "POST",
+            f"{API_PREFIX}/software-licenses/{software_license_id}/assignments",
+            label="assign software license",
+            json_body={
+                "employee_id": user_id,
+                "assignment_type": "NAMED_USER",
+                "assigned_at": "2026-07-27T07:50:00Z",
+            },
+        )
+        software_assignment_id = require_first(
+            software_assignment["data"]["assignments"],
+            "software license assignments after create",
+        )["id"]
+        await runner.call(
+            "POST",
+            f"{API_PREFIX}/software-license-assignments/{software_assignment_id}/release",
+            label="release software license assignment",
+            json_body={"released_at": "2026-07-27T07:55:00Z"},
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/software-licenses/{software_license_id}",
+            label="get software license after release",
+        )
         assignment = await runner.call(
             "POST",
             f"{API_PREFIX}/assets/{asset_id}/assignments",

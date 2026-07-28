@@ -26,11 +26,12 @@ Rekomendasi menu sidebar/top-level:
 2. Asset Registry
 3. Asset Transfers
 4. Leases
-5. Tracking & Stocktake
-6. Maintenance
-7. Reports
-8. Master Data
-9. Authentication / User Session
+5. Software Licenses
+6. Tracking & Stocktake
+7. Maintenance
+8. Reports
+9. Master Data
+10. Authentication / User Session
 
 ## 2. Dashboard
 
@@ -302,7 +303,64 @@ Catatan frontend:
 - tampilkan warning bila kontrak aktif mendekati end date
 - tampilkan badge asset leased pada asset detail bila asset muncul di lease item
 
-## 6. Tracking & Stocktake
+## 6. Software License Management
+
+Tujuan:
+
+- mengelola entitlement software terpisah dari asset hardware;
+- memantau kapasitas seat dan tanggal expiry;
+- merekam assignment lisensi ke asset atau named user.
+
+### 6.1 Software License List
+
+Fungsi halaman:
+
+- menampilkan seluruh software license;
+- filter by status, product, expiry, dan capacity full;
+- membuka detail lisensi.
+
+Kolom yang direkomendasikan:
+
+- product code
+- product name
+- license model
+- license metric
+- license quantity
+- used quantity
+- available quantity
+- expiry date
+- status
+- expires soon badge
+- capacity full badge
+
+### 6.2 Software License Detail
+
+Tab yang direkomendasikan:
+
+1. Overview
+2. Assignments
+
+Konten utama:
+
+- informasi product dan supplier
+- tanggal start, expiry, support end, dan update entitlement end
+- quantity summary
+- daftar assignment aktif dan released
+
+Aksi yang direkomendasikan:
+
+- create software product
+- create software license
+- assign license
+- release assignment
+
+Catatan frontend:
+
+- tampilkan warning expiry dengan basis tanggal operasional saat ini,
+  yaitu Monday, July 27, 2026 pada seed sample
+- pada assignment form, tampilkan sisa seat sebelum submit
+
+## 7. Tracking & Stocktake
 
 Tujuan:
 

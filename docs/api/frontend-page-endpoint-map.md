@@ -173,6 +173,49 @@ Action sample:
 - `POST /api/v1/lease-contracts/{lease_contract_id}/assets`
 - `POST /api/v1/lease-contracts/{lease_contract_id}/payments`
 
+## Software License List
+
+Tujuan data:
+
+- tabel lisensi software;
+- monitoring expiry dan kapasitas seat;
+- navigasi ke detail lisensi.
+
+Endpoint utama:
+
+- `GET /api/v1/software-licenses`
+
+Endpoint pendukung:
+
+- `GET /api/v1/software-products`
+
+Action sample:
+
+- `POST /api/v1/software-products`
+- `POST /api/v1/software-licenses`
+
+Seed entity:
+
+- `software_product_id`
+- `software_license_id`
+
+## Software License Detail
+
+Tujuan data:
+
+- header lisensi software;
+- daftar assignment aktif atau sudah direlease;
+- informasi expiry dan capacity.
+
+Endpoint utama:
+
+- `GET /api/v1/software-licenses/{software_license_id}`
+
+Action sample:
+
+- `POST /api/v1/software-licenses/{software_license_id}/assignments`
+- `POST /api/v1/software-license-assignments/{software_license_assignment_id}/release`
+
 ## Tracking Timeline
 
 Tujuan data:

@@ -18,6 +18,7 @@ from app.modules.auth import models as _auth_models  # noqa: E402,F401
 from app.modules.leases import models as _lease_models  # noqa: E402,F401
 from app.modules.maintenance import models as _maintenance_models  # noqa: E402,F401
 from app.modules.partners import models as _partner_models  # noqa: E402,F401
+from app.modules.software_licenses import models as _software_license_models  # noqa: E402,F401
 from app.modules.tracking import models as _tracking_models  # noqa: E402,F401
 
 config = context.config

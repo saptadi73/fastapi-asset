@@ -147,7 +147,31 @@ Output penting:
 - asset item lease untuk aset smoke utama
 - payment periode `2026-07-01` sampai `2026-07-31`
 
-### 6. Asset Transfer
+### 6. Software License Flow
+
+Tujuan:
+
+- menampilkan contoh software license aktif pada Monday, July 27, 2026;
+- memberi sample assignment dan release seat lisensi.
+
+Endpoint:
+
+- `POST /api/v1/software-products`
+- `GET /api/v1/software-products`
+- `POST /api/v1/software-licenses`
+- `GET /api/v1/software-licenses`
+- `GET /api/v1/software-licenses/{software_license_id}`
+- `POST /api/v1/software-licenses/{software_license_id}/assignments`
+- `POST /api/v1/software-license-assignments/{software_license_assignment_id}/release`
+
+Output penting:
+
+- `software_product_id`
+- `software_license_id`
+- license aktif dengan `expiry_date` `2026-08-15`
+- seat sempat terpakai lalu kembali tersedia setelah release
+
+### 7. Asset Transfer
 
 Tujuan:
 
@@ -166,7 +190,7 @@ Output penting:
 
 - `asset_transfer_id`
 
-### 7. Tracking dan Stocktake
+### 8. Tracking dan Stocktake
 
 Tujuan:
 

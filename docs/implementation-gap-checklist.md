@@ -263,10 +263,10 @@ Status:
 
 Status:
 
-- [ ] software licenses
-- [ ] software license assignments
-- [ ] release software license assignment
-- [ ] capacity and expiry monitoring
+- [x] software licenses
+- [x] software license assignments
+- [x] release software license assignment
+- [x] capacity and expiry monitoring
 
 ### D3. Asset Lifecycle Review and Retirement
 
