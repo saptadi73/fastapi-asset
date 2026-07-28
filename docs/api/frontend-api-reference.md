@@ -321,7 +321,7 @@ Respons `data` berisi:
 
 - `attachment`: metadata attachment lengkap
 - `current_version`: metadata versi file aktif
-- `download_url`: URL API aman berumur pendek untuk mengakses detail file aktif
+- `download_url`: URL API aman berumur pendek untuk mengunduh file aktif secara langsung
 - `download_mode`: `SIGNED_API_URL`
 - `expires_at`: waktu kedaluwarsa link download aman
 
@@ -341,6 +341,18 @@ Respons `data` berisi:
 - `mime_type`
 - `file_name`
 - `expires_at`
+
+### `GET /attachments/downloads/{download_token}/file`
+
+Mengunduh file attachment langsung dari storage lokal menggunakan token aman
+berumur pendek.
+
+Catatan:
+
+- endpoint direct download aktif untuk `storage_provider = local`
+- frontend biasanya cukup memakai `download_url` dari
+  `GET /attachments/{attachment_id}/download`
+- token akan kedaluwarsa sesuai konfigurasi backend
 
 ### `GET /attachments/{attachment_id}/versions`
 
@@ -1802,6 +1814,25 @@ Catatan:
 
 - `created_by` dan `updated_by` diisi otomatis dari user login.
 
+### `POST /assets/with-attachments`
+
+Membuat asset registry baru sekaligus upload attachment awal melalui
+`multipart/form-data`.
+
+Field form:
+
+- `asset_data`: string JSON dengan payload yang sama seperti `POST /assets`
+- `photo_files`: satu atau lebih file foto asset
+- `manual_book_files`: satu atau lebih file manual book
+
+Perilaku backend:
+
+- foto akan disimpan sebagai kategori `ASSET_PROFILE_PHOTO`
+- manual book disimpan sebagai kategori `MANUAL_BOOK`
+- manual book mendukung multifile dalam satu request
+- foto pertama akan dijadikan `is_primary = true` bila asset belum punya foto utama
+- file disimpan ke storage lokal default bila konfigurasi storage lokal aktif
+
 ### `GET /assets`
 
 List asset untuk halaman table frontend.
@@ -1844,6 +1875,22 @@ Contoh request:
 Catatan:
 
 - `updated_by` diisi otomatis dari user login.
+
+### `PATCH /assets/{asset_id}/with-attachments`
+
+Mengubah data asset sekaligus menambahkan attachment baru melalui
+`multipart/form-data`.
+
+Field form:
+
+- `asset_data`: string JSON dengan payload yang sama seperti `PATCH /assets/{asset_id}`
+- `photo_files`: nol atau lebih file foto tambahan
+- `manual_book_files`: nol atau lebih file manual book tambahan
+
+Catatan:
+
+- endpoint ini menambahkan attachment baru, bukan mengganti attachment lama
+- manual book tetap mendukung multifile
 
 ### `POST /assets/{asset_id}/location-changes`
 

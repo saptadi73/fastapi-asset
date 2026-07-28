@@ -1,7 +1,11 @@
+import hashlib
 from datetime import datetime, timedelta
+from pathlib import Path
 from uuid import UUID
+from uuid import uuid4
 
 import jwt
+from fastapi import UploadFile
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,7 +13,7 @@ from app.core.compat import UTC
 from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.modules.assets.repository import AssetRepository, AssetTransferRepository
-from app.modules.attachments.constants import AttachmentCategory, AttachmentEntityType
+from app.modules.attachments.constants import AttachmentCategory, AttachmentEntityType, FileKind
 from app.modules.attachments.exceptions import AttachmentNotFoundError
 from app.modules.attachments.models import Attachment, File, FileEvent, FileVersion
 from app.modules.attachments.repository import (
@@ -26,6 +30,7 @@ from app.modules.attachments.schemas import (
     AttachmentRead,
     AttachmentUpdate,
     FileRead,
+    FileCreate,
     FileVersionCreate,
     FileVersionRead,
 )
@@ -172,6 +177,68 @@ class AttachmentService:
         result = await self.get_attachment(attachment.id)
         return result
 
+    async def create_uploaded_asset_attachment(
+        self,
+        *,
+        asset_id: UUID,
+        upload: UploadFile,
+        attachment_category: AttachmentCategory,
+        created_by: UUID | None,
+        captured_by: UUID | None,
+        is_primary: bool = False,
+        sequence_no: int = 1,
+    ) -> Attachment:
+        now = datetime.now(UTC)
+        content = await upload.read()
+        if not content:
+            raise AppError(
+                code="ATTACHMENT_FILE_EMPTY",
+                message="File upload tidak boleh kosong.",
+                status_code=422,
+                details={"filename": upload.filename},
+            )
+
+        original_filename = Path(upload.filename or "upload.bin").name
+        extension = Path(original_filename).suffix.lower() or None
+        object_key = f"assets/{asset_id}/{uuid4().hex}{extension or ''}"
+        storage_root = Path(settings.attachment_storage_root)
+        destination = storage_root / object_key
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(content)
+
+        mime_type = upload.content_type or "application/octet-stream"
+        payload = AttachmentCreate(
+            file=FileCreate(
+                original_filename=original_filename,
+                display_name=original_filename,
+                file_kind=self._infer_file_kind(mime_type),
+                mime_type=mime_type,
+                extension=extension[1:] if extension else None,
+                size_bytes=len(content),
+                checksum_sha256=hashlib.sha256(content).hexdigest(),
+                storage_provider=settings.attachment_storage_provider,
+                storage_bucket=settings.attachment_storage_bucket,
+                storage_object_key=object_key,
+                uploaded_by=created_by,
+                uploaded_at=now,
+            ),
+            entity_type=AttachmentEntityType.ASSET,
+            entity_id=asset_id,
+            attachment_category=attachment_category,
+            title=original_filename,
+            captured_at=now,
+            captured_by=captured_by,
+            sequence_no=sequence_no,
+            is_primary=is_primary,
+            created_by=created_by,
+            created_at=now,
+        )
+        try:
+            return await self.create_attachment(payload)
+        except Exception:
+            destination.unlink(missing_ok=True)
+            raise
+
     async def get_attachment(self, attachment_id: UUID) -> Attachment:
         attachment = await self.attachments.get(attachment_id)
         if attachment is None:
@@ -223,7 +290,7 @@ class AttachmentService:
         return AttachmentDownloadRead(
             attachment=AttachmentRead.model_validate(attachment),
             current_version=FileVersionRead.model_validate(current_version),
-            download_url=f"{settings.api_v1_prefix}/attachments/downloads/{token}",
+            download_url=f"{settings.api_v1_prefix}/attachments/downloads/{token}/file",
             expires_at=expires_at,
         )
 
@@ -644,4 +711,14 @@ class AttachmentService:
                 status_code=401,
             )
         return claims
+
+    def _infer_file_kind(self, mime_type: str):
+        normalized = mime_type.lower()
+        if normalized.startswith("image/"):
+            return FileKind.IMAGE
+        if normalized.startswith(("video/", "audio/")):
+            return FileKind.VIDEO if normalized.startswith("video/") else FileKind.AUDIO
+        if normalized.startswith(("text/", "application/")):
+            return FileKind.DOCUMENT
+        return FileKind.OTHER
 

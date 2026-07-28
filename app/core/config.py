@@ -41,6 +41,18 @@ class Settings(BaseSettings):
         default=5,
         alias="ATTACHMENT_DOWNLOAD_TOKEN_MINUTES",
     )
+    attachment_storage_provider: str = Field(
+        default="local",
+        alias="ATTACHMENT_STORAGE_PROVIDER",
+    )
+    attachment_storage_bucket: str = Field(
+        default="asset-attachments",
+        alias="ATTACHMENT_STORAGE_BUCKET",
+    )
+    attachment_storage_root: str = Field(
+        default="storage/uploads",
+        alias="ATTACHMENT_STORAGE_ROOT",
+    )
 
     auth_bootstrap_admin_email: str | None = Field(
         default=None,

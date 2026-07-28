@@ -1,16 +1,21 @@
+import json
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile, status
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import (
     get_current_user,
     get_session,
+    require_attachment_write,
     require_asset_read,
     require_asset_write,
     require_maintenance_read,
 )
+from app.core.exceptions import AppError
+from app.modules.auth.constants import AppPermission
 from app.modules.assets.schemas import (
     AssetAssignmentCreate,
     AssetAssignmentRead,
@@ -49,6 +54,9 @@ from app.modules.assets.schemas import (
     AssetTransferRead,
     AssetUpdate,
 )
+from app.modules.attachments.constants import AttachmentCategory
+from app.modules.attachments.schemas import AttachmentRead
+from app.modules.attachments.service import AttachmentService
 from app.modules.assets.service import AssetRegistryService
 from app.modules.auth.models import AppUser
 from app.modules.maintenance.service import MaintenanceService
@@ -210,10 +218,19 @@ async def list_asset_locations(
 )
 async def create_asset(
     request: Request,
-    payload: AssetCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
     current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
+    payload, photo_files, manual_book_files, supporting_document_files = (
+        await _resolve_asset_registry_request(request, AssetCreate)
+    )
+    _ensure_attachment_write_permission_if_needed(
+        current_user=current_user,
+        photo_files=photo_files,
+        manual_book_files=manual_book_files,
+        supporting_document_files=supporting_document_files,
+    )
+
     service = AssetRegistryService(session)
     asset = await service.create_asset(
         payload.model_copy(
@@ -223,10 +240,68 @@ async def create_asset(
             }
         )
     )
+
+    if photo_files or manual_book_files or supporting_document_files:
+        attachment_service = AttachmentService(session)
+        await _upload_asset_registry_files(
+            attachment_service=attachment_service,
+            asset_id=asset.id,
+            photo_files=photo_files,
+            manual_book_files=manual_book_files,
+            supporting_document_files=supporting_document_files,
+            actor_id=current_user.id,
+        )
+
     return success_response(
         request=request,
         message="Asset berhasil dibuat.",
         data=AssetRead.from_model(asset).model_dump(mode="json"),
+    )
+
+
+@router.post(
+    "/assets/with-attachments",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_asset_write), Depends(require_attachment_write)],
+)
+async def create_asset_with_attachments(
+    request: Request,
+    asset_data: str = Form(...),
+    photo_files: list[UploadFile] = File(default=[]),
+    manual_book_files: list[UploadFile] = File(default=[]),
+    supporting_document_files: list[UploadFile] = File(default=[]),
+    session: Annotated[AsyncSession, Depends(get_session)] = None,
+    current_user: Annotated[AppUser, Depends(get_current_user)] = None,
+) -> dict:
+    payload = _parse_asset_payload(asset_data, AssetCreate)
+    asset_service = AssetRegistryService(session)
+    attachment_service = AttachmentService(session)
+    asset = await asset_service.create_asset(
+        payload.model_copy(
+            update={
+                "created_by": current_user.id,
+                "updated_by": current_user.id,
+            }
+        )
+    )
+    attachments = await _upload_asset_registry_files(
+        attachment_service=attachment_service,
+        asset_id=asset.id,
+        photo_files=photo_files,
+        manual_book_files=manual_book_files,
+        supporting_document_files=supporting_document_files,
+        actor_id=current_user.id,
+    )
+    return success_response(
+        request=request,
+        message="Asset berhasil dibuat beserta attachment.",
+        data={
+            "asset": AssetRead.from_model(asset).model_dump(mode="json"),
+            "attachments": [
+                AttachmentRead.model_validate(item).model_dump(mode="json", by_alias=True)
+                for item in attachments
+            ],
+        },
     )
 
 
@@ -448,19 +523,82 @@ async def get_asset(
 async def update_asset(
     request: Request,
     asset_id: UUID,
-    payload: AssetUpdate,
     session: Annotated[AsyncSession, Depends(get_session)],
     current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
+    payload, photo_files, manual_book_files, supporting_document_files = (
+        await _resolve_asset_registry_request(request, AssetUpdate)
+    )
+    _ensure_attachment_write_permission_if_needed(
+        current_user=current_user,
+        photo_files=photo_files,
+        manual_book_files=manual_book_files,
+        supporting_document_files=supporting_document_files,
+    )
+
     service = AssetRegistryService(session)
     asset = await service.update_asset(
         asset_id,
         payload.model_copy(update={"updated_by": current_user.id}),
     )
+
+    if photo_files or manual_book_files or supporting_document_files:
+        attachment_service = AttachmentService(session)
+        await _upload_asset_registry_files(
+            attachment_service=attachment_service,
+            asset_id=asset.id,
+            photo_files=photo_files,
+            manual_book_files=manual_book_files,
+            supporting_document_files=supporting_document_files,
+            actor_id=current_user.id,
+        )
+
     return success_response(
         request=request,
         message="Asset berhasil diperbarui.",
         data=AssetRead.from_model(asset).model_dump(mode="json"),
+    )
+
+
+@router.patch(
+    "/assets/{asset_id}/with-attachments",
+    dependencies=[Depends(require_asset_write), Depends(require_attachment_write)],
+)
+async def update_asset_with_attachments(
+    request: Request,
+    asset_id: UUID,
+    asset_data: str = Form(default="{}"),
+    photo_files: list[UploadFile] = File(default=[]),
+    manual_book_files: list[UploadFile] = File(default=[]),
+    supporting_document_files: list[UploadFile] = File(default=[]),
+    session: Annotated[AsyncSession, Depends(get_session)] = None,
+    current_user: Annotated[AppUser, Depends(get_current_user)] = None,
+) -> dict:
+    payload = _parse_asset_payload(asset_data, AssetUpdate)
+    asset_service = AssetRegistryService(session)
+    attachment_service = AttachmentService(session)
+    asset = await asset_service.update_asset(
+        asset_id,
+        payload.model_copy(update={"updated_by": current_user.id}),
+    )
+    attachments = await _upload_asset_registry_files(
+        attachment_service=attachment_service,
+        asset_id=asset.id,
+        photo_files=photo_files,
+        manual_book_files=manual_book_files,
+        supporting_document_files=supporting_document_files,
+        actor_id=current_user.id,
+    )
+    return success_response(
+        request=request,
+        message="Asset berhasil diperbarui beserta attachment.",
+        data={
+            "asset": AssetRead.from_model(asset).model_dump(mode="json"),
+            "attachments": [
+                AttachmentRead.model_validate(item).model_dump(mode="json", by_alias=True)
+                for item in attachments
+            ],
+        },
     )
 
 
@@ -919,3 +1057,161 @@ async def get_asset_maintenance_history(
         message="Riwayat maintenance asset berhasil diambil.",
         data=[item.model_dump(mode="json") for item in items],
     )
+
+
+def _parse_asset_payload(payload_raw: str, schema_cls):
+    try:
+        payload_dict = json.loads(payload_raw)
+    except json.JSONDecodeError as exc:
+        raise AppError(
+            code="ASSET_PAYLOAD_INVALID_JSON",
+            message="Payload asset harus berupa JSON yang valid.",
+            status_code=422,
+        ) from exc
+
+    try:
+        return schema_cls.model_validate(payload_dict)
+    except ValidationError as exc:
+        raise AppError(
+            code="ASSET_PAYLOAD_INVALID",
+            message="Payload asset tidak valid.",
+            status_code=422,
+            details=exc.errors(),
+        ) from exc
+
+
+async def _resolve_asset_registry_request(
+    request: Request,
+    schema_cls,
+):
+    content_type = request.headers.get("content-type", "").lower()
+
+    if "multipart/form-data" in content_type:
+        form = await request.form()
+        payload_raw = form.get("asset_data") or form.get("payload") or "{}"
+
+        return (
+            _parse_asset_payload(str(payload_raw), schema_cls),
+            _coerce_upload_files(form.getlist("photo_files")),
+            _coerce_upload_files(
+                form.getlist("manual_book_files") or form.getlist("manual_files")
+            ),
+            _coerce_upload_files(
+                form.getlist("supporting_document_files")
+                or form.getlist("supporting_files")
+                or form.getlist("document_files")
+            ),
+        )
+
+    raw_body = await request.body()
+    if not raw_body:
+        return schema_cls.model_validate({}), [], [], []
+
+    try:
+        payload_dict = json.loads(raw_body)
+    except json.JSONDecodeError as exc:
+        raise AppError(
+            code="ASSET_PAYLOAD_INVALID_JSON",
+            message="Payload asset harus berupa JSON yang valid.",
+            status_code=422,
+        ) from exc
+
+    try:
+        return schema_cls.model_validate(payload_dict), [], [], []
+    except ValidationError as exc:
+        raise AppError(
+            code="ASSET_PAYLOAD_INVALID",
+            message="Payload asset tidak valid.",
+            status_code=422,
+            details=exc.errors(),
+        ) from exc
+
+
+def _coerce_upload_files(raw_items: list[object]) -> list[UploadFile]:
+    return [
+        item
+        for item in raw_items
+        if isinstance(item, UploadFile) and (item.filename or "").strip()
+    ]
+
+
+def _ensure_attachment_write_permission_if_needed(
+    *,
+    current_user: AppUser,
+    photo_files: list[UploadFile],
+    manual_book_files: list[UploadFile],
+    supporting_document_files: list[UploadFile],
+) -> None:
+    if not (photo_files or manual_book_files or supporting_document_files):
+        return
+
+    if current_user.is_superuser or "*" in current_user.permissions:
+        return
+
+    if AppPermission.ATTACHMENT_WRITE.value not in current_user.permissions:
+        raise AppError(
+            code="AUTH_PERMISSION_DENIED",
+            message="User tidak memiliki permission attachment write untuk upload file asset.",
+            status_code=403,
+            details={"required_permissions": [AppPermission.ATTACHMENT_WRITE.value]},
+        )
+
+
+async def _upload_asset_registry_files(
+    *,
+    attachment_service: AttachmentService,
+    asset_id: UUID,
+    photo_files: list[UploadFile],
+    manual_book_files: list[UploadFile],
+    supporting_document_files: list[UploadFile],
+    actor_id: UUID,
+) -> list:
+    existing_attachments = await attachment_service.list_entity_attachments(
+        entity_type="ASSET",
+        entity_id=asset_id,
+    )
+    next_sequence = max((item.sequence_no for item in existing_attachments), default=0) + 1
+    has_primary_photo = any(
+        item.attachment_category == AttachmentCategory.ASSET_PROFILE_PHOTO.value and item.is_primary
+        for item in existing_attachments
+    )
+
+    created_attachments = []
+    for index, upload in enumerate(photo_files):
+        item = await attachment_service.create_uploaded_asset_attachment(
+            asset_id=asset_id,
+            upload=upload,
+            attachment_category=AttachmentCategory.ASSET_PROFILE_PHOTO,
+            created_by=actor_id,
+            captured_by=actor_id,
+            is_primary=(not has_primary_photo and index == 0),
+            sequence_no=next_sequence,
+        )
+        created_attachments.append(item)
+        next_sequence += 1
+
+    for upload in manual_book_files:
+        item = await attachment_service.create_uploaded_asset_attachment(
+            asset_id=asset_id,
+            upload=upload,
+            attachment_category=AttachmentCategory.MANUAL_BOOK,
+            created_by=actor_id,
+            captured_by=actor_id,
+            sequence_no=next_sequence,
+        )
+        created_attachments.append(item)
+        next_sequence += 1
+
+    for upload in supporting_document_files:
+        item = await attachment_service.create_uploaded_asset_attachment(
+            asset_id=asset_id,
+            upload=upload,
+            attachment_category=AttachmentCategory.OTHER,
+            created_by=actor_id,
+            captured_by=actor_id,
+            sequence_no=next_sequence,
+        )
+        created_attachments.append(item)
+        next_sequence += 1
+
+    return created_attachments

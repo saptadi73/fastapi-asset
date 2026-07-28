@@ -1,11 +1,14 @@
 from datetime import datetime
+from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, status
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.compat import UTC
+from app.core.config import get_settings
 from app.api.dependencies import (
     get_current_user,
     get_session,
@@ -29,6 +32,7 @@ from app.modules.auth.models import AppUser
 from app.shared.responses import success_response
 
 router = APIRouter(prefix="/attachments")
+settings = get_settings()
 
 
 @router.get("/downloads/{download_token}", dependencies=[Depends(require_attachment_read)])
@@ -46,6 +50,44 @@ async def resolve_attachment_download(
             mode="json",
             by_alias=True,
         ),
+    )
+
+
+@router.get("/downloads/{download_token}/file", dependencies=[Depends(require_attachment_read)])
+async def download_attachment_file(
+    download_token: str,
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    service = AttachmentService(session)
+    item = await service.resolve_download_token(download_token)
+    if item.storage_provider != "local":
+        raise AppError(
+            code="ATTACHMENT_DOWNLOAD_PROVIDER_UNSUPPORTED",
+            message="Storage provider untuk direct download belum didukung.",
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            details={"storage_provider": item.storage_provider},
+        )
+
+    storage_root = Path(settings.attachment_storage_root).resolve()
+    file_path = (storage_root / item.storage_object_key).resolve()
+    if not str(file_path).startswith(str(storage_root)):
+        raise AppError(
+            code="ATTACHMENT_DOWNLOAD_PATH_INVALID",
+            message="Path file attachment tidak valid.",
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    if not file_path.exists() or not file_path.is_file():
+        raise AppError(
+            code="ATTACHMENT_FILE_NOT_FOUND",
+            message="File attachment tidak ditemukan di storage lokal.",
+            status_code=status.HTTP_404_NOT_FOUND,
+            details={"storage_object_key": item.storage_object_key},
+        )
+
+    return FileResponse(
+        path=file_path,
+        media_type=item.mime_type,
+        filename=item.file_name,
     )
 
 
