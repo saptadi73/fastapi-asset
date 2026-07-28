@@ -1826,6 +1826,57 @@ Perilaku backend:
 - `released_at` tidak boleh lebih kecil dari `assigned_at`
 - `used_quantity` license akan dihitung ulang otomatis setelah release
 
+## Asset Lifecycle and Retirement
+
+### `POST /assets/{asset_id}/lifecycle-reviews`
+
+Mencatat hasil lifecycle review untuk asset.
+
+Perilaku backend:
+
+- satu asset hanya boleh punya satu review per `review_date`
+- `condition_score` wajib berada pada rentang `0..100`
+- `risk_score` bila diisi wajib berada pada rentang `0..100`
+- response membawa `replacement_recommendation` untuk badge atau callout frontend
+
+### `GET /assets/{asset_id}/lifecycle-reviews`
+
+Mengambil histori lifecycle review per asset dengan urutan terbaru lebih dulu.
+
+### `POST /assets/{asset_id}/retirement-requests`
+
+Membuat retirement request untuk asset.
+
+Perilaku backend:
+
+- asset retired/disposed tidak bisa dibuatkan request baru
+- hanya satu retirement request terbuka diperbolehkan per asset
+- `retirement_number` harus unik
+
+### `GET /assets/{asset_id}/retirement-requests`
+
+Mengambil daftar retirement request per asset.
+
+### `GET /retirement-requests/{retirement_id}`
+
+Mengambil detail retirement request untuk panel atau drawer detail.
+
+### `POST /retirement-requests/{retirement_id}/approve`
+
+Mengubah status retirement request dari `REQUESTED` menjadi `APPROVED`.
+
+### `POST /retirement-requests/{retirement_id}/confirm`
+
+Mengonfirmasi retirement request dan sekaligus memperbarui status asset.
+
+Perilaku backend:
+
+- hanya request berstatus `REQUESTED` atau `APPROVED` yang bisa dikonfirmasi
+- `final_asset_status` harus `RETIRED` atau `DISPOSED`
+- konfirmasi membuat histori status asset otomatis
+- `retirement_date` asset diisi dari `effective_date`
+- pada sample seed Monday, July 27, 2026, asset berakhir pada status `DISPOSED`
+
 ### `POST /assets/{asset_id}/status-changes`
 
 Mencatat perubahan status dan kondisi aset sambil memperbarui current state
@@ -1845,7 +1896,9 @@ Mengambil timeline gabungan dari:
 
 - perubahan lokasi;
 - assignment;
-- perubahan status.
+- perubahan status;
+- lifecycle review;
+- retirement request atau konfirmasi retirement.
 
 ### `GET /assets/{asset_id}/maintenance-history`
 
@@ -1889,6 +1942,13 @@ Ringkasan tambahan yang sekarang tersedia per item:
 - `ASSET_TRANSFER_CONFLICT`
 - `ASSET_TRANSFER_INVALID_STATUS`
 - `ASSET_TRANSFER_SOURCE_LOCATION_MISMATCH`
+- `ASSET_LIFECYCLE_REVIEW_CONFLICT`
+- `ASSET_RETIREMENT_NOT_FOUND`
+- `ASSET_RETIREMENT_ALREADY_OPEN`
+- `ASSET_RETIREMENT_CONFLICT`
+- `ASSET_RETIREMENT_INVALID_STATUS`
+- `ASSET_RETIREMENT_FINAL_STATUS_INVALID`
+- `ASSET_ALREADY_RETIRED`
 - `ATTACHMENT_NOT_FOUND`
 - `FILE_RECORD_NOT_FOUND`
 - `ATTACHMENT_CONFLICT`

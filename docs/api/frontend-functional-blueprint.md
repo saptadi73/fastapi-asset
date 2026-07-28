@@ -157,11 +157,13 @@ Tab yang direkomendasikan:
 2. Attributes
 3. Ownership
 4. Assignment
-5. Status History
-6. Location History
-7. Timeline
-8. Tracking
-9. Maintenance History
+5. Lifecycle
+6. Retirement
+7. Status History
+8. Location History
+9. Timeline
+10. Tracking
+11. Maintenance History
 
 Konten tab:
 
@@ -169,6 +171,8 @@ Konten tab:
 - `Attributes`: daftar dynamic attribute
 - `Ownership`: histori ownership
 - `Assignment`: histori assignment dan PIC/custodian
+- `Lifecycle`: review score, risk score, remaining life, replacement recommendation
+- `Retirement`: request retirement, approval status, SAP confirmation reference
 - `Status History`: histori perubahan status dan condition
 - `Location History`: histori perpindahan lokasi
 - `Timeline`: timeline gabungan
@@ -183,8 +187,23 @@ Aksi yang disarankan pada asset detail:
 - record location change
 - create assignment
 - create ownership record
+- create lifecycle review
+- create retirement request
+- approve retirement request
+- confirm retirement request
 - create status change
 - view transfer history
+
+Panel tambahan yang direkomendasikan pada asset detail:
+
+- expected replacement date
+- support end date
+- vendor end-of-sale
+- vendor end-of-support
+- replacement strategy
+- replacement priority
+- estimated replacement cost
+- next review date
 
 Catatan penting:
 

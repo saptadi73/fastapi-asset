@@ -24,6 +24,8 @@ from app.modules.assets.schemas import (
     AssetClassCreate,
     AssetClassRead,
     AssetCreate,
+    AssetLifecycleReviewCreate,
+    AssetLifecycleReviewRead,
     AssetLocationChangeCreate,
     AssetLocationCreate,
     AssetLocationHistoryRead,
@@ -31,6 +33,10 @@ from app.modules.assets.schemas import (
     AssetOwnershipCreate,
     AssetOwnershipRead,
     AssetRead,
+    AssetRetirementApprovePayload,
+    AssetRetirementConfirmPayload,
+    AssetRetirementRead,
+    AssetRetirementRequestCreate,
     AssetStatusChangeCreate,
     AssetStatusHistoryRead,
     AssetTimelineEventRead,
@@ -663,6 +669,155 @@ async def get_asset_status_history(
             AssetStatusHistoryRead.model_validate(item).model_dump(mode="json")
             for item in items
         ],
+    )
+
+
+@router.post(
+    "/assets/{asset_id}/lifecycle-reviews",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_asset_write)],
+)
+async def create_asset_lifecycle_review(
+    request: Request,
+    asset_id: UUID,
+    payload: AssetLifecycleReviewCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
+) -> dict:
+    service = AssetRegistryService(session)
+    item = await service.create_lifecycle_review(
+        asset_id,
+        payload,
+        reviewed_by=current_user.id,
+    )
+    return success_response(
+        request=request,
+        message="Lifecycle review asset berhasil dibuat.",
+        data=AssetLifecycleReviewRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get(
+    "/assets/{asset_id}/lifecycle-reviews",
+    dependencies=[Depends(require_asset_read)],
+)
+async def list_asset_lifecycle_reviews(
+    request: Request,
+    asset_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AssetRegistryService(session)
+    items = await service.list_lifecycle_reviews(asset_id)
+    return success_response(
+        request=request,
+        message="Daftar lifecycle review asset berhasil diambil.",
+        data=[
+            AssetLifecycleReviewRead.model_validate(item).model_dump(mode="json")
+            for item in items
+        ],
+    )
+
+
+@router.post(
+    "/assets/{asset_id}/retirement-requests",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_asset_write)],
+)
+async def create_asset_retirement_request(
+    request: Request,
+    asset_id: UUID,
+    payload: AssetRetirementRequestCreate,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AssetRegistryService(session)
+    item = await service.create_retirement_request(asset_id, payload)
+    return success_response(
+        request=request,
+        message="Retirement request asset berhasil dibuat.",
+        data=AssetRetirementRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.get(
+    "/assets/{asset_id}/retirement-requests",
+    dependencies=[Depends(require_asset_read)],
+)
+async def list_asset_retirement_requests(
+    request: Request,
+    asset_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AssetRegistryService(session)
+    items = await service.list_retirement_requests(asset_id)
+    return success_response(
+        request=request,
+        message="Daftar retirement request asset berhasil diambil.",
+        data=[AssetRetirementRead.model_validate(item).model_dump(mode="json") for item in items],
+    )
+
+
+@router.get(
+    "/retirement-requests/{retirement_id}",
+    dependencies=[Depends(require_asset_read)],
+)
+async def get_asset_retirement_request(
+    request: Request,
+    retirement_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AssetRegistryService(session)
+    item = await service.get_retirement_request(retirement_id)
+    return success_response(
+        request=request,
+        message="Detail retirement request asset berhasil diambil.",
+        data=AssetRetirementRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post(
+    "/retirement-requests/{retirement_id}/approve",
+    dependencies=[Depends(require_asset_write)],
+)
+async def approve_asset_retirement_request(
+    request: Request,
+    retirement_id: UUID,
+    payload: AssetRetirementApprovePayload,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
+) -> dict:
+    service = AssetRegistryService(session)
+    item = await service.approve_retirement_request(
+        retirement_id,
+        approved_by=payload.approved_by or current_user.id,
+    )
+    return success_response(
+        request=request,
+        message="Retirement request asset berhasil diapprove.",
+        data=AssetRetirementRead.model_validate(item).model_dump(mode="json"),
+    )
+
+
+@router.post(
+    "/retirement-requests/{retirement_id}/confirm",
+    dependencies=[Depends(require_asset_write)],
+)
+async def confirm_asset_retirement_request(
+    request: Request,
+    retirement_id: UUID,
+    payload: AssetRetirementConfirmPayload,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
+) -> dict:
+    service = AssetRegistryService(session)
+    item = await service.confirm_retirement_request(
+        retirement_id,
+        payload,
+        changed_by=current_user.id,
+    )
+    return success_response(
+        request=request,
+        message="Retirement request asset berhasil dikonfirmasi.",
+        data=AssetRetirementRead.model_validate(item).model_dump(mode="json"),
     )
 
 

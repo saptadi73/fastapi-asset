@@ -17,6 +17,8 @@ Referensi artefak live:
 Entity utama hasil seed yang paling berguna untuk frontend:
 
 - `asset_id`
+- `asset_lifecycle_review_id`
+- `asset_retirement_request_id`
 - `asset_transfer_id`
 - `stocktake_id`
 - `maintenance_plan_id`
@@ -106,6 +108,8 @@ Endpoint:
 - `GET /api/v1/assets`
 - `GET /api/v1/assets/{asset_id}`
 - `PATCH /api/v1/assets/{asset_id}`
+- `POST /api/v1/assets/{asset_id}/lifecycle-reviews`
+- `GET /api/v1/assets/{asset_id}/lifecycle-reviews`
 - `POST /api/v1/assets/{asset_id}/attribute-values`
 - `GET /api/v1/assets/{asset_id}/attribute-values`
 - `POST /api/v1/assets/{asset_id}/ownerships`
@@ -122,8 +126,32 @@ Output penting:
 
 - `asset_id`
 - `asset_tag_number`
+- asset sudah memiliki replacement planning fields
+- asset sudah memiliki satu lifecycle review dengan recommendation `REPLACE`
 
-### 5. Lease Contract Flow
+### 5. Asset Retirement Flow
+
+Tujuan:
+
+- menampilkan retirement request yang dibuat dan dikonfirmasi pada Monday, July 27, 2026;
+- memberi sample approval flow retirement yang sudah terhubung ke status asset.
+
+Endpoint:
+
+- `POST /api/v1/assets/{asset_id}/retirement-requests`
+- `GET /api/v1/assets/{asset_id}/retirement-requests`
+- `GET /api/v1/retirement-requests/{asset_retirement_request_id}`
+- `POST /api/v1/retirement-requests/{asset_retirement_request_id}/approve`
+- `POST /api/v1/retirement-requests/{asset_retirement_request_id}/confirm`
+
+Output penting:
+
+- `asset_retirement_request_id`
+- retirement request berstatus akhir `CONFIRMED`
+- asset sample berstatus akhir `DISPOSED`
+- timeline asset memuat event lifecycle review dan retirement
+
+### 6. Lease Contract Flow
 
 Tujuan:
 
@@ -147,7 +175,7 @@ Output penting:
 - asset item lease untuk aset smoke utama
 - payment periode `2026-07-01` sampai `2026-07-31`
 
-### 6. Software License Flow
+### 7. Software License Flow
 
 Tujuan:
 
@@ -171,7 +199,7 @@ Output penting:
 - license aktif dengan `expiry_date` `2026-08-15`
 - seat sempat terpakai lalu kembali tersedia setelah release
 
-### 7. Asset Transfer
+### 8. Asset Transfer
 
 Tujuan:
 
@@ -190,7 +218,7 @@ Output penting:
 
 - `asset_transfer_id`
 
-### 8. Tracking dan Stocktake
+### 9. Tracking dan Stocktake
 
 Tujuan:
 
@@ -213,7 +241,7 @@ Output penting:
 
 - `stocktake_id`
 
-### 7. Asset Reports
+### 10. Asset Reports
 
 Tujuan:
 
@@ -225,7 +253,7 @@ Endpoint:
 - `GET /api/v1/reports/missing-assets`
 - `GET /api/v1/reports/unverified-assets`
 
-### 8. Maintenance Master Data
+### 11. Maintenance Master Data
 
 Tujuan:
 
@@ -257,7 +285,7 @@ Output penting:
 - `maintenance_checklist_template_id`
 - `maintenance_team_id`
 
-### 9. Preventive Maintenance Planning
+### 12. Preventive Maintenance Planning
 
 Tujuan:
 
@@ -410,13 +438,24 @@ Urutan call:
 4. `GET /api/v1/assets/{asset_id}/assignment-history`
 5. `GET /api/v1/assets/{asset_id}/status-history`
 6. `GET /api/v1/assets/{asset_id}/location-history`
-7. `GET /api/v1/assets/{asset_id}/timeline`
-8. `GET /api/v1/assets/{asset_id}/tracking`
-9. `GET /api/v1/assets/{asset_id}/maintenance-history`
+7. `GET /api/v1/assets/{asset_id}/lifecycle-reviews`
+8. `GET /api/v1/assets/{asset_id}/retirement-requests`
+9. `GET /api/v1/assets/{asset_id}/timeline`
+10. `GET /api/v1/assets/{asset_id}/tracking`
+11. `GET /api/v1/assets/{asset_id}/maintenance-history`
 
 Gunakan ID:
 
 - `asset_id` dari `seed_entities`
+
+Lifecycle yang sudah tersedia di seed:
+
+- assignment dibuat lalu dikembalikan
+- status berubah ke `IDLE`
+- transfer dibuat lalu selesai
+- location change tambahan dicatat
+- lifecycle review dibuat dengan recommendation `REPLACE`
+- retirement request dibuat, diapprove, lalu dikonfirmasi
 
 ### Asset Transfer Monitoring Page
 

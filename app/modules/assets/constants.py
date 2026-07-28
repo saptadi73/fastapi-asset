@@ -53,6 +53,25 @@ class AssetTimelineEventType(StrEnum):
     LOCATION_CHANGE = "LOCATION_CHANGE"
     ASSIGNMENT = "ASSIGNMENT"
     STATUS_CHANGE = "STATUS_CHANGE"
+    LIFECYCLE_REVIEW = "LIFECYCLE_REVIEW"
+    RETIREMENT = "RETIREMENT"
+
+
+class ReplacementRecommendation(StrEnum):
+    KEEP = "KEEP"
+    REPAIR = "REPAIR"
+    OVERHAUL = "OVERHAUL"
+    REPLACE = "REPLACE"
+    RETIRE = "RETIRE"
+    MONITOR = "MONITOR"
+
+
+class AssetRetirementStatus(StrEnum):
+    REQUESTED = "REQUESTED"
+    APPROVED = "APPROVED"
+    CONFIRMED = "CONFIRMED"
+    REJECTED = "REJECTED"
+    CANCELLED = "CANCELLED"
 
 
 class AssetAttributeDataType(StrEnum):

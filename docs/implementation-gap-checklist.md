@@ -19,18 +19,20 @@ Backend yang sudah aktif dan tervalidasi live:
 - business partners
 - asset registry operasional
 - asset transfer
+- asset lifecycle review dan retirement workflow dasar
 - attachments dasar
 - tracking scan
 - stocktake
 - maintenance corrective dasar
 - maintenance preventive dasar
 - maintenance checklist, finding, failure, dan reporting inti
+- lease contracts
+- software licenses
 
 Gap utama yang masih terlihat:
 
 - domain contract dan entitlement belum dibangun penuh
-- domain lease, warranty, depreciation, software license belum ada sebagai modul aktif
-- sebagian workflow lifecycle dan SAP integration belum tersedia
+- domain depreciation dan SAP integration belum tersedia
 - beberapa business rule baseline lanjutan belum diterapkan
 
 ## A. Sudah Tersedia
@@ -272,9 +274,9 @@ Status:
 
 Status:
 
-- [ ] lifecycle reviews
-- [ ] retirement requests
-- [ ] disposal/retirement workflow foundation
+- [x] lifecycle reviews
+- [x] retirement requests
+- [x] disposal/retirement workflow foundation
 
 Manfaat:
 
@@ -359,9 +361,9 @@ Selain feature besar, berikut logic/service baseline yang perlu ditinjau lagi.
 
 ### F5. Asset Lifecycle Logic
 
-- [ ] assignment return
+- [x] assignment return
 - [ ] component relationship / component install-remove flow
-- [ ] lifecycle review and retirement recommendation
+- [x] lifecycle review and retirement recommendation
 
 ## G. Backend-to-Frontend Impact
 
@@ -371,9 +373,8 @@ Item backlog berikut akan paling memengaruhi frontend bila dikerjakan:
 
 - contract/warranty/SLA validation
 - work order hold/resume/cancel
-- assignment return
 - attachment download/versioning
-- lifecycle review / retirement request
+- component install-remove flow
 
 ### Dampak tinggi ke dashboard/report UI
 
@@ -412,8 +413,7 @@ Urutan yang paling masuk akal dari sisi engineering:
 
 - lease
 - software license
-- lifecycle review
-- retirement request
+- component install-remove flow
 
 ### Wave 5
 

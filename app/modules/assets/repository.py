@@ -14,9 +14,11 @@ from app.modules.assets.models import (
     AssetAttributeValue,
     AssetCategory,
     AssetClass,
+    AssetLifecycleReview,
     AssetLocation,
     AssetLocationHistory,
     AssetOwnership,
+    AssetRetirement,
     AssetStatusHistory,
     AssetTransfer,
     AssetTransferItem,
@@ -298,6 +300,8 @@ class AssetRepository:
                 "last_verified_location",
                 "attribute_values",
                 "ownerships",
+                "lifecycle_reviews",
+                "retirements",
             ],
         )
         return asset
@@ -315,6 +319,8 @@ class AssetRepository:
                     AssetAttributeValue.attribute_definition
                 ),
                 selectinload(Asset.ownerships),
+                selectinload(Asset.lifecycle_reviews),
+                selectinload(Asset.retirements),
             )
             .where(Asset.id == asset_id)
         )
@@ -333,6 +339,8 @@ class AssetRepository:
                     AssetAttributeValue.attribute_definition
                 ),
                 selectinload(Asset.ownerships),
+                selectinload(Asset.lifecycle_reviews),
+                selectinload(Asset.retirements),
             )
             .where(Asset.id == asset_id)
             .with_for_update()
@@ -350,6 +358,8 @@ class AssetRepository:
                 AssetAttributeValue.attribute_definition
             ),
             selectinload(Asset.ownerships),
+            selectinload(Asset.lifecycle_reviews),
+            selectinload(Asset.retirements),
         )
         count_stmt = select(func.count()).select_from(Asset)
 
@@ -388,6 +398,8 @@ class AssetRepository:
                 "last_verified_location",
                 "attribute_values",
                 "ownerships",
+                "lifecycle_reviews",
+                "retirements",
             ],
         )
         return asset
@@ -505,3 +517,64 @@ class AssetStatusHistoryRepository:
         )
         result = await self.session.scalars(stmt)
         return result.all()
+
+
+class AssetLifecycleReviewRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, review: AssetLifecycleReview) -> AssetLifecycleReview:
+        self.session.add(review)
+        await self.session.flush()
+        return review
+
+    async def list_by_asset(self, asset_id: UUID) -> Sequence[AssetLifecycleReview]:
+        stmt = (
+            select(AssetLifecycleReview)
+            .where(AssetLifecycleReview.asset_id == asset_id)
+            .order_by(
+                AssetLifecycleReview.review_date.desc(),
+                AssetLifecycleReview.id.desc(),
+            )
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+
+class AssetRetirementRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, retirement: AssetRetirement) -> AssetRetirement:
+        self.session.add(retirement)
+        await self.session.flush()
+        return retirement
+
+    async def get(self, retirement_id: UUID) -> AssetRetirement | None:
+        stmt = select(AssetRetirement).where(AssetRetirement.id == retirement_id)
+        return await self.session.scalar(stmt)
+
+    async def list_by_asset(self, asset_id: UUID) -> Sequence[AssetRetirement]:
+        stmt = (
+            select(AssetRetirement)
+            .where(AssetRetirement.asset_id == asset_id)
+            .order_by(
+                AssetRetirement.request_date.desc(),
+                AssetRetirement.id.desc(),
+            )
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+    async def get_open_by_asset(self, asset_id: UUID) -> AssetRetirement | None:
+        stmt = (
+            select(AssetRetirement)
+            .where(
+                and_(
+                    AssetRetirement.asset_id == asset_id,
+                    AssetRetirement.status.in_(("REQUESTED", "APPROVED")),
+                )
+            )
+            .order_by(AssetRetirement.request_date.desc(), AssetRetirement.id.desc())
+        )
+        return await self.session.scalar(stmt)

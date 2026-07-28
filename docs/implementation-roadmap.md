@@ -13,7 +13,7 @@ Tujuan dokumen ini:
 
 ## Asumsi Dasar
 
-- fondasi backend saat ini stabil dan smoke seed lulus `115/115`
+- fondasi backend saat ini stabil dan smoke seed lulus `171/171`
 - frontend sudah memiliki referensi endpoint, seed samples, dan blueprint fungsional
 - setiap sprint di bawah ini diasumsikan fokus backend terlebih dahulu
 - testing minimal tiap sprint adalah unit test + live smoke yang relevan

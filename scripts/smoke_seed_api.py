@@ -587,7 +587,41 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
                 "condition_status": "FAIR",
                 "brand": "SmokeBrandX",
                 "model": "SM-2000",
+                "expected_replacement_date": "2027-01-31",
+                "support_end_date": "2026-12-31",
+                "vendor_end_of_sale_date": "2026-10-31",
+                "vendor_end_of_support_date": "2027-06-30",
+                "replacement_strategy": "AGE_BASED",
+                "replacement_priority": "HIGH",
+                "estimated_replacement_cost": "27500000",
+                "replacement_budget_year": 2027,
+                "next_review_date": "2026-08-15",
             },
+        )
+        lifecycle_review = await runner.call(
+            "POST",
+            f"{API_PREFIX}/assets/{asset_id}/lifecycle-reviews",
+            label="create asset lifecycle review",
+            json_body={
+                "review_date": "2026-07-27",
+                "condition_score": "68.50",
+                "remaining_life_months": 8,
+                "risk_score": "74.25",
+                "replacement_recommendation": "REPLACE",
+                "estimated_replacement_cost": "27500000",
+                "review_notes": "Review smoke: performa masih cukup, tetapi risiko downtime naik.",
+            },
+        )
+        lifecycle_review_id = lifecycle_review["data"]["id"]
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/assets/{asset_id}/lifecycle-reviews",
+            label="list asset lifecycle reviews",
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/assets/{asset_id}",
+            label="get asset after lifecycle review",
         )
         await runner.call(
             "POST",
@@ -1949,6 +1983,57 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
             f"{API_PREFIX}/maintenance/work-orders/{cancellable_work_order_id}",
             label="get cancelled maintenance work order",
         )
+        retirement_request = await runner.call(
+            "POST",
+            f"{API_PREFIX}/assets/{asset_id}/retirement-requests",
+            label="create asset retirement request",
+            json_body={
+                "retirement_number": f"RET-{suffix}",
+                "retirement_type": "DISPOSAL",
+                "request_date": "2026-07-27",
+                "proceeds_amount": "1500000",
+                "buyer_partner_id": partner_id,
+                "reason": "Retirement smoke test setelah penilaian lifecycle.",
+            },
+        )
+        retirement_request_id = retirement_request["data"]["id"]
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/assets/{asset_id}/retirement-requests",
+            label="list asset retirement requests",
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/retirement-requests/{retirement_request_id}",
+            label="get asset retirement request",
+        )
+        await runner.call(
+            "POST",
+            f"{API_PREFIX}/retirement-requests/{retirement_request_id}/approve",
+            label="approve asset retirement request",
+            json_body={},
+        )
+        await runner.call(
+            "POST",
+            f"{API_PREFIX}/retirement-requests/{retirement_request_id}/confirm",
+            label="confirm asset retirement request",
+            json_body={
+                "effective_date": "2026-07-27",
+                "sap_retirement_doc_entry": 91001,
+                "sap_trans_id": 81001,
+                "final_asset_status": "DISPOSED",
+            },
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/assets/{asset_id}",
+            label="get asset after retirement confirmation",
+        )
+        await runner.call(
+            "GET",
+            f"{API_PREFIX}/assets/{asset_id}/timeline",
+            label="get asset timeline after retirement confirmation",
+        )
     finally:
         await runner.close()
 
@@ -1969,8 +2054,10 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
         "asset_attribute_definition_id": attribute_definition_id,
         "asset_id": asset_id,
         "asset_tag_number": tag_number,
+        "asset_lifecycle_review_id": lifecycle_review_id,
         "asset_assignment_id": assignment_id,
         "asset_transfer_id": transfer_id,
+        "asset_retirement_request_id": retirement_request_id,
         "stocktake_id": stocktake_id,
         "maintenance_priority_id": priority_id,
         "maintenance_contract_id": contract_id,

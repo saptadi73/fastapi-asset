@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.modules.assets.constants import (
     AssetAttributeDataType,
     AssetOwnerType,
+    AssetRetirementStatus,
     AssetStatus,
     AssetTimelineEventType,
     AssetTransferItemStatus,
@@ -17,6 +18,7 @@ from app.modules.assets.constants import (
     AssignmentStatus,
     AssignmentType,
     ConditionStatus,
+    ReplacementRecommendation,
 )
 
 
@@ -290,6 +292,15 @@ class AssetCreate(BaseModel):
     last_verified_location_id: UUID | None = None
     in_service_date: date | None = None
     retirement_date: date | None = None
+    expected_replacement_date: date | None = None
+    support_end_date: date | None = None
+    vendor_end_of_sale_date: date | None = None
+    vendor_end_of_support_date: date | None = None
+    replacement_strategy: str | None = Field(default=None, max_length=30)
+    replacement_priority: str | None = Field(default=None, max_length=20)
+    estimated_replacement_cost: Decimal | None = None
+    replacement_budget_year: int | None = Field(default=None, ge=1900, le=2200)
+    next_review_date: date | None = None
     sap_asset_code: str | None = Field(default=None, max_length=50)
     sap_item_code: str | None = Field(default=None, max_length=50)
     created_by: UUID | None = None
@@ -319,6 +330,15 @@ class AssetUpdate(BaseModel):
     last_verified_location_id: UUID | None = None
     in_service_date: date | None = None
     retirement_date: date | None = None
+    expected_replacement_date: date | None = None
+    support_end_date: date | None = None
+    vendor_end_of_sale_date: date | None = None
+    vendor_end_of_support_date: date | None = None
+    replacement_strategy: str | None = Field(default=None, max_length=30)
+    replacement_priority: str | None = Field(default=None, max_length=20)
+    estimated_replacement_cost: Decimal | None = None
+    replacement_budget_year: int | None = Field(default=None, ge=1900, le=2200)
+    next_review_date: date | None = None
     sap_asset_code: str | None = Field(default=None, max_length=50)
     sap_item_code: str | None = Field(default=None, max_length=50)
     updated_by: UUID | None = None
@@ -357,6 +377,15 @@ class AssetRead(BaseModel):
     last_verified_location_id: UUID | None
     in_service_date: date | None
     retirement_date: date | None
+    expected_replacement_date: date | None
+    support_end_date: date | None
+    vendor_end_of_sale_date: date | None
+    vendor_end_of_support_date: date | None
+    replacement_strategy: str | None
+    replacement_priority: str | None
+    estimated_replacement_cost: Decimal | None
+    replacement_budget_year: int | None
+    next_review_date: date | None
     sap_asset_code: str | None
     sap_item_code: str | None
     version_no: int
@@ -405,6 +434,15 @@ class AssetRead(BaseModel):
             last_verified_location_id=asset.last_verified_location_id,
             in_service_date=asset.in_service_date,
             retirement_date=asset.retirement_date,
+            expected_replacement_date=asset.expected_replacement_date,
+            support_end_date=asset.support_end_date,
+            vendor_end_of_sale_date=asset.vendor_end_of_sale_date,
+            vendor_end_of_support_date=asset.vendor_end_of_support_date,
+            replacement_strategy=asset.replacement_strategy,
+            replacement_priority=asset.replacement_priority,
+            estimated_replacement_cost=asset.estimated_replacement_cost,
+            replacement_budget_year=asset.replacement_budget_year,
+            next_review_date=asset.next_review_date,
             sap_asset_code=asset.sap_asset_code,
             sap_item_code=asset.sap_item_code,
             version_no=asset.version_no,
@@ -521,3 +559,68 @@ class AssetTimelineEventRead(BaseModel):
     title: str
     description: str | None
     data: dict
+
+
+class AssetLifecycleReviewCreate(BaseModel):
+    review_date: date
+    condition_score: Decimal = Field(ge=0, le=100)
+    remaining_life_months: int | None = Field(default=None, ge=0)
+    risk_score: Decimal | None = Field(default=None, ge=0, le=100)
+    replacement_recommendation: ReplacementRecommendation
+    estimated_replacement_cost: Decimal | None = None
+    review_notes: str | None = None
+    approved_by: UUID | None = None
+
+
+class AssetLifecycleReviewRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    asset_id: UUID
+    review_date: date
+    condition_score: Decimal
+    remaining_life_months: int | None
+    risk_score: Decimal | None
+    replacement_recommendation: str
+    estimated_replacement_cost: Decimal | None
+    review_notes: str | None
+    reviewed_by: UUID | None
+    approved_by: UUID | None
+
+
+class AssetRetirementRequestCreate(BaseModel):
+    retirement_number: str = Field(max_length=50)
+    retirement_type: str = Field(max_length=30)
+    request_date: date
+    proceeds_amount: Decimal = Field(default=Decimal("0"), ge=0)
+    buyer_partner_id: UUID | None = None
+    reason: str | None = None
+
+
+class AssetRetirementApprovePayload(BaseModel):
+    approved_by: UUID | None = None
+
+
+class AssetRetirementConfirmPayload(BaseModel):
+    effective_date: date
+    sap_retirement_doc_entry: int | None = Field(default=None, ge=1)
+    sap_trans_id: int | None = Field(default=None, ge=1)
+    final_asset_status: AssetStatus | None = None
+
+
+class AssetRetirementRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    asset_id: UUID
+    retirement_number: str
+    retirement_type: str
+    request_date: date
+    effective_date: date | None
+    status: AssetRetirementStatus
+    proceeds_amount: Decimal
+    buyer_partner_id: UUID | None
+    reason: str | None
+    approved_by: UUID | None
+    sap_retirement_doc_entry: int | None
+    sap_trans_id: int | None

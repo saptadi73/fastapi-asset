@@ -104,6 +104,35 @@ Seed entity:
 - `asset_id`
 - `asset_attribute_definition_id`
 - `asset_assignment_id`
+- `asset_lifecycle_review_id`
+- `asset_retirement_request_id`
+
+## Asset Lifecycle and Retirement
+
+Tujuan data:
+
+- menampilkan review kondisi dan risiko asset;
+- menampilkan rekomendasi replacement;
+- mengelola request retirement sampai konfirmasi final.
+
+Endpoint utama:
+
+- `GET /api/v1/assets/{asset_id}/lifecycle-reviews`
+- `GET /api/v1/assets/{asset_id}/retirement-requests`
+
+Endpoint detail dan action:
+
+- `GET /api/v1/retirement-requests/{asset_retirement_request_id}`
+- `POST /api/v1/assets/{asset_id}/lifecycle-reviews`
+- `POST /api/v1/assets/{asset_id}/retirement-requests`
+- `POST /api/v1/retirement-requests/{asset_retirement_request_id}/approve`
+- `POST /api/v1/retirement-requests/{asset_retirement_request_id}/confirm`
+
+Seed entity:
+
+- `asset_id`
+- `asset_lifecycle_review_id`
+- `asset_retirement_request_id`
 
 ## Asset Transfer List
 

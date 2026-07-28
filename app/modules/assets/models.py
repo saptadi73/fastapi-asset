@@ -285,6 +285,15 @@ class Asset(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     in_service_date: Mapped[date | None] = mapped_column(Date)
     retirement_date: Mapped[date | None] = mapped_column(Date)
+    expected_replacement_date: Mapped[date | None] = mapped_column(Date)
+    support_end_date: Mapped[date | None] = mapped_column(Date)
+    vendor_end_of_sale_date: Mapped[date | None] = mapped_column(Date)
+    vendor_end_of_support_date: Mapped[date | None] = mapped_column(Date)
+    replacement_strategy: Mapped[str | None] = mapped_column(String(30))
+    replacement_priority: Mapped[str | None] = mapped_column(String(20))
+    estimated_replacement_cost: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+    replacement_budget_year: Mapped[int | None] = mapped_column(Integer)
+    next_review_date: Mapped[date | None] = mapped_column(Date)
 
     sap_asset_code: Mapped[str | None] = mapped_column(String(50))
     sap_item_code: Mapped[str | None] = mapped_column(String(50))
@@ -306,6 +315,10 @@ class Asset(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         back_populates="asset"
     )
     ownerships: Mapped[list[AssetOwnership]] = relationship(back_populates="asset")
+    lifecycle_reviews: Mapped[list[AssetLifecycleReview]] = relationship(
+        back_populates="asset"
+    )
+    retirements: Mapped[list[AssetRetirement]] = relationship(back_populates="asset")
 
 
 class AssetLocationHistory(UUIDPrimaryKeyMixin, Base):
@@ -382,3 +395,73 @@ class AssetStatusHistory(UUIDPrimaryKeyMixin, Base):
     changed_by: Mapped[UUID | None] = mapped_column(nullable=True)
 
     asset: Mapped[Asset] = relationship()
+
+
+class AssetLifecycleReview(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "asset_lifecycle_reviews"
+    __table_args__ = (
+        UniqueConstraint(
+            "asset_id",
+            "review_date",
+            name="uq_asset_lifecycle_reviews_asset_date",
+        ),
+        CheckConstraint(
+            "condition_score >= 0 AND condition_score <= 100",
+            name="ck_asset_lifecycle_reviews_condition_score",
+        ),
+        CheckConstraint(
+            "risk_score IS NULL OR (risk_score >= 0 AND risk_score <= 100)",
+            name="ck_asset_lifecycle_reviews_risk_score",
+        ),
+    )
+
+    asset_id: Mapped[UUID] = mapped_column(
+        ForeignKey("assets.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    review_date: Mapped[date] = mapped_column(Date, nullable=False)
+    condition_score: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    remaining_life_months: Mapped[int | None] = mapped_column(Integer)
+    risk_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    replacement_recommendation: Mapped[str] = mapped_column(String(30), nullable=False)
+    estimated_replacement_cost: Mapped[Decimal | None] = mapped_column(Numeric(20, 4))
+    review_notes: Mapped[str | None] = mapped_column(Text)
+    reviewed_by: Mapped[UUID | None] = mapped_column(nullable=True)
+    approved_by: Mapped[UUID | None] = mapped_column(nullable=True)
+
+    asset: Mapped[Asset] = relationship(back_populates="lifecycle_reviews")
+
+
+class AssetRetirement(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "asset_retirements"
+    __table_args__ = (
+        UniqueConstraint("retirement_number", name="uq_asset_retirements_number"),
+        CheckConstraint(
+            "effective_date IS NULL OR effective_date >= request_date",
+            name="ck_asset_retirements_effective_after_request",
+        ),
+    )
+
+    asset_id: Mapped[UUID] = mapped_column(
+        ForeignKey("assets.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    retirement_number: Mapped[str] = mapped_column(String(50), nullable=False)
+    retirement_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    request_date: Mapped[date] = mapped_column(Date, nullable=False)
+    effective_date: Mapped[date | None] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    proceeds_amount: Mapped[Decimal] = mapped_column(
+        Numeric(20, 4),
+        nullable=False,
+        default=Decimal("0"),
+    )
+    buyer_partner_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("business_partners.id", ondelete="SET NULL")
+    )
+    reason: Mapped[str | None] = mapped_column(Text)
+    approved_by: Mapped[UUID | None] = mapped_column(nullable=True)
+    sap_retirement_doc_entry: Mapped[int | None] = mapped_column(Integer)
+    sap_trans_id: Mapped[int | None] = mapped_column(Integer)
+
+    asset: Mapped[Asset] = relationship(back_populates="retirements")

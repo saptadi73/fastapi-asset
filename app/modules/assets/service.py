@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date, datetime
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -8,6 +8,8 @@ from app.core.exceptions import AppError
 from app.modules.assets.constants import (
     AssetAttributeDataType,
     AssetOwnerType,
+    AssetRetirementStatus,
+    AssetStatus,
     AssetTimelineEventType,
     AssetTransferItemStatus,
     AssetTransferStatus,
@@ -28,9 +30,11 @@ from app.modules.assets.models import (
     AssetAttributeValue,
     AssetCategory,
     AssetClass,
+    AssetLifecycleReview,
     AssetLocation,
     AssetLocationHistory,
     AssetOwnership,
+    AssetRetirement,
     AssetStatusHistory,
     AssetTransfer,
     AssetTransferItem,
@@ -41,10 +45,12 @@ from app.modules.assets.repository import (
     AssetAttributeValueRepository,
     AssetCategoryRepository,
     AssetClassRepository,
+    AssetLifecycleReviewRepository,
     AssetLocationHistoryRepository,
     AssetLocationRepository,
     AssetOwnershipRepository,
     AssetRepository,
+    AssetRetirementRepository,
     AssetStatusHistoryRepository,
     AssetTransferItemRepository,
     AssetTransferRepository,
@@ -57,9 +63,12 @@ from app.modules.assets.schemas import (
     AssetCategoryCreate,
     AssetClassCreate,
     AssetCreate,
+    AssetLifecycleReviewCreate,
     AssetLocationChangeCreate,
     AssetLocationCreate,
     AssetOwnershipCreate,
+    AssetRetirementConfirmPayload,
+    AssetRetirementRequestCreate,
     AssetStatusChangeCreate,
     AssetTimelineEventRead,
     AssetTransferActionPayload,
@@ -84,6 +93,8 @@ class AssetRegistryService:
         self.status_histories = AssetStatusHistoryRepository(session)
         self.transfers = AssetTransferRepository(session)
         self.transfer_items = AssetTransferItemRepository(session)
+        self.lifecycle_reviews = AssetLifecycleReviewRepository(session)
+        self.retirements = AssetRetirementRepository(session)
 
     async def create_category(self, payload: AssetCategoryCreate) -> AssetCategory:
         if payload.parent_category_id:
@@ -153,9 +164,7 @@ class AssetRegistryService:
 
         definition_data = payload.model_dump(mode="python")
         definition_data["data_type"] = payload.data_type.value
-        definition = AssetAttributeDefinition(
-            **definition_data,
-        )
+        definition = AssetAttributeDefinition(**definition_data)
         try:
             await self.attribute_definitions.create(definition)
             await self.session.commit()
@@ -192,9 +201,7 @@ class AssetRegistryService:
         asset_data["asset_type"] = payload.asset_type.value
         asset_data["asset_status"] = payload.asset_status.value
         asset_data["condition_status"] = payload.condition_status.value
-        asset = Asset(
-            **asset_data,
-        )
+        asset = Asset(**asset_data)
         try:
             await self.assets.create(asset)
             await self.session.commit()
@@ -410,8 +417,7 @@ class AssetRegistryService:
             await self.session.rollback()
             raise
 
-        result = await self.get_transfer(created_transfer.id)
-        return result
+        return await self.get_transfer(created_transfer.id)
 
     async def get_transfer(self, transfer_id: UUID) -> AssetTransfer:
         transfer = await self.transfers.get(transfer_id)
@@ -570,9 +576,11 @@ class AssetRegistryService:
                 await self.assets.update(
                     asset,
                     current_location_id=transfer.to_location_id,
-                    current_primary_custodian_id=item.new_custodian_id
-                    if item.new_custodian_id is not None
-                    else asset.current_primary_custodian_id,
+                    current_primary_custodian_id=(
+                        item.new_custodian_id
+                        if item.new_custodian_id is not None
+                        else asset.current_primary_custodian_id
+                    ),
                 )
                 item.item_status = AssetTransferItemStatus.COMPLETED.value
 
@@ -788,11 +796,212 @@ class AssetRegistryService:
         items = await self.status_histories.list_by_asset(asset_id)
         return list(items)
 
+    async def create_lifecycle_review(
+        self,
+        asset_id: UUID,
+        payload: AssetLifecycleReviewCreate,
+        *,
+        reviewed_by: UUID | None,
+    ) -> AssetLifecycleReview:
+        asset = await self.get_asset(asset_id)
+        review = AssetLifecycleReview(
+            asset_id=asset.id,
+            review_date=payload.review_date,
+            condition_score=payload.condition_score,
+            remaining_life_months=payload.remaining_life_months,
+            risk_score=payload.risk_score,
+            replacement_recommendation=payload.replacement_recommendation.value,
+            estimated_replacement_cost=payload.estimated_replacement_cost,
+            review_notes=payload.review_notes,
+            reviewed_by=reviewed_by,
+            approved_by=payload.approved_by,
+        )
+
+        try:
+            await self.lifecycle_reviews.create(review)
+            await self.assets.update(
+                asset,
+                next_review_date=payload.review_date,
+                estimated_replacement_cost=(
+                    payload.estimated_replacement_cost or asset.estimated_replacement_cost
+                ),
+                updated_by=reviewed_by,
+            )
+            await self.session.commit()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise AppError(
+                code="ASSET_LIFECYCLE_REVIEW_CONFLICT",
+                message="Lifecycle review untuk tanggal tersebut sudah ada.",
+                status_code=409,
+            ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
+
+        items = await self.lifecycle_reviews.list_by_asset(asset_id)
+        return items[0]
+
+    async def list_lifecycle_reviews(self, asset_id: UUID) -> list[AssetLifecycleReview]:
+        await self.get_asset(asset_id)
+        items = await self.lifecycle_reviews.list_by_asset(asset_id)
+        return list(items)
+
+    async def create_retirement_request(
+        self,
+        asset_id: UUID,
+        payload: AssetRetirementRequestCreate,
+    ) -> AssetRetirement:
+        asset = await self.get_asset(asset_id)
+        open_request = await self.retirements.get_open_by_asset(asset_id)
+        if open_request is not None:
+            raise AppError(
+                code="ASSET_RETIREMENT_ALREADY_OPEN",
+                message="Masih ada retirement request yang belum selesai untuk asset ini.",
+                status_code=409,
+            )
+        if asset.asset_status in {AssetStatus.RETIRED.value, AssetStatus.DISPOSED.value}:
+            raise AppError(
+                code="ASSET_ALREADY_RETIRED",
+                message="Asset sudah berada pada status retired/disposed.",
+                status_code=409,
+            )
+
+        retirement = AssetRetirement(
+            asset_id=asset.id,
+            retirement_number=payload.retirement_number,
+            retirement_type=payload.retirement_type,
+            request_date=payload.request_date,
+            status=AssetRetirementStatus.REQUESTED.value,
+            proceeds_amount=payload.proceeds_amount,
+            buyer_partner_id=payload.buyer_partner_id,
+            reason=payload.reason,
+        )
+
+        try:
+            await self.retirements.create(retirement)
+            await self.session.commit()
+        except IntegrityError as exc:
+            await self.session.rollback()
+            raise AppError(
+                code="ASSET_RETIREMENT_CONFLICT",
+                message="Retirement number sudah digunakan.",
+                status_code=409,
+            ) from exc
+        except Exception:
+            await self.session.rollback()
+            raise
+
+        items = await self.retirements.list_by_asset(asset_id)
+        return items[0]
+
+    async def list_retirement_requests(self, asset_id: UUID) -> list[AssetRetirement]:
+        await self.get_asset(asset_id)
+        items = await self.retirements.list_by_asset(asset_id)
+        return list(items)
+
+    async def get_retirement_request(self, retirement_id: UUID) -> AssetRetirement:
+        item = await self.retirements.get(retirement_id)
+        if item is None:
+            raise AppError(
+                code="ASSET_RETIREMENT_NOT_FOUND",
+                message="Retirement request tidak ditemukan.",
+                status_code=404,
+            )
+        return item
+
+    async def approve_retirement_request(
+        self,
+        retirement_id: UUID,
+        *,
+        approved_by: UUID | None,
+    ) -> AssetRetirement:
+        item = await self.get_retirement_request(retirement_id)
+        if item.status != AssetRetirementStatus.REQUESTED.value:
+            raise AppError(
+                code="ASSET_RETIREMENT_INVALID_STATUS",
+                message="Hanya retirement request berstatus REQUESTED yang dapat diapprove.",
+                status_code=409,
+            )
+
+        item.status = AssetRetirementStatus.APPROVED.value
+        item.approved_by = approved_by
+        await self.session.commit()
+        return await self.get_retirement_request(retirement_id)
+
+    async def confirm_retirement_request(
+        self,
+        retirement_id: UUID,
+        payload: AssetRetirementConfirmPayload,
+        *,
+        changed_by: UUID | None,
+    ) -> AssetRetirement:
+        retirement = await self.get_retirement_request(retirement_id)
+        if retirement.status not in {
+            AssetRetirementStatus.REQUESTED.value,
+            AssetRetirementStatus.APPROVED.value,
+        }:
+            raise AppError(
+                code="ASSET_RETIREMENT_INVALID_STATUS",
+                message="Retirement request tidak dapat dikonfirmasi pada status saat ini.",
+                status_code=409,
+            )
+
+        asset = await self.assets.get_for_update(retirement.asset_id)
+        if asset is None:
+            raise AssetNotFoundError(str(retirement.asset_id))
+
+        final_status = (
+            payload.final_asset_status.value
+            if payload.final_asset_status is not None
+            else self._default_retirement_asset_status(retirement.retirement_type)
+        )
+        if final_status not in {AssetStatus.RETIRED.value, AssetStatus.DISPOSED.value}:
+            raise AppError(
+                code="ASSET_RETIREMENT_FINAL_STATUS_INVALID",
+                message="final_asset_status harus RETIRED atau DISPOSED.",
+                status_code=422,
+            )
+
+        status_history = AssetStatusHistory(
+            asset_id=asset.id,
+            previous_status=asset.asset_status,
+            new_status=final_status,
+            previous_condition=asset.condition_status,
+            new_condition=asset.condition_status,
+            effective_at=datetime.combine(payload.effective_date, datetime.min.time(), UTC),
+            reason=retirement.reason,
+            reference_type="ASSET_RETIREMENT",
+            reference_id=retirement.id,
+            changed_by=changed_by,
+        )
+
+        try:
+            retirement.status = AssetRetirementStatus.CONFIRMED.value
+            retirement.effective_date = payload.effective_date
+            retirement.sap_retirement_doc_entry = payload.sap_retirement_doc_entry
+            retirement.sap_trans_id = payload.sap_trans_id
+            await self.status_histories.create(status_history)
+            await self.assets.update(
+                asset,
+                asset_status=final_status,
+                retirement_date=payload.effective_date,
+                updated_by=changed_by,
+            )
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
+
+        return await self.get_retirement_request(retirement_id)
+
     async def get_timeline(self, asset_id: UUID) -> list[AssetTimelineEventRead]:
         await self.get_asset(asset_id)
         location_histories = await self.location_histories.list_by_asset(asset_id)
         assignments = await self.assignments.list_by_asset(asset_id)
         status_histories = await self.status_histories.list_by_asset(asset_id)
+        lifecycle_reviews = await self.lifecycle_reviews.list_by_asset(asset_id)
+        retirements = await self.retirements.list_by_asset(asset_id)
 
         timeline: list[AssetTimelineEventRead] = []
 
@@ -847,6 +1056,49 @@ class AssetRegistryService:
                         "previous_condition": item.previous_condition,
                         "new_condition": item.new_condition,
                         "changed_by": str(item.changed_by) if item.changed_by else None,
+                    },
+                )
+            )
+
+        for item in lifecycle_reviews:
+            timeline.append(
+                AssetTimelineEventRead(
+                    event_type=AssetTimelineEventType.LIFECYCLE_REVIEW,
+                    happened_at=datetime.combine(item.review_date, datetime.min.time(), UTC),
+                    title="Lifecycle review asset",
+                    description=item.review_notes,
+                    data={
+                        "condition_score": str(item.condition_score),
+                        "remaining_life_months": item.remaining_life_months,
+                        "risk_score": str(item.risk_score) if item.risk_score is not None else None,
+                        "replacement_recommendation": item.replacement_recommendation,
+                        "estimated_replacement_cost": (
+                            str(item.estimated_replacement_cost)
+                            if item.estimated_replacement_cost is not None
+                            else None
+                        ),
+                        "reviewed_by": str(item.reviewed_by) if item.reviewed_by else None,
+                    },
+                )
+            )
+
+        for item in retirements:
+            happened_at = item.effective_date or item.request_date
+            timeline.append(
+                AssetTimelineEventRead(
+                    event_type=AssetTimelineEventType.RETIREMENT,
+                    happened_at=datetime.combine(happened_at, datetime.min.time(), UTC),
+                    title="Retirement request asset",
+                    description=item.reason,
+                    data={
+                        "retirement_number": item.retirement_number,
+                        "retirement_type": item.retirement_type,
+                        "status": item.status,
+                        "effective_date": (
+                            item.effective_date.isoformat() if item.effective_date else None
+                        ),
+                        "sap_retirement_doc_entry": item.sap_retirement_doc_entry,
+                        "sap_trans_id": item.sap_trans_id,
                     },
                 )
             )
@@ -968,3 +1220,9 @@ class AssetRegistryService:
         normalized_end_a = end_a or date.max
         normalized_end_b = end_b or date.max
         return start_a <= normalized_end_b and start_b <= normalized_end_a
+
+    def _default_retirement_asset_status(self, retirement_type: str) -> str:
+        normalized = retirement_type.upper()
+        if normalized in {"SALE", "SCRAP", "DISPOSAL"}:
+            return AssetStatus.DISPOSED.value
+        return AssetStatus.RETIRED.value

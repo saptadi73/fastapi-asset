@@ -45,180 +45,192 @@
     },
     {
       "key": "business_partner_id",
-      "value": "59327013-b64a-4d1f-825a-3170f8141a5a",
+      "value": "c86184f2-cbbf-4eca-b06b-bc8dec01e267",
       "type": "default",
       "enabled": true
     },
     {
       "key": "asset_category_id",
-      "value": "944a0ad8-91ae-44d8-8c69-2b7af7280569",
+      "value": "dc8f44d3-651c-4bbe-93bd-cfd85b5f7fb5",
       "type": "default",
       "enabled": true
     },
     {
       "key": "asset_class_id",
-      "value": "77955e5b-c5ad-46a9-b467-4419a3216591",
+      "value": "e2475cc0-ac5d-4ec1-bf0a-cafe70dff0b5",
       "type": "default",
       "enabled": true
     },
     {
       "key": "origin_location_id",
-      "value": "870d15c1-cc53-428f-accb-9c67d639a520",
+      "value": "0c131dd6-91a7-49f9-a39e-07ef25e071d3",
       "type": "default",
       "enabled": true
     },
     {
       "key": "destination_location_id",
-      "value": "c832c40a-e1f2-4c96-8a16-cc94d49d8be9",
+      "value": "80122062-ea57-4505-85f8-92281208999a",
       "type": "default",
       "enabled": true
     },
     {
       "key": "asset_attribute_definition_id",
-      "value": "e18d542b-fbb0-41f1-9349-27b1f35db14e",
+      "value": "d860c79e-79af-42b1-9be7-0e588259c997",
       "type": "default",
       "enabled": true
     },
     {
       "key": "asset_id",
-      "value": "ca5f8bc5-d620-47d4-a28c-33df4fe48fd9",
+      "value": "a76a6cf9-d4c6-4dd6-8cdc-4464dd751f03",
       "type": "default",
       "enabled": true
     },
     {
       "key": "asset_tag_number",
-      "value": "TAG-20260728000240-A61666",
+      "value": "TAG-20260728001427-4D9E3C",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "asset_lifecycle_review_id",
+      "value": "2ac3eb35-2b2f-426a-9e45-4c2541997360",
       "type": "default",
       "enabled": true
     },
     {
       "key": "asset_assignment_id",
-      "value": "46d776a7-6bcf-43d6-85d7-b759214777ad",
+      "value": "510359c6-eff3-43e9-b3d4-2d9e6fdbac30",
       "type": "default",
       "enabled": true
     },
     {
       "key": "asset_transfer_id",
-      "value": "58dea908-a8b3-4db9-a3f4-21ebbcb8fc49",
+      "value": "8ed53f62-6dc1-4c92-b384-068a34666b7d",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "asset_retirement_request_id",
+      "value": "41714c99-20b0-4e15-9a8d-532cfec92870",
       "type": "default",
       "enabled": true
     },
     {
       "key": "stocktake_id",
-      "value": "971af1bd-73b0-4ac3-99d3-ab33c5fc2f3f",
+      "value": "5a68f8fa-06a4-44be-a2f1-1ce984dab8f2",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_priority_id",
-      "value": "e0bcc71b-3fd2-473a-a35e-e5921de132dc",
+      "value": "6c049c2f-7139-414b-961e-566e325043cb",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_contract_id",
-      "value": "0e096563-3b36-4d57-881b-8bab130a5e7b",
+      "value": "3de9ad63-6f8e-40b7-9576-466c990b34eb",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_symptom_code_id",
-      "value": "0ac14c1c-0f58-4cd0-93b5-91e85d7c5796",
+      "value": "15a0e922-5076-477b-aa3f-f8aecfce50ce",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_failure_mode_id",
-      "value": "1814503e-6fe3-4065-9d8a-69f392803cf7",
+      "value": "7389d4d6-c614-432f-a3c2-27177085ff84",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_root_cause_code_id",
-      "value": "ce1df227-cfd2-49f0-9452-35a21ee19645",
+      "value": "888a1138-d4f9-42a4-ab8b-2cfff6b52bb8",
       "type": "default",
       "enabled": true
     },
     {
       "key": "asset_warranty_id",
-      "value": "7c45ad4c-b057-4b95-9f45-2da40bc5dc16",
+      "value": "aa9ef20b-831a-48de-984f-05226f0bd826",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_checklist_template_id",
-      "value": "3ca70f46-f276-4731-9661-e27dbcb4677f",
+      "value": "01c82b0f-94e7-4a25-ac09-8b4cb62fb476",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_checklist_template_item_id",
-      "value": "12436d60-974b-4c95-82a5-e88c07101828",
+      "value": "688229cd-97f4-4186-800d-de20edd68516",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_team_id",
-      "value": "b9bb895e-ab6d-4b97-a037-dbe1b0b9d922",
+      "value": "44df6c39-d980-4a45-b85d-4f823ce45c8c",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_plan_id",
-      "value": "85478c0e-e0d1-42c5-9d93-655351bc5290",
+      "value": "e589c33b-d1f6-4be9-8dfe-ea1e5619d19d",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_schedule_id",
-      "value": "cd487bcd-3327-4531-a5d6-a4ee6f75d661",
+      "value": "ac61e28a-81b9-4c09-bd6f-720cd726718f",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_request_id",
-      "value": "499d6431-7f83-406e-8ab1-ce3b4d849389",
+      "value": "7e15be6e-8cf4-4928-9c6a-c99e88a9ce1d",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_request_attachment_id",
-      "value": "a41ddd2c-6e5c-4143-a530-5560633dfb94",
+      "value": "2baab998-3f3a-46b2-8973-d6ce98026d23",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_work_order_id",
-      "value": "c83a6585-ac84-424c-8d4d-7c754fb40d67",
+      "value": "9529318d-dc3b-4a94-8b09-8b8c761daf55",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_cancelled_work_order_id",
-      "value": "69824092-d9af-4581-b0ca-fbea5747cd61",
+      "value": "46410459-9a46-4460-abb7-6cb4e00a3cb2",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_failure_id",
-      "value": "00172bf0-a1a5-4803-b769-80b6fbcec8f1",
+      "value": "db5499f7-175c-438b-ad03-d9e250d5dda3",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_checklist_execution_id",
-      "value": "7671a614-63c9-4afc-8f24-2a1062aecc72",
+      "value": "7fb15bbb-46a7-45ab-a24e-2ffdb2137a61",
       "type": "default",
       "enabled": true
     },
     {
       "key": "maintenance_finding_id",
-      "value": "57d7259b-430a-4fc3-a315-a85b4ecc9442",
+      "value": "6d1e932e-533a-4a74-b50d-9229d8a7c20d",
       "type": "default",
       "enabled": true
     }
   ],
   "_postman_variable_scope": "environment",
-  "_postman_exported_at": "2026-07-28T00:02:47.824146Z",
+  "_postman_exported_at": "2026-07-28T00:14:33.394475Z",
   "_postman_exported_using": "Codex smoke seed exporter"
 }
