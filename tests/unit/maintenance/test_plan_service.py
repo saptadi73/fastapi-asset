@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 
+from app.core.compat import UTC
 from app.core.exceptions import AppError
 from app.modules.maintenance.constants import (
     MaintenancePlanTriggerType,
@@ -178,3 +179,4 @@ async def test_generate_schedules_from_plan_creates_schedule_and_work_order(
     service.work_orders.create.assert_awaited_once()
     service.schedules.update.assert_awaited_once()
     service.plans.update.assert_awaited_once()
+

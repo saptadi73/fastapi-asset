@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 
+from app.core.compat import UTC
 from app.modules.maintenance.constants import (
     MaintenanceWorkOrderEventType,
     MaintenanceWorkOrderStatus,
@@ -82,3 +83,4 @@ async def test_list_work_order_events_returns_repository_items(
     items = await service.list_work_order_events(work_order_id)
 
     assert items == [event]
+

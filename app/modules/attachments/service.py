@@ -1,10 +1,11 @@
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from uuid import UUID
 
 import jwt
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.compat import UTC
 from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.modules.assets.repository import AssetRepository, AssetTransferRepository
@@ -643,3 +644,4 @@ class AttachmentService:
                 status_code=401,
             )
         return claims
+

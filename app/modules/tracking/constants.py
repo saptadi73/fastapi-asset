@@ -1,4 +1,4 @@
-from enum import StrEnum
+from app.core.compat import StrEnum
 
 
 class ScanType(StrEnum):
@@ -85,3 +85,4 @@ class StocktakeResultType(StrEnum):
     WRONG_LOCATION = "WRONG_LOCATION"
     DUPLICATE_TAG = "DUPLICATE_TAG"
     UNKNOWN_TAG = "UNKNOWN_TAG"
+

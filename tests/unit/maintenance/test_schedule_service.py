@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 
+from app.core.compat import UTC
 from app.core.exceptions import AppError
 from app.modules.maintenance.constants import MaintenanceScheduleStatus
 from app.modules.maintenance.schemas import (
@@ -95,3 +96,4 @@ async def test_reschedule_rejects_overlap(service: MaintenanceService) -> None:
         )
 
     assert exc_info.value.code == "MAINTENANCE_SCHEDULE_OVERLAP"
+

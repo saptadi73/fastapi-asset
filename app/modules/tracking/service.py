@@ -1,9 +1,10 @@
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.compat import UTC
 from app.core.exceptions import AppError
 from app.modules.assets.exceptions import AssetLocationNotFoundError, AssetNotFoundError
 from app.modules.assets.models import Asset
@@ -554,3 +555,4 @@ class AssetTrackingService:
                 status_code=404,
             )
         return item
+

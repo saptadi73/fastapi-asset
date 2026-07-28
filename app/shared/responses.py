@@ -1,9 +1,10 @@
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from fastapi import Request
 from pydantic import BaseModel, ConfigDict
 
+from app.core.compat import UTC
 from app.shared.pagination import PaginationMeta
 
 
@@ -53,3 +54,4 @@ def success_response(
         "error": None,
         "meta": build_meta(request, pagination).model_dump(mode="json"),
     }
+

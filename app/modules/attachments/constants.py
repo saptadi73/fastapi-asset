@@ -1,4 +1,4 @@
-from enum import StrEnum
+from app.core.compat import StrEnum
 
 
 class FileKind(StrEnum):
@@ -67,3 +67,4 @@ class AttachmentSource(StrEnum):
     MOBILE_SCAN = "MOBILE_SCAN"
     SAP_SYNC = "SAP_SYNC"
     SYSTEM_GENERATED = "SYSTEM_GENERATED"
+

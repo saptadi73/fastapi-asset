@@ -1,9 +1,10 @@
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
 
+from app.core.compat import UTC
 from app.core.exceptions import AppError
 from app.modules.auth.models import AppUser, AuthRefreshToken, AuthTokenFamily
 from app.modules.auth.schemas import AuthLoginRequest, AuthRefreshRequest
@@ -157,3 +158,4 @@ async def test_refresh_rotates_token_and_reuse_revokes_family(service: AuthServi
         await service.get_current_user(refreshed.access_token)
 
     assert access_exc.value.code == "AUTH_SESSION_REVOKED"
+

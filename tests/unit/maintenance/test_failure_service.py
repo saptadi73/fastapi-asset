@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 
+from app.core.compat import UTC
 from app.modules.maintenance.constants import (
     MaintenanceFailureSeverity,
     MaintenanceFailureStatus,
@@ -195,3 +196,4 @@ async def test_update_failure_rejects_invalid_failure_period(
         )
 
     assert exc_info.value.code == "MAINTENANCE_ASSET_FAILURE_TIME_INVALID"
+

@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import datetime
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import pytest
 
+from app.core.compat import UTC
 from app.core.exceptions import AppError
 from app.modules.maintenance.constants import (
     ChecklistExecutionStatus,
@@ -171,3 +172,4 @@ async def test_close_work_order_rejects_pending_follow_up_finding(
         )
 
     assert exc_info.value.code == "MAINTENANCE_WORK_ORDER_CLOSE_REQUIREMENTS_INCOMPLETE"
+

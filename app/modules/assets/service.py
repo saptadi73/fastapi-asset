@@ -1,9 +1,10 @@
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.compat import UTC
 from app.core.exceptions import AppError
 from app.modules.assets.constants import (
     AssetAttributeDataType,
@@ -1431,3 +1432,4 @@ class AssetRegistryService:
                 return True
             current = getattr(current, "parent_asset", None)
         return False
+

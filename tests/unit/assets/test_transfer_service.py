@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 
+from app.core.compat import UTC
 from app.core.exceptions import AppError
 from app.modules.assets.constants import AssetTransferStatus
 from app.modules.assets.schemas import AssetTransferActionPayload
@@ -211,3 +212,4 @@ async def test_complete_transfer_updates_histories_and_assignment(
     )
     service.transfers.update.assert_awaited_once()
     assert transfer_item.item_status == "COMPLETED"
+

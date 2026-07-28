@@ -1,4 +1,4 @@
-from enum import StrEnum
+from app.core.compat import StrEnum
 
 
 class BusinessPartnerRoleType(StrEnum):
@@ -9,3 +9,4 @@ class BusinessPartnerRoleType(StrEnum):
     WARRANTY_PROVIDER = "WARRANTY_PROVIDER"
     INSURER = "INSURER"
     SOFTWARE_PUBLISHER = "SOFTWARE_PUBLISHER"
+

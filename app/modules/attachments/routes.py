@@ -1,10 +1,11 @@
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.compat import UTC
 from app.api.dependencies import (
     get_current_user,
     get_session,
@@ -315,3 +316,4 @@ async def set_asset_primary_photo(
         message="Primary photo asset berhasil diatur.",
         data=AttachmentRead.model_validate(item).model_dump(mode="json", by_alias=True),
     )
+

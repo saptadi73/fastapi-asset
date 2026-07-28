@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 
+from app.core.compat import UTC
 from app.core.exceptions import AppError
 from app.modules.maintenance.constants import (
     MaintenanceRequestStatus,
@@ -136,3 +137,4 @@ async def test_complete_work_order_rejects_invalid_end_time(service: Maintenance
         )
 
     assert exc_info.value.code == "MAINTENANCE_WORK_ORDER_TIME_INVALID"
+

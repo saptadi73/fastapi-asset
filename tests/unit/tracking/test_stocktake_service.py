@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 
+from app.core.compat import UTC
 from app.core.exceptions import AppError
 from app.modules.tracking.constants import StocktakeStatus
 from app.modules.tracking.schemas import StocktakeActionPayload
@@ -123,3 +124,4 @@ async def test_approve_stocktake_rejects_non_completed(service: AssetTrackingSer
 
     assert exc_info.value.code == "STOCKTAKE_SESSION_INVALID_STATUS"
     service.stocktakes.update.assert_not_awaited()
+

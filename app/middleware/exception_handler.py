@@ -1,9 +1,10 @@
-from datetime import UTC, datetime
+from datetime import datetime
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from app.core.compat import UTC
 from app.core.exceptions import AppError
 
 
@@ -69,3 +70,4 @@ def register_exception_handlers(app: FastAPI) -> None:
                 "meta": _meta(request),
             },
         )
+

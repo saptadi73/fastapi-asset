@@ -1,10 +1,11 @@
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.compat import UTC
 from app.core.exceptions import AppError
 from app.modules.assets.constants import AssetStatus, ConditionStatus
 from app.modules.assets.exceptions import AssetLocationNotFoundError, AssetNotFoundError
@@ -4553,3 +4554,4 @@ class MaintenanceService:
         if interval_unit == "YEAR":
             return current_due_date + timedelta(days=365 * interval_value)
         return current_due_date
+

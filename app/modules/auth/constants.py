@@ -1,4 +1,4 @@
-from enum import StrEnum
+from app.core.compat import StrEnum
 
 
 class AppRole(StrEnum):
@@ -29,3 +29,4 @@ class AppPermission(StrEnum):
     TRACKING_READ = "tracking:read"
     TRACKING_WRITE = "tracking:write"
     TRACKING_REPORT_READ = "tracking:report:read"
+

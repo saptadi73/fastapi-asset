@@ -1,4 +1,4 @@
-from enum import StrEnum
+from app.core.compat import StrEnum
 
 
 class AssetType(StrEnum):
@@ -115,3 +115,4 @@ class AssetTransferType(StrEnum):
 class AssetTransferItemStatus(StrEnum):
     PENDING = "PENDING"
     COMPLETED = "COMPLETED"
+

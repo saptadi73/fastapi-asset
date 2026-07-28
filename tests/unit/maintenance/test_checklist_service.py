@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 
+from app.core.compat import UTC
 from app.core.exceptions import AppError
 from app.modules.maintenance.constants import (
     ChecklistExecutionStatus,
@@ -203,3 +204,4 @@ async def test_create_request_from_finding_updates_finding(
         service.findings.update.await_args.kwargs["status"]
         == MaintenanceFindingStatus.FOLLOW_UP_CREATED.value
     )
+

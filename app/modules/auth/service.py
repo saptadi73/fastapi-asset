@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 
 import jwt
@@ -12,6 +12,7 @@ from argon2.exceptions import VerifyMismatchError
 from jwt import InvalidTokenError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.compat import UTC
 from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.modules.auth.models import AppUser, AuthRefreshToken, AuthTokenFamily
@@ -371,3 +372,4 @@ class AuthService:
     @staticmethod
     def _hash_token(token: str) -> str:
         return hashlib.sha256(token.encode("utf-8")).hexdigest()
+

@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
 
+from app.core.compat import UTC
 from app.modules.maintenance.service import MaintenanceService
 from app.shared.pagination import PaginationParams
 
@@ -167,3 +168,4 @@ async def test_get_failure_analysis_report_calculates_metrics(
     assert item.open_failure_count == 1
     assert item.closed_failure_count == 1
     assert item.top_failure_modes[0].name == "Bearing Failure"
+

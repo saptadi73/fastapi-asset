@@ -1,4 +1,4 @@
-from enum import StrEnum
+from app.core.compat import StrEnum
 
 
 class MaintenanceRequestType(StrEnum):
@@ -281,3 +281,4 @@ class MaintenanceWorkOrderEventType(StrEnum):
     VERIFIED = "VERIFIED"
     CLOSED = "CLOSED"
     CANCELLED = "CANCELLED"
+
