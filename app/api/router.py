@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.api.health import router as health_router
 from app.modules.assets.routes import router as assets_router
 from app.modules.attachments.routes import router as attachments_router
 from app.modules.auth.routes import router as auth_router
@@ -10,6 +11,7 @@ from app.modules.software_licenses.routes import router as software_licenses_rou
 from app.modules.tracking.routes import router as tracking_router
 
 api_router = APIRouter()
+api_router.include_router(health_router)
 api_router.include_router(auth_router, tags=["Authentication"])
 api_router.include_router(partners_router, tags=["Business Partners"])
 api_router.include_router(assets_router, tags=["Asset Registry"])
