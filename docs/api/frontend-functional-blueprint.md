@@ -656,6 +656,10 @@ Frontend sebaiknya:
   selesai sebelum `complete` dan `close`.
 - untuk work order `PREVENTIVE`, `INSPECTION`, `CALIBRATION`, atau work order
   berbasis plan, tampilkan gate bahwa checklist completed wajib ada.
+- sembunyikan aksi `cancel` bila work order sudah pernah start atau sudah punya
+  jejak eksekusi seperti part usage, labor log, failure, atau checklist.
+- setelah work order masuk `COMPLETED` atau `VERIFICATION`, kunci form part
+  usage, labor log, dan create failure agar status akhir tetap final.
 
 Jika work order berasal dari request yang sudah ditriage, frontend sebaiknya
 menampilkan badge entitlement untuk contract atau warranty yang sedang melekat,

@@ -343,7 +343,7 @@ Selain feature besar, berikut logic/service baseline yang perlu ditinjau lagi.
 
 ### F2. Work Order Logic
 
-- [ ] state machine lengkap termasuk hold/resume/cancel
+- [x] state machine lengkap termasuk hold/resume/cancel
 - [x] cost rollup yang lebih ketat untuk semua action akhir
 - [x] validasi mandatory checklist untuk jenis pekerjaan tertentu
 - [x] validasi mandatory failure/RCA untuk breakdown tertentu

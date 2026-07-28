@@ -1119,6 +1119,12 @@ Status yang saat ini diizinkan:
 - `ASSIGNED`
 - `ON_HOLD`
 
+Validasi tambahan yang sudah aktif:
+
+- work order yang sudah pernah `start` tidak dapat dibatalkan
+- work order yang sudah memiliki `part usage`, `labor log`, `failure record`,
+  atau `checklist execution` tidak dapat dibatalkan
+
 ### `POST /maintenance/work-orders/{work_order_id}/complete`
 
 Status:
@@ -1174,6 +1180,13 @@ Aturan backend yang sudah aktif:
 - `checklist_template_id` bisa dikirim eksplisit atau diambil dari maintenance
   plan yang terkait
 
+Catatan state machine:
+
+- checklist boleh dimulai saat work order masih `APPROVED`, `ASSIGNED`,
+  `IN_PROGRESS`, atau `COMPLETED`
+- tetapi transaksi operasional baru seperti failure, part usage, dan labor log
+  hanya boleh ditambah saat work order masih aktif dieksekusi
+
 ### `POST /maintenance/work-orders/{work_order_id}/required-skills`
 
 Menetapkan skill wajib pada work order.
@@ -1192,6 +1205,30 @@ Mengambil daftar skill wajib pada work order untuk planner dan assignment screen
 ### `POST /maintenance/work-orders/{work_order_id}/part-requirements`
 
 Mencatat kebutuhan part terencana sebelum actual usage dicatat.
+
+### `POST /maintenance/work-orders/{work_order_id}/parts`
+
+Part usage saat ini hanya boleh dicatat saat work order berada di status aktif:
+
+- `APPROVED`
+- `ASSIGNED`
+- `IN_PROGRESS`
+- `ON_HOLD`
+
+Part usage tidak lagi diizinkan setelah work order masuk `COMPLETED` atau
+`VERIFICATION`.
+
+### `POST /maintenance/work-orders/{work_order_id}/labor-logs`
+
+Labor log saat ini hanya boleh dicatat saat work order berada di status aktif:
+
+- `APPROVED`
+- `ASSIGNED`
+- `IN_PROGRESS`
+- `ON_HOLD`
+
+Labor log tidak lagi diizinkan setelah work order masuk `COMPLETED` atau
+`VERIFICATION`.
 
 Perilaku backend:
 

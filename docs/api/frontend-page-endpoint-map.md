@@ -506,6 +506,7 @@ Tujuan data:
 - linked failures;
 - lifecycle action state.
 - gate checklist/RCA/cost validation sebelum complete dan close.
+- gate cancelability dan kunci transaksi operasional setelah status final.
 
 Endpoint utama:
 

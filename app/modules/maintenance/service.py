@@ -1377,6 +1377,12 @@ class MaintenanceService:
         payload: AssetFailureCreate,
     ) -> MaintenanceWorkOrder:
         work_order = await self.get_work_order(work_order_id)
+        if work_order.status not in self._active_execution_statuses():
+            raise AppError(
+                code="MAINTENANCE_ASSET_FAILURE_INVALID_STATUS",
+                message="Failure hanya dapat dicatat saat work order masih aktif dieksekusi.",
+                status_code=409,
+            )
         if payload.failure_started_at is not None and payload.failure_ended_at is not None:
             if payload.failure_ended_at < payload.failure_started_at:
                 raise AppError(
@@ -1799,13 +1805,7 @@ class MaintenanceService:
         payload: MaintenancePartUsageCreate,
     ) -> MaintenanceWorkOrder:
         work_order = await self.get_work_order(work_order_id)
-        if work_order.status not in {
-            MaintenanceWorkOrderStatus.APPROVED.value,
-            MaintenanceWorkOrderStatus.ASSIGNED.value,
-            MaintenanceWorkOrderStatus.IN_PROGRESS.value,
-            MaintenanceWorkOrderStatus.COMPLETED.value,
-            MaintenanceWorkOrderStatus.VERIFICATION.value,
-        }:
+        if work_order.status not in self._active_execution_statuses():
             raise AppError(
                 code="MAINTENANCE_PART_USAGE_INVALID_STATUS",
                 message="Work order belum berada pada status yang mengizinkan part usage.",
@@ -1870,13 +1870,7 @@ class MaintenanceService:
         payload: MaintenanceLaborLogCreate,
     ) -> MaintenanceWorkOrder:
         work_order = await self.get_work_order(work_order_id)
-        if work_order.status not in {
-            MaintenanceWorkOrderStatus.APPROVED.value,
-            MaintenanceWorkOrderStatus.ASSIGNED.value,
-            MaintenanceWorkOrderStatus.IN_PROGRESS.value,
-            MaintenanceWorkOrderStatus.COMPLETED.value,
-            MaintenanceWorkOrderStatus.VERIFICATION.value,
-        }:
+        if work_order.status not in self._active_execution_statuses():
             raise AppError(
                 code="MAINTENANCE_LABOR_LOG_INVALID_STATUS",
                 message="Work order belum berada pada status yang mengizinkan labor log.",
@@ -2910,6 +2904,7 @@ class MaintenanceService:
                 message="Work order pada status saat ini tidak dapat dibatalkan.",
                 status_code=409,
             )
+        await self._validate_work_order_cancel_rules(item)
         try:
             previous_status = item.status
             await self.work_orders.update(
@@ -3621,6 +3616,46 @@ class MaintenanceService:
                     "submitted_actual_labor_cost": str(payload.actual_labor_cost),
                 },
             )
+
+    async def _validate_work_order_cancel_rules(self, work_order: MaintenanceWorkOrder) -> None:
+        if work_order.actual_start_at is not None:
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_CANCEL_NOT_ALLOWED",
+                message="Work order yang sudah pernah dimulai tidak dapat dibatalkan.",
+                status_code=422,
+            )
+        if await self.part_usages.list_by_work_order(work_order.id):
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_CANCEL_NOT_ALLOWED",
+                message="Work order yang sudah memiliki part usage tidak dapat dibatalkan.",
+                status_code=422,
+            )
+        if await self.labor_logs.list_by_work_order(work_order.id):
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_CANCEL_NOT_ALLOWED",
+                message="Work order yang sudah memiliki labor log tidak dapat dibatalkan.",
+                status_code=422,
+            )
+        if await self.failures.list_by_work_order(work_order.id):
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_CANCEL_NOT_ALLOWED",
+                message="Work order yang sudah memiliki failure record tidak dapat dibatalkan.",
+                status_code=422,
+            )
+        if await self.checklist_executions.list_by_work_order(work_order.id):
+            raise AppError(
+                code="MAINTENANCE_WORK_ORDER_CANCEL_NOT_ALLOWED",
+                message="Work order yang sudah memiliki checklist execution tidak dapat dibatalkan.",
+                status_code=422,
+            )
+
+    def _active_execution_statuses(self) -> set[str]:
+        return {
+            MaintenanceWorkOrderStatus.APPROVED.value,
+            MaintenanceWorkOrderStatus.ASSIGNED.value,
+            MaintenanceWorkOrderStatus.IN_PROGRESS.value,
+            MaintenanceWorkOrderStatus.ON_HOLD.value,
+        }
 
     def _work_order_requires_checklist(self, work_order: MaintenanceWorkOrder) -> bool:
         return work_order.maintenance_plan_id is not None or work_order.maintenance_type in {
