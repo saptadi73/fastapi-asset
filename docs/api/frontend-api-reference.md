@@ -321,8 +321,26 @@ Respons `data` berisi:
 
 - `attachment`: metadata attachment lengkap
 - `current_version`: metadata versi file aktif
-- `download_url`: saat ini `null`, disiapkan untuk integrasi object storage atau presigned URL
-- `download_mode`: saat ini `STORAGE_REFERENCE`
+- `download_url`: URL API aman berumur pendek untuk mengakses detail file aktif
+- `download_mode`: `SIGNED_API_URL`
+- `expires_at`: waktu kedaluwarsa link download aman
+
+### `GET /attachments/downloads/{download_token}`
+
+Meresolusikan token download aman menjadi referensi file yang bisa dipakai
+frontend untuk membuka atau meneruskan proses download.
+
+Respons `data` berisi:
+
+- metadata attachment
+- metadata file utama
+- metadata versi file yang dituju
+- `storage_provider`
+- `storage_bucket`
+- `storage_object_key`
+- `mime_type`
+- `file_name`
+- `expires_at`
 
 ### `GET /attachments/{attachment_id}/versions`
 
@@ -352,7 +370,15 @@ Mengambil jejak lifecycle attachment, termasuk:
 - pembuatan attachment
 - upload versi awal
 - upload versi revisi
+- penerbitan secure download link
+- penggunaan secure download token
+- update metadata attachment
 - soft delete bila sudah terjadi
+
+Catatan backend:
+
+- audit trail kini disimpan sebagai event append-only pada tabel file event
+- frontend dapat memperlakukannya sebagai timeline immutable
 
 ### `PATCH /attachments/{attachment_id}`
 

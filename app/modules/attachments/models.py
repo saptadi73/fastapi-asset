@@ -89,6 +89,7 @@ class FileVersion(UUIDPrimaryKeyMixin, Base):
     is_current: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     file: Mapped[File] = relationship(back_populates="versions")
+    events: Mapped[list[FileEvent]] = relationship(back_populates="file_version")
 
 
 class Attachment(UUIDPrimaryKeyMixin, Base):
@@ -118,3 +119,29 @@ class Attachment(UUIDPrimaryKeyMixin, Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     file: Mapped[File] = relationship(back_populates="attachments")
+    events: Mapped[list[FileEvent]] = relationship(back_populates="attachment")
+
+
+class FileEvent(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "file_events"
+
+    file_id: Mapped[UUID] = mapped_column(
+        ForeignKey("files.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    attachment_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("attachments.id", ondelete="SET NULL")
+    )
+    file_version_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("file_versions.id", ondelete="SET NULL")
+    )
+    event_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    actor_id: Mapped[UUID | None] = mapped_column(nullable=True)
+    version_no: Mapped[int | None] = mapped_column(Integer)
+    summary: Mapped[str] = mapped_column(String(255), nullable=False)
+    details_json: Mapped[dict | None] = mapped_column("details", JSON)
+
+    file: Mapped[File] = relationship()
+    attachment: Mapped[Attachment | None] = relationship(back_populates="events")
+    file_version: Mapped[FileVersion | None] = relationship(back_populates="events")

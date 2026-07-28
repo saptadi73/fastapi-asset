@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     jwt_refresh_token_days: int = Field(default=7, alias="JWT_REFRESH_TOKEN_DAYS")
     jwt_issuer: str = Field(default="asset-management-api", alias="JWT_ISSUER")
     jwt_audience: str = Field(default="asset-management-client", alias="JWT_AUDIENCE")
+    attachment_download_token_minutes: int = Field(
+        default=5,
+        alias="ATTACHMENT_DOWNLOAD_TOKEN_MINUTES",
+    )
 
     auth_bootstrap_admin_email: str | None = Field(
         default=None,

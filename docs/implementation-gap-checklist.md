@@ -179,7 +179,8 @@ Status:
 
 Alasan prioritas:
 
-- backend sudah punya model `FileVersion`, tetapi API lifecycle file masih dasar;
+- backend sekarang sudah punya versioning, secure download link, dan immutable
+  file event trail;
 - frontend dokumen dan evidentiary workflow akan butuh ini.
 
 ## C. Phase 2 Backlog
@@ -355,9 +356,9 @@ Selain feature besar, berikut logic/service baseline yang perlu ditinjau lagi.
 
 ### F4. Attachment Logic
 
-- [ ] immutable file event trail
+- [x] immutable file event trail
 - [ ] legal hold / retention awareness bila domain dokumen berkembang
-- [ ] secure download pattern
+- [x] secure download pattern
 
 ### F5. Asset Lifecycle Logic
 

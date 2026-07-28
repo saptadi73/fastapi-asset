@@ -3,7 +3,7 @@
 Dokumen ini menurunkan `implementation-gap-checklist.md` menjadi backlog
 engineering yang lebih siap eksekusi.
 
-Tanggal acuan roadmap: **Monday, July 27, 2026**.
+Tanggal acuan roadmap: **Tuesday, July 28, 2026**.
 
 Tujuan dokumen ini:
 
@@ -13,7 +13,7 @@ Tujuan dokumen ini:
 
 ## Asumsi Dasar
 
-- fondasi backend saat ini stabil dan smoke seed lulus `179/179`
+- fondasi backend saat ini stabil dan smoke seed lulus `180/180`
 - frontend sudah memiliki referensi endpoint, seed samples, dan blueprint fungsional
 - setiap sprint di bawah ini diasumsikan fokus backend terlebih dahulu
 - testing minimal tiap sprint adalah unit test + live smoke yang relevan

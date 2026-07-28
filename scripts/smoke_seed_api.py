@@ -1515,10 +1515,16 @@ async def run_smoke_test(base_url: str) -> dict[str, Any]:
             f"{API_PREFIX}/attachments/{request_attachment_id}",
             label="get maintenance request attachment",
         )
-        await runner.call(
+        request_attachment_download = await runner.call(
             "GET",
             f"{API_PREFIX}/attachments/{request_attachment_id}/download",
             label="get maintenance request attachment download reference",
+        )
+        request_attachment_download_url = request_attachment_download["data"]["download_url"]
+        await runner.call(
+            "GET",
+            request_attachment_download_url,
+            label="resolve maintenance request attachment secure download",
         )
         await runner.call(
             "GET",

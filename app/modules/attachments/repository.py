@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.modules.attachments.constants import AttachmentCategory, AttachmentEntityType
-from app.modules.attachments.models import Attachment, File, FileVersion
+from app.modules.attachments.models import Attachment, File, FileEvent, FileVersion
 
 
 class FileRepository:
@@ -42,6 +42,25 @@ class FileVersionRepository:
             select(FileVersion)
             .where(FileVersion.file_id == file_id)
             .order_by(FileVersion.version_no.desc(), FileVersion.uploaded_at.desc())
+        )
+        result = await self.session.scalars(stmt)
+        return result.all()
+
+
+class FileEventRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def create(self, item: FileEvent) -> FileEvent:
+        self.session.add(item)
+        await self.session.flush()
+        return item
+
+    async def list_by_attachment(self, attachment_id: UUID) -> Sequence[FileEvent]:
+        stmt = (
+            select(FileEvent)
+            .where(FileEvent.attachment_id == attachment_id)
+            .order_by(FileEvent.occurred_at.asc(), FileEvent.id.asc())
         )
         result = await self.session.scalars(stmt)
         return result.all()

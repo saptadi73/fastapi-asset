@@ -1,24 +1,30 @@
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+import jwt
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.modules.assets.repository import AssetRepository, AssetTransferRepository
 from app.modules.attachments.constants import AttachmentCategory, AttachmentEntityType
 from app.modules.attachments.exceptions import AttachmentNotFoundError
-from app.modules.attachments.models import Attachment, File, FileVersion
+from app.modules.attachments.models import Attachment, File, FileEvent, FileVersion
 from app.modules.attachments.repository import (
     AttachmentRepository,
+    FileEventRepository,
     FileRepository,
     FileVersionRepository,
 )
 from app.modules.attachments.schemas import (
     AttachmentAuditEventRead,
     AttachmentCreate,
+    AttachmentDownloadAccessRead,
     AttachmentDownloadRead,
     AttachmentRead,
     AttachmentUpdate,
+    FileRead,
     FileVersionCreate,
     FileVersionRead,
 )
@@ -29,12 +35,15 @@ from app.modules.maintenance.repository import (
     MaintenanceWorkOrderRepository,
 )
 
+settings = get_settings()
+
 
 class AttachmentService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.files = FileRepository(session)
         self.file_versions = FileVersionRepository(session)
+        self.file_events = FileEventRepository(session)
         self.attachments = AttachmentRepository(session)
         self.assets = AssetRepository(session)
         self.transfers = AssetTransferRepository(session)
@@ -91,7 +100,7 @@ class AttachmentService:
 
         try:
             created_file = await self.files.create(file_record)
-            await self.file_versions.create(
+            created_version = await self.file_versions.create(
                 FileVersion(
                     file_id=created_file.id,
                     version_no=1,
@@ -114,7 +123,39 @@ class AttachmentService:
                 await self.attachments.unset_primary_asset_photo(asset_id=payload.entity_id)
 
             attachment.file_id = created_file.id
-            await self.attachments.create(attachment)
+            created_attachment = await self.attachments.create(attachment)
+            await self._append_file_event(
+                file_id=created_file.id,
+                attachment_id=created_attachment.id,
+                file_version_id=created_version.id,
+                event_type="ATTACHMENT_CREATED",
+                occurred_at=attachment.created_at,
+                actor_id=attachment.created_by,
+                version_no=1,
+                summary="Attachment dibuat.",
+                details={
+                    "entity_type": attachment.entity_type,
+                    "entity_id": str(attachment.entity_id),
+                    "attachment_category": attachment.attachment_category,
+                },
+            )
+            await self._append_file_event(
+                file_id=created_file.id,
+                attachment_id=created_attachment.id,
+                file_version_id=created_version.id,
+                event_type="FILE_VERSION_UPLOADED",
+                occurred_at=created_version.uploaded_at,
+                actor_id=created_version.uploaded_by,
+                version_no=1,
+                summary="Versi file awal diunggah.",
+                details={
+                    "storage_bucket": created_version.storage_bucket,
+                    "storage_object_key": created_version.storage_object_key,
+                    "mime_type": created_version.mime_type,
+                    "size_bytes": created_version.size_bytes,
+                    "is_current": created_version.is_current,
+                },
+            )
             await self.session.commit()
         except IntegrityError as exc:
             await self.session.rollback()
@@ -150,14 +191,93 @@ class AttachmentService:
             (version for version in file_record.versions if version.is_current),
             None,
         )
+        if current_version is None:
+            raise AppError(
+                code="ATTACHMENT_VERSION_NOT_FOUND",
+                message="Versi aktif attachment tidak ditemukan.",
+                status_code=404,
+            )
+        expires_at = datetime.now(UTC) + timedelta(
+            minutes=settings.attachment_download_token_minutes
+        )
+        token = self._encode_download_token(
+            attachment_id=attachment.id,
+            file_id=file_record.id,
+            file_version_id=current_version.id,
+            version_no=current_version.version_no,
+            expires_at=expires_at,
+        )
+        await self._append_file_event(
+            file_id=file_record.id,
+            attachment_id=attachment.id,
+            file_version_id=current_version.id,
+            event_type="DOWNLOAD_LINK_ISSUED",
+            occurred_at=datetime.now(UTC),
+            actor_id=None,
+            version_no=current_version.version_no,
+            summary="Link download aman diterbitkan.",
+            details={"expires_at": expires_at.isoformat()},
+        )
+        await self.session.commit()
         return AttachmentDownloadRead(
             attachment=AttachmentRead.model_validate(attachment),
-            current_version=(
-                FileVersionRead.model_validate(current_version)
-                if current_version is not None
-                else None
+            current_version=FileVersionRead.model_validate(current_version),
+            download_url=f"{settings.api_v1_prefix}/attachments/downloads/{token}",
+            expires_at=expires_at,
+        )
+
+    async def resolve_download_token(
+        self,
+        download_token: str,
+    ) -> AttachmentDownloadAccessRead:
+        claims = self._decode_download_token(download_token)
+        attachment = await self.get_attachment(UUID(str(claims["attachment_id"])))
+        file_record = await self.files.get(UUID(str(claims["file_id"])))
+        if file_record is None:
+            raise AppError(
+                code="ATTACHMENT_FILE_NOT_FOUND",
+                message="File attachment tidak ditemukan.",
+                status_code=404,
+            )
+
+        version = next(
+            (
+                item
+                for item in file_record.versions
+                if item.id == UUID(str(claims["file_version_id"]))
             ),
-            download_url=None,
+            None,
+        )
+        if version is None:
+            raise AppError(
+                code="ATTACHMENT_VERSION_NOT_FOUND",
+                message="Versi file attachment tidak ditemukan.",
+                status_code=404,
+            )
+
+        expires_at = datetime.fromtimestamp(int(claims["exp"]), UTC)
+        await self._append_file_event(
+            file_id=file_record.id,
+            attachment_id=attachment.id,
+            file_version_id=version.id,
+            event_type="DOWNLOAD_TOKEN_RESOLVED",
+            occurred_at=datetime.now(UTC),
+            actor_id=None,
+            version_no=version.version_no,
+            summary="Token download aman digunakan.",
+            details={"expires_at": expires_at.isoformat()},
+        )
+        await self.session.commit()
+        return AttachmentDownloadAccessRead(
+            attachment=AttachmentRead.model_validate(attachment),
+            file=FileRead.model_validate(file_record),
+            version=FileVersionRead.model_validate(version),
+            storage_provider=file_record.storage_provider,
+            storage_bucket=version.storage_bucket,
+            storage_object_key=version.storage_object_key,
+            mime_type=version.mime_type,
+            file_name=file_record.display_name,
+            expires_at=expires_at,
         )
 
     async def list_attachment_versions(self, attachment_id: UUID) -> list[FileVersion]:
@@ -202,7 +322,7 @@ class AttachmentService:
             if payload.metadata_json is not None:
                 file_record.metadata_json = payload.metadata_json
 
-            await self.file_versions.create(
+            created_version = await self.file_versions.create(
                 FileVersion(
                     file_id=file_record.id,
                     version_no=next_version_no,
@@ -216,6 +336,24 @@ class AttachmentService:
                     uploaded_at=payload.uploaded_at,
                     is_current=True,
                 )
+            )
+            await self._append_file_event(
+                file_id=file_record.id,
+                attachment_id=attachment.id,
+                file_version_id=created_version.id,
+                event_type="FILE_VERSION_UPLOADED",
+                occurred_at=payload.uploaded_at,
+                actor_id=uploaded_by,
+                version_no=next_version_no,
+                summary="Versi file baru diunggah.",
+                details={
+                    "storage_bucket": payload.storage_bucket,
+                    "storage_object_key": payload.storage_object_key,
+                    "mime_type": payload.mime_type,
+                    "size_bytes": payload.size_bytes,
+                    "change_notes": payload.change_notes,
+                    "is_current": True,
+                },
             )
             await self.session.flush()
             await self.session.commit()
@@ -245,67 +383,31 @@ class AttachmentService:
                 status_code=404,
             )
 
-        versions = list(await self.file_versions.list_by_file(file_record.id))
-        events: list[AttachmentAuditEventRead] = [
+        events = await self.file_events.list_by_attachment(attachment.id)
+        return [
             AttachmentAuditEventRead(
-                event_type="ATTACHMENT_CREATED",
-                occurred_at=attachment.created_at,
-                actor_id=attachment.created_by,
-                version_no=1,
-                summary="Attachment dibuat.",
-                details={
-                    "entity_type": attachment.entity_type,
-                    "entity_id": str(attachment.entity_id),
-                    "attachment_category": attachment.attachment_category,
-                },
+                event_type=item.event_type,
+                occurred_at=item.occurred_at,
+                actor_id=item.actor_id,
+                version_no=item.version_no,
+                summary=item.summary,
+                details=item.details_json,
             )
+            for item in events
         ]
-        for version in sorted(versions, key=lambda item: (item.version_no, item.uploaded_at)):
-            events.append(
-                AttachmentAuditEventRead(
-                    event_type="FILE_VERSION_UPLOADED",
-                    occurred_at=version.uploaded_at,
-                    actor_id=version.uploaded_by,
-                    version_no=version.version_no,
-                    summary=(
-                        "Versi file awal diunggah."
-                        if version.version_no == 1
-                        else "Versi file baru diunggah."
-                    ),
-                    details={
-                        "storage_bucket": version.storage_bucket,
-                        "storage_object_key": version.storage_object_key,
-                        "mime_type": version.mime_type,
-                        "size_bytes": version.size_bytes,
-                        "change_notes": version.change_notes,
-                        "is_current": version.is_current,
-                    },
-                )
-            )
-        if attachment.deleted_at is not None:
-            events.append(
-                AttachmentAuditEventRead(
-                    event_type="ATTACHMENT_DELETED",
-                    occurred_at=attachment.deleted_at,
-                    actor_id=attachment.deleted_by,
-                    version_no=file_record.current_version_no,
-                    summary="Attachment dihapus secara soft delete.",
-                    details={"is_primary": attachment.is_primary},
-                )
-            )
-
-        events.sort(key=lambda item: item.occurred_at)
-        return events
 
     async def update_attachment(
         self,
         attachment_id: UUID,
         payload: AttachmentUpdate,
+        *,
+        actor_id: UUID | None = None,
     ) -> Attachment:
         attachment = await self.get_attachment(attachment_id)
         changes = payload.model_dump(exclude_unset=True, mode="python")
 
         try:
+            detail_changes: dict[str, object] = {}
             if (
                 changes.get("is_primary") is True
                 and attachment.entity_type == AttachmentEntityType.ASSET.value
@@ -314,7 +416,19 @@ class AttachmentService:
                 await self.attachments.unset_primary_asset_photo(asset_id=attachment.entity_id)
 
             for key, value in changes.items():
+                detail_changes[key] = value.isoformat() if isinstance(value, datetime) else value
                 setattr(attachment, key, value)
+            await self._append_file_event(
+                file_id=attachment.file_id,
+                attachment_id=attachment.id,
+                file_version_id=None,
+                event_type="ATTACHMENT_UPDATED",
+                occurred_at=datetime.now(UTC),
+                actor_id=actor_id,
+                version_no=attachment.file.current_version_no,
+                summary="Metadata attachment diperbarui.",
+                details=detail_changes,
+            )
             await self.session.flush()
             await self.session.commit()
         except Exception:
@@ -330,14 +444,30 @@ class AttachmentService:
         deleted_by: UUID | None,
         deleted_at,
     ) -> Attachment:
-        return await self.update_attachment(
-            attachment_id,
-            AttachmentUpdate(
-                deleted_by=deleted_by,
-                deleted_at=deleted_at,
-                is_primary=False,
-            ),
+        attachment = await self.get_attachment(attachment_id)
+        payload = AttachmentUpdate(
+            deleted_by=deleted_by,
+            deleted_at=deleted_at,
+            is_primary=False,
         )
+        await self.update_attachment(
+            attachment_id,
+            payload,
+            actor_id=deleted_by,
+        )
+        await self._append_file_event(
+            file_id=attachment.file_id,
+            attachment_id=attachment.id,
+            file_version_id=None,
+            event_type="ATTACHMENT_DELETED",
+            occurred_at=deleted_at,
+            actor_id=deleted_by,
+            version_no=attachment.file.current_version_no,
+            summary="Attachment dihapus secara soft delete.",
+            details={"is_primary": False},
+        )
+        await self.session.commit()
+        return await self.get_attachment(attachment_id)
 
     async def list_entity_attachments(
         self,
@@ -422,3 +552,94 @@ class AttachmentService:
             status_code=422,
             details={"entity_type": entity_type},
         )
+
+    async def _append_file_event(
+        self,
+        *,
+        file_id: UUID,
+        attachment_id: UUID | None,
+        file_version_id: UUID | None,
+        event_type: str,
+        occurred_at: datetime,
+        actor_id: UUID | None,
+        version_no: int | None,
+        summary: str,
+        details: dict | None,
+    ) -> FileEvent:
+        return await self.file_events.create(
+            FileEvent(
+                file_id=file_id,
+                attachment_id=attachment_id,
+                file_version_id=file_version_id,
+                event_type=event_type,
+                occurred_at=occurred_at,
+                actor_id=actor_id,
+                version_no=version_no,
+                summary=summary,
+                details_json=details,
+            )
+        )
+
+    def _encode_download_token(
+        self,
+        *,
+        attachment_id: UUID,
+        file_id: UUID,
+        file_version_id: UUID,
+        version_no: int,
+        expires_at: datetime,
+    ) -> str:
+        now = datetime.now(UTC)
+        return jwt.encode(
+            {
+                "type": "attachment_download",
+                "attachment_id": str(attachment_id),
+                "file_id": str(file_id),
+                "file_version_id": str(file_version_id),
+                "version_no": version_no,
+                "iss": settings.jwt_issuer,
+                "aud": settings.jwt_audience,
+                "iat": int(now.timestamp()),
+                "nbf": int(now.timestamp()),
+                "exp": int(expires_at.timestamp()),
+            },
+            settings.jwt_secret_key,
+            algorithm=settings.jwt_algorithm,
+        )
+
+    def _decode_download_token(self, token: str) -> dict[str, object]:
+        try:
+            claims = jwt.decode(
+                token,
+                settings.jwt_secret_key,
+                algorithms=[settings.jwt_algorithm],
+                audience=settings.jwt_audience,
+                issuer=settings.jwt_issuer,
+                options={
+                    "require": [
+                        "type",
+                        "attachment_id",
+                        "file_id",
+                        "file_version_id",
+                        "version_no",
+                        "iss",
+                        "aud",
+                        "iat",
+                        "nbf",
+                        "exp",
+                    ]
+                },
+            )
+        except jwt.InvalidTokenError as exc:
+            raise AppError(
+                code="ATTACHMENT_DOWNLOAD_TOKEN_INVALID",
+                message="Token download attachment tidak valid atau sudah kedaluwarsa.",
+                status_code=401,
+            ) from exc
+        if claims.get("type") != "attachment_download":
+            raise AppError(
+                code="ATTACHMENT_DOWNLOAD_TOKEN_INVALID",
+                message="Jenis token download attachment tidak sesuai.",
+                status_code=401,
+            )
+        return claims

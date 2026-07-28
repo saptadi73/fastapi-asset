@@ -16,6 +16,7 @@ from app.modules.attachments.constants import AttachmentCategory, AttachmentEnti
 from app.modules.attachments.schemas import (
     AttachmentAuditEventRead,
     AttachmentCreate,
+    AttachmentDownloadAccessRead,
     AttachmentDownloadRead,
     AttachmentRead,
     AttachmentUpdate,
@@ -27,6 +28,24 @@ from app.modules.auth.models import AppUser
 from app.shared.responses import success_response
 
 router = APIRouter(prefix="/attachments")
+
+
+@router.get("/downloads/{download_token}", dependencies=[Depends(require_attachment_read)])
+async def resolve_attachment_download(
+    request: Request,
+    download_token: str,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    service = AttachmentService(session)
+    item = await service.resolve_download_token(download_token)
+    return success_response(
+        request=request,
+        message="Akses download attachment berhasil diresolusikan.",
+        data=AttachmentDownloadAccessRead.model_validate(item).model_dump(
+            mode="json",
+            by_alias=True,
+        ),
+    )
 
 
 @router.post(
@@ -150,9 +169,14 @@ async def update_attachment(
     attachment_id: UUID,
     payload: AttachmentUpdate,
     session: Annotated[AsyncSession, Depends(get_session)],
+    current_user: Annotated[AppUser, Depends(get_current_user)],
 ) -> dict:
     service = AttachmentService(session)
-    item = await service.update_attachment(attachment_id, payload)
+    item = await service.update_attachment(
+        attachment_id,
+        payload,
+        actor_id=current_user.id,
+    )
     return success_response(
         request=request,
         message="Attachment berhasil diperbarui.",

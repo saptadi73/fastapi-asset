@@ -158,7 +158,20 @@ class AttachmentDownloadRead(BaseModel):
     attachment: AttachmentRead
     current_version: FileVersionRead | None = None
     download_url: str | None = None
-    download_mode: str = "STORAGE_REFERENCE"
+    download_mode: str = "SIGNED_API_URL"
+    expires_at: datetime | None = None
+
+
+class AttachmentDownloadAccessRead(BaseModel):
+    attachment: AttachmentRead
+    file: FileRead
+    version: FileVersionRead
+    storage_provider: str
+    storage_bucket: str
+    storage_object_key: str
+    mime_type: str
+    file_name: str
+    expires_at: datetime
 
 
 class AttachmentAuditEventRead(BaseModel):

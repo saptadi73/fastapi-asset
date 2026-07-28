@@ -520,6 +520,7 @@ Aksi yang direkomendasikan:
 - view attachment version history
 - upload attachment new version
 - view attachment audit trail
+- resolve secure download link
 
 Workflow backend yang direkomendasikan:
 
@@ -535,6 +536,8 @@ Frontend sebaiknya:
 - menonjolkan target SLA response dan resolution;
 - menampilkan hubungan request ke asset dan work order;
 - pada tab attachment, tampilkan versi aktif, histori versi, dan audit trail file.
+- gunakan flow aman `GET attachment download -> GET secure download URL`
+  saat user menekan tombol download.
 
 Panel tambahan yang direkomendasikan pada request detail:
 
@@ -619,6 +622,7 @@ Aksi yang direkomendasikan:
 - cancel
 - add attachment
 - review attachment history
+- resolve secure download link
 
 Workflow backend yang direkomendasikan:
 
@@ -639,6 +643,8 @@ Frontend sebaiknya:
 - memisahkan data transaksi per tab;
 - menyediakan panel cost summary dan event timeline;
 - pada tab attachment, sediakan version history, upload revisi file, dan audit trail.
+- untuk tombol download, frontend sebaiknya terlebih dahulu meminta secure
+  download link yang berumur pendek.
 
 Jika work order berasal dari request yang sudah ditriage, frontend sebaiknya
 menampilkan badge entitlement untuk contract atau warranty yang sedang melekat.
