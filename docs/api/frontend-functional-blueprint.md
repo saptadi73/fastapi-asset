@@ -14,6 +14,9 @@ Dokumen ini tidak menggantikan kontrak API. Untuk kontrak field dan sample
 response, gunakan juga:
 
 - `docs/api/frontend-api-reference.md`
+- `docs/api/frontend-dashboard-report-catalog.md`
+- `docs/api/frontend-dashboard-implementation-plan.md`
+- `docs/api/frontend-form-simplification-guide.md`
 - `docs/api/frontend-seed-scenarios.md`
 - `docs/api/frontend-page-endpoint-map.md`
 - `artifacts/frontend_endpoint_samples.json`
